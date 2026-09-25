@@ -8,7 +8,7 @@ Your phone as a controller for any website. ob.Pal Link is a browser extension (
 
 It works in Chrome, Edge, Brave, Opera, Vivaldi and Arc (Chromium 120 or later).
 
-Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/)
+Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Source: [github.com/Axialon/obpal](https://github.com/Axialon/obpal) (this repository carries the releases)
 
 ## Install
 
