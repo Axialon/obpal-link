@@ -189,6 +189,13 @@ function parseBgRequest(x) {
 			type: "mode",
 			mode: x.mode
 		} : null;
+		case "frames": return Number.isInteger(x.count) && within(x.count, 0, 1e3) && typeof x.host === "string" && x.host.length <= 253 && /^[A-Za-z0-9.:[\]-]*$/.test(x.host) && typeof x.big === "boolean" ? {
+			to: "bg",
+			type: "frames",
+			count: x.count,
+			host: x.host,
+			big: x.big
+		} : null;
 		case "link": {
 			const link = parseLink(x.link);
 			return link ? {
@@ -236,7 +243,8 @@ var ALLOWED_SENDERS = {
 	link: ["offscreen"],
 	"offscreen-ready": ["offscreen"],
 	hello: ["page"],
-	rescan: ["page"]
+	rescan: ["page"],
+	frames: ["page"]
 };
 var allowedFrom = (type, kind) => ALLOWED_SENDERS[type].includes(kind);
 //#endregion

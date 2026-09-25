@@ -1,5 +1,5 @@
 import { n as renderSVG } from "./dist-lkpp0okm.js";
-import { C as isTargetMode, S as TARGET_MODES, a as parseLink, v as DEFAULT_MODE } from "./messages-Pseg0PpG.js";
+import { C as isTargetMode, S as TARGET_MODES, a as parseLink, v as DEFAULT_MODE } from "./messages-CRLNDzIz.js";
 //#region ../src/family/family.js
 (function(global) {
 	"use strict";
@@ -704,7 +704,12 @@ var state = {
 	allSites: false,
 	current: null,
 	busy: false,
-	notice: null
+	notice: null,
+	frames: null
+};
+var parseFrames = (x) => {
+	const f = x;
+	return f && typeof f === "object" && Number.isInteger(f.tab) && Number.isInteger(f.count) && typeof f.host === "string" ? f : null;
 };
 var app = document.getElementById("app");
 app.innerHTML = `
@@ -782,10 +787,11 @@ function render() {
 	for (const c of chips) c.setAttribute("aria-checked", String(c.dataset.mode === state.mode));
 	allBtn.setAttribute("aria-checked", String(state.allSites));
 	const note = $("note");
-	note.hidden = !state.notice;
+	const notice = state.notice ?? framesHint();
+	note.hidden = !notice;
 	note.replaceChildren();
-	if (state.notice) {
-		const { text, action } = state.notice;
+	if (notice) {
+		const { text, action } = notice;
 		note.append(text);
 		if (action) {
 			const b = document.createElement("button");
@@ -795,6 +801,23 @@ function render() {
 			note.append(" ", b);
 		}
 	}
+}
+/**
+* The controlled page shows a frame from another site (a hosted game, most often) and "All sites" is off: the
+* extension can't reach inside it, so the phone's input would go nowhere. Offer the fix in one click.
+*/
+function framesHint() {
+	const f = state.frames;
+	const here = state.current?.id;
+	if (!f || state.allSites || here === void 0 || state.tab !== here || f.tab !== here || f.count === 0) return null;
+	const where = f.host ? ` from ${f.host}` : " from another site";
+	return {
+		text: f.big ? `The game runs in a frame${where}. Turn on All sites to reach it.` : `This page has a frame${where} that ob.Pal can't reach yet.`,
+		action: {
+			label: "Turn on",
+			run: requestAllSites
+		}
+	};
 }
 var send = (m) => chrome.runtime.sendMessage(m).catch((e) => ({
 	ok: false,
@@ -830,15 +853,15 @@ for (const chip of chips) chip.addEventListener("click", () => {
 		mode
 	});
 });
+function requestAllSites() {
+	chrome.permissions.request(ALL_SITES).then((granted) => {
+		state.allSites = granted;
+		render();
+	}, () => render());
+}
 allBtn.addEventListener("click", () => {
 	state.notice = null;
-	if (!state.allSites) {
-		chrome.permissions.request(ALL_SITES).then((granted) => {
-			state.allSites = granted;
-			render();
-		}, () => render());
-		return;
-	}
+	if (!state.allSites) return requestAllSites();
 	chrome.permissions.remove(ALL_SITES).then((removed) => {
 		if (removed) state.allSites = false;
 		render();
@@ -864,6 +887,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 	if (area === "session") {
 		if (changes.tab) state.tab = typeof changes.tab.newValue === "number" ? changes.tab.newValue : null;
 		if (changes.link) state.link = parseLink(changes.link.newValue);
+		if (changes.frames) state.frames = parseFrames(changes.frames.newValue);
 	} else if (area === "local" && changes.mode && isTargetMode(changes.mode.newValue)) state.mode = changes.mode.newValue;
 	render();
 });
@@ -884,13 +908,18 @@ async function init() {
 			active: true,
 			currentWindow: true
 		}),
-		chrome.storage.session.get(["tab", "link"]),
+		chrome.storage.session.get([
+			"tab",
+			"link",
+			"frames"
+		]),
 		chrome.storage.local.get("mode"),
 		chrome.permissions.contains(ALL_SITES)
 	]);
 	state.current = tabs[0] ?? null;
 	state.tab = typeof session.tab === "number" ? session.tab : null;
 	state.link = parseLink(session.link);
+	state.frames = parseFrames(session.frames);
 	state.mode = isTargetMode(local.mode) ? local.mode : DEFAULT_MODE;
 	state.allSites = allSites;
 	render();

@@ -1,4 +1,4 @@
-import { C as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom, v as DEFAULT_MODE } from "./assets/messages-Pseg0PpG.js";
+import { C as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom, v as DEFAULT_MODE } from "./assets/messages-CRLNDzIz.js";
 //#region src/background.ts
 /**
 * Service worker: message routing and per-tab enablement.
@@ -117,11 +117,17 @@ async function syncRegistration() {
 async function enableTab(tabId) {
 	const prev = await controlledTab();
 	await ensureOffscreen();
-	await chrome.storage.session.set({ tab: tabId });
+	await chrome.storage.session.set({
+		tab: tabId,
+		frames: null
+	});
 	try {
 		await injectBridge(tabId);
 	} catch (e) {
-		await chrome.storage.session.set({ tab: prev === tabId ? null : prev });
+		await chrome.storage.session.set({
+			tab: prev === tabId ? null : prev,
+			frames: null
+		});
 		throw e;
 	}
 	if (prev !== null && prev !== tabId) {
@@ -140,7 +146,10 @@ async function enableTab(tabId) {
 }
 async function disableTab(tabId) {
 	if (await controlledTab() === tabId) {
-		await chrome.storage.session.set({ tab: null });
+		await chrome.storage.session.set({
+			tab: null,
+			frames: null
+		});
 		await tellTab(tabId, {
 			to: "bridge",
 			type: "deactivate"
@@ -210,6 +219,17 @@ async function handle(msg, sender) {
 			};
 		}
 		case "hello": return bridgeHello(sender);
+		case "frames": {
+			const tabId = await controlledTab();
+			if (tabId === null || sender.tab?.id !== tabId || (sender.frameId ?? 0) !== 0) return { ok: false };
+			await chrome.storage.session.set({ frames: {
+				tab: tabId,
+				count: msg.count,
+				host: msg.host,
+				big: msg.big
+			} });
+			return { ok: true };
+		}
 		case "rescan": {
 			const tabId = await controlledTab();
 			if (tabId !== null && sender.tab?.id === tabId) await injectBridge(tabId).catch(() => {});
@@ -235,7 +255,10 @@ chrome.runtime.onMessage.addListener((raw, sender, respond) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
 	(async () => {
 		if (tabId !== await controlledTab()) return;
-		await chrome.storage.session.set({ tab: null });
+		await chrome.storage.session.set({
+			tab: null,
+			frames: null
+		});
 		await Promise.all([pushConfig(), syncRegistration()]);
 	})();
 });

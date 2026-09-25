@@ -1,4 +1,4 @@
-import { C as isTargetMode, S as TARGET_MODES, _ as APP_NAME, c as decodePad, d as certFingerprint, f as encodePairing, g as sdpFingerprint, h as roomIdFor, i as parseFromPage, l as packetType, m as newSecret, o as parseOffscreenRequest, p as equalBytes, r as parseConfig, u as bindMac, v as DEFAULT_MODE, x as SERVICE } from "./messages-Pseg0PpG.js";
+import { C as isTargetMode, S as TARGET_MODES, _ as APP_NAME, c as decodePad, d as certFingerprint, f as encodePairing, g as sdpFingerprint, h as roomIdFor, i as parseFromPage, l as packetType, m as newSecret, o as parseOffscreenRequest, p as equalBytes, r as parseConfig, u as bindMac, v as DEFAULT_MODE, x as SERVICE } from "./messages-CRLNDzIz.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,

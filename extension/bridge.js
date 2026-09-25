@@ -142,6 +142,39 @@
 	}
 	/** Focus sits on a child frame's element, so that frame (not this one) receives the keys. */
 	var isFrameElement = (el) => !!el && (el.tagName === "IFRAME" || el.tagName === "FRAME");
+	/**
+	* Visible child frames from another site. The bridge here can't reach into them, and without "All sites" the
+	* extension can't either, so a game hosted in one (itch.io and most embeds) would get no input.
+	*/
+	function foreignFrames() {
+		let count = 0;
+		let host = "";
+		let area = 0;
+		for (const f of document.querySelectorAll("iframe, frame")) {
+			let reachable = false;
+			try {
+				reachable = !!f.contentDocument;
+			} catch {}
+			if (reachable) continue;
+			const rect = visibleRect(f);
+			if (!rect) continue;
+			count++;
+			const a = rect.width * rect.height;
+			if (a > area) {
+				area = a;
+				try {
+					host = new URL(f.src || "about:blank", location.href).host;
+				} catch {
+					host = "";
+				}
+			}
+		}
+		return {
+			count,
+			host,
+			area
+		};
+	}
 	//#endregion
 	//#region src/content/bridge.ts
 	/**
@@ -164,6 +197,7 @@
 		let reportTimer;
 		let rescanTimer;
 		let lastReport = "";
+		let lastFrames = "";
 		const frames = new MutationObserver((records) => {
 			for (const r of records) for (const n of r.addedNodes) if (n instanceof Element && (isFrameElement(n) || n.getElementsByTagName("iframe").length)) return rescan();
 		});
@@ -262,6 +296,7 @@
 		function deactivate() {
 			if (!active) return;
 			active = false;
+			lastFrames = "";
 			clearTimeout(retryTimer);
 			clearInterval(reportTimer);
 			clearTimeout(rescanTimer);
@@ -289,6 +324,7 @@
 			} catch {}
 		}
 		function report() {
+			reportFrames();
 			if (!port) return;
 			const view = largestView();
 			const rep = {
@@ -300,6 +336,26 @@
 			if (key === lastReport) return;
 			lastReport = key;
 			send(rep);
+		}
+		/**
+		* Top frame only: tell the service worker about visible frames from other sites, so the popup can offer
+		* "All sites" when the game lives in one. Sent when the picture changes.
+		*/
+		function reportFrames() {
+			if (!active || window.top !== window) return;
+			const f = foreignFrames();
+			const view = largestView();
+			const big = f.area > .15 * innerWidth * innerHeight && f.area > (view?.area ?? 0);
+			const key = `${f.count}|${f.host}|${big}`;
+			if (key === lastFrames) return;
+			lastFrames = key;
+			chrome.runtime.sendMessage({
+				to: "bg",
+				type: "frames",
+				count: f.count,
+				host: f.host,
+				big
+			}).catch(() => {});
 		}
 		function onLoadCapture(e) {
 			if (e.target instanceof Element && isFrameElement(e.target)) rescan();
