@@ -1,4 +1,192 @@
-import { T as isTargetMode, a as parseLink, b as DEFAULT_MODE, n as parseBgRequest, s as senderKind, t as allowedFrom } from "./assets/messages-BPWJyNvl.js";
+import { R as DEFAULT_MODE, W as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom } from "./assets/messages-DmNWkKJF.js";
+import { c as parseHelperMessage, i as NATIVE_HOST, l as parseNativeFrame, m as toHelperRequest, n as EMPTY_PC } from "./assets/native-Cu2mF5Lq.js";
+//#region src/native.ts
+var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
+var RETRY_MS = [
+	1e3,
+	3e3,
+	1e4,
+	3e4
+];
+var NativeBridge = class {
+	port = null;
+	state = { ...EMPTY_PC };
+	ready = false;
+	armed = false;
+	wantMode = false;
+	wantPage = false;
+	retries = 0;
+	retryTimer;
+	/** Reconcile with the target mode: connect and arm for PC, disarm (and let go) otherwise. */
+	async sync(mode) {
+		this.wantMode = mode === "pc";
+		await this.reconcile();
+	}
+	/** An extension page wants the helper (to show or edit the allowlist) whatever the target is. */
+	async request() {
+		this.wantPage = true;
+		await this.reconcile();
+	}
+	/** An action frame from the offscreen link; dropped unless the helper is up and armed. */
+	frame(f) {
+		if (this.ready && this.armed) this.send(f);
+	}
+	/** Popup and options page requests. */
+	async handle(req) {
+		if (req.type === "pc-connect") {
+			await this.request();
+			return { ok: true };
+		}
+		if (!this.ready) return {
+			ok: false,
+			error: "helper not connected"
+		};
+		const m = toHelperRequest(req);
+		return m && this.send(m) ? { ok: true } : {
+			ok: false,
+			error: "helper not connected"
+		};
+	}
+	async reconcile() {
+		if (!this.wantMode && !this.wantPage) return this.drop("off");
+		if (!await chrome.permissions.contains(NATIVE_PERMISSION)) return this.drop("permission");
+		if (!this.port) this.connect();
+		this.arm(this.wantMode);
+	}
+	arm(on) {
+		if (!this.ready || this.armed === on) return;
+		this.armed = on;
+		this.send({
+			t: "enable",
+			on
+		});
+	}
+	connect() {
+		clearTimeout(this.retryTimer);
+		this.retryTimer = void 0;
+		this.set({
+			link: "connecting",
+			error: null
+		});
+		let port;
+		try {
+			port = chrome.runtime.connectNative(NATIVE_HOST);
+		} catch (e) {
+			this.set({
+				link: "error",
+				error: e instanceof Error ? e.message : String(e),
+				status: null
+			});
+			return;
+		}
+		this.port = port;
+		port.onMessage.addListener((raw) => this.onMessage(port, raw));
+		port.onDisconnect.addListener(() => this.onDisconnect(port));
+		this.send({
+			t: "hello",
+			v: 1
+		});
+	}
+	onMessage(port, raw) {
+		if (port !== this.port) return;
+		const m = parseHelperMessage(raw);
+		if (!m) return;
+		switch (m.t) {
+			case "hello":
+				this.ready = true;
+				this.retries = 0;
+				this.set({
+					link: "ready",
+					version: m.version,
+					hotkey: m.hotkey,
+					error: null
+				});
+				this.arm(this.wantMode);
+				break;
+			case "config":
+				this.set({ config: {
+					paused: m.paused,
+					programs: m.programs
+				} });
+				break;
+			case "status":
+				this.set({ status: {
+					enabled: m.enabled,
+					panic: m.panic,
+					held: m.held,
+					front: m.front,
+					program: m.program
+				} });
+				break;
+			case "error":
+				console.warn(`[ob.Pal Link] helper: ${m.code}: ${m.msg}`);
+				break;
+			case "stats": this.set({ stats: {
+				frames: m.frames,
+				injected: m.injected,
+				refused: m.refused
+			} });
+		}
+	}
+	onDisconnect(port) {
+		const msg = chrome.runtime.lastError?.message ?? "";
+		if (port !== this.port) return;
+		const wasReady = this.ready;
+		this.port = null;
+		this.ready = false;
+		this.armed = false;
+		if (/not found/i.test(msg)) return this.set({
+			link: "missing",
+			error: null,
+			status: null
+		});
+		if (/forbidden/i.test(msg)) return this.set({
+			link: "error",
+			error: "This copy of ob.Pal Link is not allowed by the installed helper (its extension ID differs).",
+			status: null
+		});
+		this.set({
+			link: "error",
+			error: msg || (wasReady ? "The helper stopped." : "The helper did not answer."),
+			status: null
+		});
+		if ((this.wantMode || this.wantPage) && this.retries < RETRY_MS.length) this.retryTimer = setTimeout(() => void this.reconcile(), RETRY_MS[this.retries++]);
+	}
+	drop(link) {
+		clearTimeout(this.retryTimer);
+		this.retryTimer = void 0;
+		const p = this.port;
+		this.port = null;
+		this.ready = false;
+		this.armed = false;
+		try {
+			p?.disconnect();
+		} catch {}
+		this.set({
+			link,
+			error: null,
+			status: null
+		});
+	}
+	set(patch) {
+		this.state = {
+			...this.state,
+			...patch
+		};
+		chrome.storage.session.set({ pc: this.state }).catch(() => void 0);
+	}
+	send(m) {
+		const p = this.port;
+		if (!p) return false;
+		try {
+			p.postMessage(m);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+};
+//#endregion
 //#region src/background.ts
 /**
 * Service worker: message routing and per-tab enablement.
@@ -17,6 +205,8 @@ var SELF = {
 	id: chrome.runtime.id,
 	origin: chrome.runtime.getURL("").replace(/\/$/, "")
 };
+/** The PC target: the native messaging port to ob.Pal Desktop, connected while the target is PC. */
+var native = new NativeBridge();
 async function controlledTab() {
 	const { tab } = await chrome.storage.session.get("tab");
 	return typeof tab === "number" ? tab : null;
@@ -42,7 +232,10 @@ async function ensureOffscreen() {
 		await chrome.storage.session.set({ link: {
 			status: "starting",
 			url: "",
-			device: null
+			device: null,
+			lan: "",
+			lanFor: null,
+			pairs: []
 		} });
 		await chrome.offscreen.createDocument({
 			url: OFFSCREEN_PATH,
@@ -196,13 +389,34 @@ async function handle(msg, sender) {
 		case "mode":
 			await chrome.storage.local.set({ mode: msg.mode });
 			await pushConfig();
+			await native.sync(msg.mode);
 			return { ok: true };
+		case "pc-connect":
+		case "pc-allow":
+		case "pc-scope":
+		case "pc-forget":
+		case "pc-pause":
+		case "pc-resume":
+		case "pc-stats": return native.handle(msg);
 		case "unpair":
 			await toOffscreen({
 				to: "offscreen",
 				type: "unpair"
 			});
 			return { ok: true };
+		case "forget":
+		case "lan":
+			await ensureOffscreen();
+			await toOffscreen({
+				to: "offscreen",
+				type: msg.type,
+				id: msg.id
+			});
+			return { ok: true };
+		case "diag": return await toOffscreen({
+			to: "offscreen",
+			type: "diag"
+		}) ?? null;
 		case "link":
 			await chrome.storage.session.set({ link: msg.link });
 			await refreshBadge();
@@ -252,6 +466,23 @@ chrome.runtime.onMessage.addListener((raw, sender, respond) => {
 	}));
 	return true;
 });
+chrome.runtime.onConnect.addListener((port) => {
+	if (port.name !== "obpal-link/native") return;
+	const s = port.sender;
+	if (senderKind({
+		id: s?.id,
+		url: s?.url,
+		tabId: s?.tab?.id
+	}, SELF) !== "offscreen") {
+		port.disconnect();
+		return;
+	}
+	targetMode().then((mode) => native.sync(mode));
+	port.onMessage.addListener((raw) => {
+		const f = parseNativeFrame(raw);
+		if (f) native.frame(f);
+	});
+});
 chrome.tabs.onRemoved.addListener((tabId) => {
 	(async () => {
 		if (tabId !== await controlledTab()) return;
@@ -279,9 +510,12 @@ chrome.permissions.onAdded.addListener(() => {
 		await syncRegistration();
 		const tabId = await controlledTab();
 		if (tabId !== null) await injectBridge(tabId).catch(() => {});
+		await native.sync(await targetMode());
 	})();
 });
-chrome.permissions.onRemoved.addListener(() => void syncRegistration());
-chrome.runtime.onStartup.addListener(() => void syncRegistration());
-chrome.runtime.onInstalled.addListener(() => void syncRegistration());
+chrome.permissions.onRemoved.addListener(() => void Promise.all([syncRegistration(), targetMode().then((m) => native.sync(m))]));
+var warm = () => void Promise.all([syncRegistration(), ensureOffscreen().catch(() => {})]);
+chrome.runtime.onStartup.addListener(warm);
+chrome.runtime.onInstalled.addListener(warm);
+targetMode().then((mode) => native.sync(mode));
 //#endregion

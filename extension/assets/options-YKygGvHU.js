@@ -1,0 +1,173 @@
+import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-dJnNNgY2.js";
+import { d as parsePcState, n as EMPTY_PC } from "./native-Cu2mF5Lq.js";
+//#region src/options/options.ts
+/**
+* Options page: the PC allowlist. Every allowed program with its scope (keyboard / mouse), remove, and a
+* global Pause. It renders from storage.session "pc" (mirrored there by the service worker from the helper)
+* and asks the worker to change things; the helper is the one that persists them.
+*/
+family.setProduct("obpal");
+var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
+var app = document.getElementById("app");
+var pc = { ...EMPTY_PC };
+var permission = false;
+app.innerHTML = `
+  <header class="bar">
+    <span class="logo" aria-label="ob.Pal">${logo()}</span>
+    <span class="tag">Link</span>
+    <h1>PC control</h1>
+  </header>
+  <section class="panel glass" aria-label="All programs">
+    <button class="row" id="pause" type="button" role="switch" aria-checked="false" title="Stop all keyboard and mouse input from the phone">
+      <span class="row-ic">${LINK_ICONS.pause}</span>
+      <span class="row-t"><b>Pause all</b><small>Nothing reaches any program while paused</small></span>
+      <span class="sw" aria-hidden="true"><i></i></span>
+    </button>
+  </section>
+  <section class="panel glass" id="list" aria-label="Allowed programs"></section>
+  <p class="note" id="note" role="alert" hidden></p>
+  <p class="foot" id="foot"></p>`;
+var $ = (id) => document.getElementById(id);
+var send = (m) => chrome.runtime.sendMessage(m).catch((e) => ({
+	ok: false,
+	error: String(e)
+}));
+function programRow(p) {
+	const row = document.createElement("div");
+	row.className = "row";
+	row.innerHTML = `
+    <span class="row-ic">${LINK_ICONS.pc}</span>
+    <span class="row-t"><b></b><small></small></span>
+    <span class="kinds" role="group" aria-label="Allowed input">
+      <button class="kind" type="button" data-kind="keyboard" aria-pressed="${p.keyboard}" title="Keyboard">${LINK_ICONS.keys}<span>keys</span></button>
+      <button class="kind" type="button" data-kind="mouse" aria-pressed="${p.mouse}" title="Mouse">${LINK_ICONS.mouse}<span>mouse</span></button>
+    </span>
+    <button class="icon-btn" type="button" data-act="forget" title="Remove" aria-label="Stop allowing this program">${ICONS.close}</button>`;
+	row.querySelector("b").textContent = p.name;
+	row.querySelector("small").textContent = p.path;
+	for (const b of row.querySelectorAll(".kind")) b.addEventListener("click", () => {
+		const next = {
+			keyboard: p.keyboard,
+			mouse: p.mouse
+		};
+		next[b.dataset.kind] = b.getAttribute("aria-pressed") !== "true";
+		send({
+			to: "bg",
+			type: "pc-scope",
+			path: p.path,
+			...next
+		});
+	});
+	row.querySelector("[data-act=forget]").addEventListener("click", () => void send({
+		to: "bg",
+		type: "pc-forget",
+		path: p.path
+	}));
+	return row;
+}
+function render() {
+	const ready = pc.link === "ready";
+	const pause = $("pause");
+	pause.setAttribute("aria-checked", String(!!pc.config?.paused));
+	pause.disabled = !ready;
+	const list = $("list");
+	list.replaceChildren();
+	const programs = pc.config?.programs ?? [];
+	if (programs.length) for (const p of programs) list.append(programRow(p));
+	else {
+		const empty = document.createElement("div");
+		empty.className = "empty";
+		empty.innerHTML = `${LINK_ICONS.pc}<b>No programs allowed</b><span>Switch to a program, open ob.Pal Link and choose PC to allow it.</span>`;
+		list.append(empty);
+	}
+	const note = $("note");
+	const notice = noticeFor();
+	note.hidden = !notice;
+	note.replaceChildren();
+	if (notice) {
+		note.append(notice.text);
+		if (notice.action) {
+			const b = document.createElement("button");
+			b.type = "button";
+			b.textContent = notice.action.label;
+			b.onclick = notice.action.run;
+			note.append(" ", b);
+		}
+	}
+	const foot = $("foot");
+	foot.replaceChildren();
+	if (ready) {
+		const v = document.createElement("span");
+		v.innerHTML = `<b>ob.Pal Desktop</b> ${pc.version ?? ""}`;
+		foot.append(v);
+		const h = document.createElement("span");
+		h.innerHTML = pc.hotkey ? `Panic key <span class="hotkey"></span>` : "No panic key (the combination is taken)";
+		if (pc.hotkey) h.querySelector(".hotkey").textContent = pc.hotkey;
+		foot.append(h);
+		const s = document.createElement("span");
+		s.textContent = "Only the program in front receives input, and only the kinds allowed here.";
+		foot.append(s);
+	}
+}
+function noticeFor() {
+	switch (pc.link) {
+		case "ready": return null;
+		case "permission": return permission ? null : {
+			text: "PC control is off.",
+			action: {
+				label: "Turn on",
+				run: requestPermission
+			}
+		};
+		case "missing": return {
+			text: "ob.Pal Desktop isn’t installed.",
+			action: {
+				label: "How to install",
+				run: () => void chrome.tabs.create({ url: "https://github.com/Axialon/obpal-link/tree/main/desktop#readme" })
+			}
+		};
+		case "error": return {
+			text: pc.error ?? "The helper stopped.",
+			action: {
+				label: "Retry",
+				run: () => void send({
+					to: "bg",
+					type: "pc-connect"
+				})
+			}
+		};
+		default: return { text: "Starting ob.Pal Desktop…" };
+	}
+}
+function requestPermission() {
+	chrome.permissions.request(NATIVE_PERMISSION).then((granted) => {
+		permission = granted;
+		if (granted) send({
+			to: "bg",
+			type: "pc-connect"
+		});
+		render();
+	}, () => render());
+}
+$("pause").addEventListener("click", () => void send({
+	to: "bg",
+	type: "pc-pause",
+	on: !pc.config?.paused
+}));
+chrome.storage.onChanged.addListener((changes, area) => {
+	if (area !== "session" || !changes.pc) return;
+	pc = parsePcState(changes.pc.newValue) ?? { ...EMPTY_PC };
+	render();
+});
+async function init() {
+	const [session, granted] = await Promise.all([chrome.storage.session.get("pc"), chrome.permissions.contains(NATIVE_PERMISSION)]);
+	pc = parsePcState(session.pc) ?? { ...EMPTY_PC };
+	permission = granted;
+	render();
+	if (granted) send({
+		to: "bg",
+		type: "pc-connect"
+	});
+}
+init();
+//#endregion

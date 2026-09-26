@@ -1,4 +1,5 @@
-import { C as SERVICE, T as isTargetMode, _ as roomIdFor, b as DEFAULT_MODE, c as PadButton, d as packetType, f as bindMac, g as newSecret, h as equalBytes, i as parseFromPage, l as PadFlag, m as encodePairing, o as parseOffscreenRequest, p as certFingerprint, r as parseConfig, u as decodePad, v as sdpFingerprint, w as TARGET_MODES, y as APP_NAME } from "./messages-BPWJyNvl.js";
+import { A as lanContext, B as PAGE_MODES, C as candidatesOf, D as equalBytes, E as encodePairing, F as roomIdFor, H as SERVICE, I as sdpFingerprint, L as APP_NAME, M as newSecret, N as randomBytes, O as fromB64url, P as readLocalIce, R as DEFAULT_MODE, S as bindMac, T as encodeLanPairing, W as isTargetMode, _ as forgetPair, b as putPair, c as Accum, d as hysteresis, f as stickCurve, g as packetType, h as decodePad, i as parseFromPage, j as lanIceCredentials, k as lanAnswerSdp, l as buttonValue, m as PadFlag, o as parseOffscreenRequest, p as PadButton, r as parseConfig, u as clamp$1, v as listPairs, w as certFingerprint, x as b64url, y as loadCertificate } from "./messages-DmNWkKJF.js";
+import { a as NATIVE_PORT_NAME, o as buildNativeFrame, r as HeldState, s as isIdleFrame } from "./native-Cu2mF5Lq.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -143,27 +144,50 @@ function accumDelta(a, b) {
 		twist: d16(a.raw.twist, b.raw.twist) / 100
 	};
 }
+/** How long a connect attempt may take before the service counts as unreachable (the offline fallback's budget). */
+var REACH_TIMEOUT_MS = 1500;
 function roomSocketUrl(service, roomId, role) {
 	return `${service.replace(/^http/, "ws")}/r/${roomId}?role=${role}`;
 }
-/** Room signaling socket with jittered reconnect and keep-alive pings (answered by the service without waking it). */
+/**
+* Room signaling socket with jittered reconnect and keep-alive pings (answered by the service without waking it).
+* A connect attempt that hasn't opened within REACH_TIMEOUT_MS is abandoned and reported as unreachable, so
+* callers can fall back within the budget instead of waiting for the network stack's own timeout.
+*/
 var SignalClient = class {
-	constructor(url) {
+	constructor(url, connectTimeout = REACH_TIMEOUT_MS) {
 		this.url = url;
+		this.connectTimeout = connectTimeout;
 		this.onmessage = () => {};
 		this.onstatus = () => {};
+		this.everOpened = false;
 		this.ws = null;
 		this.closed = false;
 		this.backoff = 400;
 		this.ping = null;
+		this.timer = null;
 	}
 	connect() {
 		if (this.closed) return;
-		const ws = new WebSocket(this.url);
+		let ws;
+		try {
+			ws = new WebSocket(this.url);
+		} catch {
+			this.onstatus(false, false);
+			this.retry();
+			return;
+		}
 		this.ws = ws;
+		let opened = false;
+		this.timer = setTimeout(() => {
+			if (!opened) ws.close();
+		}, this.connectTimeout);
 		ws.onopen = () => {
+			opened = true;
+			this.everOpened = true;
+			if (this.timer) clearTimeout(this.timer);
 			this.backoff = 400;
-			this.onstatus(true);
+			this.onstatus(true, true);
 			this.ping = setInterval(() => ws.readyState === 1 && ws.send("ping"), 25e3);
 		};
 		ws.onmessage = (e) => {
@@ -173,13 +197,19 @@ var SignalClient = class {
 			} catch {}
 		};
 		ws.onclose = () => {
+			if (this.timer) clearTimeout(this.timer);
 			if (this.ping) clearInterval(this.ping);
-			this.onstatus(false);
-			if (this.closed) return;
-			const wait = this.backoff * (.75 + Math.random() * .5);
-			this.backoff = Math.min(this.backoff * 2, 8e3);
-			setTimeout(() => this.connect(), wait);
+			if (this.ws !== ws) return;
+			this.ws = null;
+			this.onstatus(false, opened);
+			this.retry();
 		};
+	}
+	retry() {
+		if (this.closed) return;
+		const wait = this.backoff * (.75 + Math.random() * .5);
+		this.backoff = Math.min(this.backoff * 2, 8e3);
+		setTimeout(() => this.connect(), wait);
 	}
 	get open() {
 		return this.ws?.readyState === 1;
@@ -190,18 +220,24 @@ var SignalClient = class {
 	close() {
 		this.closed = true;
 		if (this.ping) clearInterval(this.ping);
+		if (this.timer) clearTimeout(this.timer);
 		this.ws?.close();
 	}
 };
-async function fetchIceServers(service, roomId) {
+var STUN = [{ urls: "stun:stun.cloudflare.com:3478" }];
+/** ICE servers for a room: STUN, plus TURN when the service mints credentials. Falls back to STUN within the timeout. */
+async function fetchIceServers(service, roomId, timeoutMs = REACH_TIMEOUT_MS) {
 	try {
-		const r = await fetch(`${service}/api/ice?room=${encodeURIComponent(roomId)}`, { cache: "no-store" });
+		const r = await fetch(`${service}/api/ice?room=${encodeURIComponent(roomId)}`, {
+			cache: "no-store",
+			signal: AbortSignal.timeout(timeoutMs)
+		});
 		if (r.ok) {
 			const j = await r.json();
 			if (Array.isArray(j.iceServers) && j.iceServers.length) return j.iceServers;
 		}
 	} catch {}
-	return [{ urls: "stun:stun.cloudflare.com:3478" }];
+	return STUN;
 }
 var PointerFlag = {
 	/** The device has an orientation; without it the angles are meaningless. */
@@ -361,6 +397,8 @@ var DEFAULT_LAYOUT = {
 };
 /** A pointer stream that stops (the utility was switched off, the phone went away) is gone after this long. */
 var POINTER_STALE_MS = 300;
+/** How long the direct code's offer may gather host candidates before the code is published. */
+var LAN_GATHER_MS = 800;
 var zeroAcc = () => ({
 	aim: [0, 0],
 	pad1: [0, 0],
@@ -391,6 +429,12 @@ var Remote = class Remote {
 		this.ice = [];
 		this.peers = /* @__PURE__ */ new Map();
 		this.active = null;
+		this.pairs = [];
+		this.lan = null;
+		this.lanChoice = null;
+		this.lanBusy = Promise.resolve();
+		this.connectedAt = 0;
+		this.firstInputAt = 0;
 		this.latest = null;
 		this.padState = null;
 		this.padAt = 0;
@@ -415,7 +459,9 @@ var Remote = class Remote {
 			value: [],
 			mode: [],
 			recenter: [],
-			pad: []
+			pad: [],
+			input: [],
+			lan: []
 		};
 		this.cards = [];
 		this.service = (opts.service ?? (isObpalOrigin() ? location.origin : "https://obpal.blackboxes.net")).replace(/\/$/, "");
@@ -427,11 +473,18 @@ var Remote = class Remote {
 		return r;
 	}
 	async init() {
-		this.cert = await RTCPeerConnection.generateCertificate({
-			name: "ECDSA",
-			namedCurve: "P-256"
-		});
-		this.fp = await certFingerprint(this.cert);
+		if (this.opts.remember) {
+			const c = await loadCertificate("host");
+			this.cert = c.cert;
+			this.fp = c.fp;
+			this.pairs = await listPairs();
+		} else {
+			this.cert = await RTCPeerConnection.generateCertificate({
+				name: "ECDSA",
+				namedCurve: "P-256"
+			});
+			this.fp = await certFingerprint(this.cert);
+		}
 		this.roomId = await roomIdFor(this.secret);
 		this.pairingUrl = `${this.service}/p/#${encodePairing({
 			secret: this.secret,
@@ -447,6 +500,7 @@ var Remote = class Remote {
 		setTimeout(async () => {
 			this.ice = await fetchIceServers(this.service, this.roomId);
 		}, 400);
+		this.prepareLan();
 	}
 	on(ev, fn) {
 		this.handlers[ev].push(fn);
@@ -461,9 +515,196 @@ var Remote = class Remote {
 		this.renderCards();
 		this.emit("status", s);
 	}
+	/** Phones this host remembers, newest first. */
+	get remembered() {
+		return this.pairs.map((p) => ({
+			id: p.id,
+			name: p.peerName,
+			at: p.at
+		}));
+	}
+	/** The direct code URL (empty until a remembered phone exists and the offer has gathered). */
+	get lanUrl() {
+		return this.lan?.url ?? "";
+	}
+	/** Which remembered phone the direct code is for. */
+	get lanFor() {
+		return this.lan?.pairId ?? null;
+	}
+	/** True while the room service can't be reached (the direct code is the way in). */
+	get offline() {
+		return this.status === "offline";
+	}
+	diag() {
+		return {
+			status: this.status,
+			connectedAt: this.connectedAt,
+			firstInputAt: this.firstInputAt,
+			direct: !!this.active?.lan
+		};
+	}
+	/** Make the direct code for another remembered phone. */
+	selectLan(id) {
+		if (!this.pairs.some((p) => p.id === id) || this.lan?.pairId === id) return;
+		this.lanChoice = id;
+		this.prepareLan();
+	}
+	/** Forget a remembered phone: it can only pair online again. */
+	async forget(id) {
+		this.pairs = this.pairs.filter((p) => p.id !== id);
+		if (this.lanChoice === id) this.lanChoice = null;
+		await forgetPair(id);
+		if (this.lan?.pairId === id) this.discardLan();
+		this.emit("lan");
+		this.prepareLan();
+	}
+	discardLan() {
+		const l = this.lan;
+		this.lan = null;
+		if (l) this.dropPeer(l.peer.id);
+	}
+	/** After an online pairing: a (new) key for this phone, kept here and handed to it in `welcome`. Stored in the background. */
+	rememberDevice(peer, name) {
+		if (!this.opts.remember || !peer.fp) return null;
+		const existing = this.pairs.find((p) => equalBytes(p.peerFp, peer.fp));
+		const key = randomBytes(32);
+		const rec = {
+			id: existing?.id ?? b64url(randomBytes(16)),
+			key,
+			peerFp: peer.fp,
+			peerName: name,
+			at: Date.now()
+		};
+		this.pairs = [rec, ...this.pairs.filter((p) => p.id !== rec.id)];
+		putPair(rec).then(() => this.emit("lan"));
+		return {
+			id: rec.id,
+			key: b64url(key)
+		};
+	}
+	/**
+	* Prepare the direct code: an offer with this host's real ICE credentials and host candidates, already paired
+	* with a synthetic answer holding the remembered phone's fingerprint and the ICE credentials both sides derive
+	* from the pairing key and a fresh nonce. Its connection then waits for the phone's connectivity checks.
+	*/
+	prepareLan() {
+		this.lanBusy = this.lanBusy.then(() => this.buildLan()).catch(() => {});
+		return this.lanBusy;
+	}
+	async buildLan() {
+		if (!this.opts.remember) return;
+		const pair = this.pairs.find((p) => p.id === this.lanChoice) ?? this.pairs[0];
+		if (!pair) {
+			if (this.lan) {
+				this.discardLan();
+				this.emit("lan");
+			}
+			return;
+		}
+		if (this.lan?.pairId === pair.id && this.lan.peer.pc.connectionState === "new") return;
+		this.discardLan();
+		const nonce = randomBytes(16);
+		const id = `lan:${b64url(nonce).slice(0, 8)}`;
+		const pc = new RTCPeerConnection({
+			iceServers: [],
+			certificates: [this.cert]
+		});
+		const peer = this.addPeer(id, pc, pair.peerFp);
+		peer.lan = {
+			pair,
+			nonce
+		};
+		const gathered = /* @__PURE__ */ new Set();
+		pc.onicecandidate = (e) => {
+			if (e.candidate) gathered.add(e.candidate.candidate);
+		};
+		const offer = await pc.createOffer();
+		await pc.setLocalDescription(offer);
+		await new Promise((r) => {
+			const done = () => {
+				if (pc.iceGatheringState === "complete") r();
+			};
+			pc.addEventListener("icegatheringstatechange", done);
+			setTimeout(r, LAN_GATHER_MS);
+		});
+		const local = readLocalIce(pc.localDescription?.sdp);
+		const cands = local?.cands.length ? local.cands : candidatesOf([...gathered].join("\n"));
+		if (!local || !cands.length || this.peers.get(id) !== peer) {
+			this.dropPeer(id);
+			return;
+		}
+		const creds = await lanIceCredentials(pair.key, nonce);
+		await pc.setRemoteDescription({
+			type: "answer",
+			sdp: lanAnswerSdp({
+				...creds,
+				fp: pair.peerFp
+			})
+		});
+		if (this.peers.get(id) !== peer) return;
+		this.lan = {
+			peer,
+			pairId: pair.id,
+			url: `${this.service}/p/#${encodeLanPairing({
+				id: fromB64url(pair.id),
+				nonce,
+				ufrag: local.ufrag,
+				pwd: local.pwd,
+				cands
+			})}`
+		};
+		this.emit("lan");
+	}
 	onSignal(m) {
 		if (m.t === "peer" && m.ev === "leave") this.dropPeer(m.id);
 		if (m.t === "sig") this.onPayload(m.from, m.d);
+	}
+	/** One peer connection with the two pre-negotiated channels, wired into this host. */
+	addPeer(id, pc, fp) {
+		const ctl = pc.createDataChannel("ctl", {
+			negotiated: true,
+			id: 0
+		});
+		const st = pc.createDataChannel("st", {
+			negotiated: true,
+			id: 1,
+			ordered: false,
+			maxRetransmits: 0
+		});
+		st.binaryType = "arraybuffer";
+		const peer = {
+			id,
+			pc,
+			ctl,
+			st,
+			fp,
+			bound: false,
+			name: "Phone",
+			cands: []
+		};
+		this.peers.set(id, peer);
+		pc.onconnectionstatechange = () => {
+			const s = pc.connectionState;
+			if ((s === "failed" || s === "closed" || s === "disconnected") && this.active === peer) this.scheduleLost();
+			if ((s === "failed" || s === "closed") && !peer.bound && this.lan?.peer === peer) {
+				this.lan = null;
+				this.dropPeer(id);
+				this.prepareLan();
+			}
+			if (s === "connected" && this.active === peer && this.lostTimer) {
+				clearTimeout(this.lostTimer);
+				this.lostTimer = null;
+			}
+		};
+		ctl.onmessage = (e) => void this.onCtl(peer, e.data);
+		st.onmessage = (e) => {
+			if (!peer.bound || this.active !== peer || !(e.data instanceof ArrayBuffer)) return;
+			const type = packetType(e.data);
+			if (type === 18) this.onPad(e.data);
+			else if (type === 20) this.onPointer(e.data);
+			else this.onState(e.data);
+		};
+		return peer;
 	}
 	async onPayload(id, d) {
 		if ("offer" in d) {
@@ -473,50 +714,13 @@ var Remote = class Remote {
 				iceServers: this.ice,
 				certificates: [this.cert]
 			});
-			const ctl = pc.createDataChannel("ctl", {
-				negotiated: true,
-				id: 0
-			});
-			const st = pc.createDataChannel("st", {
-				negotiated: true,
-				id: 1,
-				ordered: false,
-				maxRetransmits: 0
-			});
-			st.binaryType = "arraybuffer";
-			const peer = {
-				id,
-				pc,
-				ctl,
-				st,
-				fp: sdpFingerprint(d.offer.sdp),
-				bound: false,
-				name: "Phone",
-				cands: []
-			};
-			this.peers.set(id, peer);
+			const peer = this.addPeer(id, pc, sdpFingerprint(d.offer.sdp));
 			pc.onicecandidate = (e) => {
 				if (e.candidate) this.sig.send({
 					t: "sig",
 					to: id,
 					d: { cand: e.candidate.toJSON() }
 				});
-			};
-			pc.onconnectionstatechange = () => {
-				const s = pc.connectionState;
-				if ((s === "failed" || s === "closed" || s === "disconnected") && this.active === peer) this.scheduleLost();
-				if (s === "connected" && this.active === peer && this.lostTimer) {
-					clearTimeout(this.lostTimer);
-					this.lostTimer = null;
-				}
-			};
-			ctl.onmessage = (e) => void this.onCtl(peer, e.data);
-			st.onmessage = (e) => {
-				if (!peer.bound || this.active !== peer || !(e.data instanceof ArrayBuffer)) return;
-				const type = packetType(e.data);
-				if (type === 18) this.onPad(e.data);
-				else if (type === 20) this.onPointer(e.data);
-				else this.onState(e.data);
 			};
 			await pc.setRemoteDescription(d.offer);
 			for (const c of peer.cands.splice(0)) await pc.addIceCandidate(c).catch(() => {});
@@ -544,13 +748,13 @@ var Remote = class Remote {
 		}
 		if (!peer.bound) {
 			if (m.t !== "hello" || !peer.fp) return;
-			const expected = await bindMac(this.secret, peer.fp, this.fp, this.roomId);
+			const expected = peer.lan ? await bindMac(peer.lan.pair.key, peer.fp, this.fp, lanContext(peer.lan.nonce)) : await bindMac(this.secret, peer.fp, this.fp, this.roomId);
+			if (peer.lan && m.pair !== peer.lan.pair.id) {
+				this.reject(peer);
+				return;
+			}
 			if (!equalBytes(new TextEncoder().encode(expected), new TextEncoder().encode(m.mac))) {
-				this.send(peer, {
-					t: "lock",
-					reason: "rejected"
-				});
-				setTimeout(() => this.dropPeer(peer.id), 200);
+				this.reject(peer);
 				return;
 			}
 			peer.bound = true;
@@ -566,21 +770,32 @@ var Remote = class Remote {
 			this.active = peer;
 			this.resetStream();
 			this.deviceName = peer.name;
+			this.connectedAt = Date.now();
+			this.firstInputAt = 0;
 			if (this.lostTimer) {
 				clearTimeout(this.lostTimer);
 				this.lostTimer = null;
 			}
+			let pair;
+			if (peer.lan) {
+				this.lan = null;
+				peer.lan.pair.at = Date.now();
+				peer.lan.pair.peerName = peer.name;
+				putPair(peer.lan.pair);
+			} else pair = this.rememberDevice(peer, peer.name) ?? void 0;
 			this.send(peer, {
 				t: "welcome",
 				proto: 1,
 				name: this.opts.appName,
-				layout: this.layout
+				layout: this.layout,
+				...pair ? { pair } : {}
 			});
 			this.setStatus("connected");
 			this.emit("connect", {
 				name: peer.name,
 				caps: m.caps
 			});
+			this.prepareLan();
 			return;
 		}
 		if (this.active !== peer) return;
@@ -613,6 +828,13 @@ var Remote = class Remote {
 			case "bye": this.dropPeer(peer.id);
 		}
 	}
+	reject(peer) {
+		this.send(peer, {
+			t: "lock",
+			reason: "rejected"
+		});
+		setTimeout(() => this.dropPeer(peer.id), 200);
+	}
 	unwrapMs(t) {
 		if (this.tLast >= 0 && t < this.tLast && this.tLast - t > 2147483648) this.tBase += 4294967296;
 		this.tLast = t;
@@ -637,10 +859,12 @@ var Remote = class Remote {
 		this.latest = s;
 		this.latestAcc = acc;
 		this.stateAt = now;
+		if (!this.firstInputAt) this.firstInputAt = Date.now();
 		if (s.mode !== this.lastMode) {
 			this.lastMode = s.mode;
 			this.emit("mode", s.mode);
 		}
+		this.emit("input");
 	}
 	onPad(data) {
 		const p = decodePad(data);
@@ -648,7 +872,9 @@ var Remote = class Remote {
 		const was = this.padLive;
 		this.padState = p;
 		this.padAt = performance.now();
+		if (!this.firstInputAt) this.firstInputAt = Date.now();
 		if (!was) this.emit("pad", true);
+		this.emit("input");
 	}
 	get padLive() {
 		return !!this.padState && performance.now() - this.padAt < 1500;
@@ -666,6 +892,8 @@ var Remote = class Remote {
 		if (!p || !(p.flags & PointerFlag.valid) || this.ptr && !seqNewer(p.seq, this.ptr.seq)) return;
 		this.ptr = p;
 		this.ptrAt = performance.now();
+		if (!this.firstInputAt) this.firstInputAt = Date.now();
+		this.emit("input");
 	}
 	/**
 	* Where the phone points (PROTOCOL §6) while a pointing utility is on, else null. Absolute pointers (the Wii-style
@@ -806,6 +1034,7 @@ var Remote = class Remote {
 		setTimeout(() => this.dropPeer(p.id), 200);
 	}
 	destroy() {
+		this.lan = null;
 		for (const id of [...this.peers.keys()]) this.dropPeer(id);
 		this.sig?.close();
 		for (const c of this.cards) c.el.remove();
@@ -825,6 +1054,7 @@ var Remote = class Remote {
 		const p = this.peers.get(id);
 		if (!p) return;
 		this.peers.delete(id);
+		if (this.lan?.peer === p) this.lan = null;
 		try {
 			p.pc.close();
 		} catch {}
@@ -934,6 +1164,180 @@ function injectStyles() {
 @media (prefers-reduced-motion:reduce){.obpal-status::before{animation:none!important}}`;
 	document.head.appendChild(s);
 }
+var DEFAULT_KEYS = {
+	move: {
+		up: "KeyW",
+		down: "KeyS",
+		left: "KeyA",
+		right: "KeyD",
+		press: .4,
+		release: .3
+	},
+	buttons: {
+		A: "Space",
+		B: "Escape",
+		X: "KeyE",
+		Y: "KeyQ",
+		Menu: "Enter",
+		LB: "ShiftLeft",
+		RB: "ControlLeft",
+		Up: "ArrowUp",
+		Down: "ArrowDown",
+		Left: "ArrowLeft",
+		Right: "ArrowRight"
+	},
+	mouse: {
+		speed: 1200,
+		deadzone: .12,
+		expo: 1.6,
+		aimGain: 14,
+		padGain: 1.5,
+		buttons: {
+			RT: 0,
+			LT: 2
+		},
+		press: .5,
+		release: .35
+	},
+	tiltMoves: true
+};
+var MOD_OF = {
+	ShiftLeft: "shift",
+	ControlLeft: "ctrl",
+	AltLeft: "alt"
+};
+var isMod = (key) => MOD_OF[key] !== void 0;
+var DIRS = [
+	"up",
+	"down",
+	"left",
+	"right"
+];
+/** Stateful pad -> keyboard/mouse mapper. Call update() once per input frame. */
+var KeyMapper = class {
+	cfg;
+	held = /* @__PURE__ */ new Set();
+	dir = {
+		up: false,
+		down: false,
+		left: false,
+		right: false
+	};
+	trig = {
+		LT: false,
+		RT: false
+	};
+	mouseHeld = /* @__PURE__ */ new Set();
+	acc = new Accum();
+	constructor(cfg = DEFAULT_KEYS) {
+		this.cfg = cfg;
+	}
+	get mods() {
+		const m = {
+			shift: false,
+			ctrl: false,
+			alt: false
+		};
+		for (const key of this.held) {
+			const mod = MOD_OF[key];
+			if (mod) m[mod] = true;
+		}
+		return m;
+	}
+	update(input) {
+		const { move, buttons, mouse } = this.cfg;
+		const pad = input.pad;
+		const stick = pad ? [pad.axes[0], pad.axes[1]] : this.cfg.tiltMoves && input.tilt ? input.tilt : [0, 0];
+		this.dir.up = hysteresis(this.dir.up, -stick[1], move.press, move.release);
+		this.dir.down = hysteresis(this.dir.down, stick[1], move.press, move.release);
+		this.dir.left = hysteresis(this.dir.left, -stick[0], move.press, move.release);
+		this.dir.right = hysteresis(this.dir.right, stick[0], move.press, move.release);
+		const want = /* @__PURE__ */ new Set();
+		for (const d of DIRS) if (this.dir[d]) want.add(move[d]);
+		if (pad) {
+			for (const [name, key] of Object.entries(buttons)) if (key && buttonValue(pad, PadButton[name]) >= .5) want.add(key);
+		}
+		const keys = this.diff(want);
+		const wantBtn = /* @__PURE__ */ new Set();
+		for (const t of ["LT", "RT"]) {
+			const b = mouse.buttons[t];
+			const v = pad ? buttonValue(pad, PadButton[t]) : 0;
+			this.trig[t] = hysteresis(this.trig[t], v, mouse.press, mouse.release);
+			if (this.trig[t] && b !== void 0) wantBtn.add(b);
+		}
+		const btnEdges = [];
+		for (const b of [...this.mouseHeld]) if (!wantBtn.has(b)) {
+			this.mouseHeld.delete(b);
+			btnEdges.push({
+				button: b,
+				down: false
+			});
+		}
+		for (const b of wantBtn) if (!this.mouseHeld.has(b)) {
+			this.mouseHeld.add(b);
+			btnEdges.push({
+				button: b,
+				down: true
+			});
+		}
+		const dt = clamp$1(input.dtMs, 0, 100) / 1e3;
+		let dx = -input.aim[0] * mouse.aimGain + input.pad1[0] * mouse.padGain;
+		let dy = -input.aim[1] * mouse.aimGain + input.pad1[1] * mouse.padGain;
+		if (pad) {
+			dx += stickCurve(pad.axes[2], mouse.deadzone, mouse.expo) * mouse.speed * dt;
+			dy += stickCurve(pad.axes[3], mouse.deadzone, mouse.expo) * mouse.speed * dt;
+		}
+		return {
+			keys,
+			move: this.acc.take(dx, dy),
+			buttons: btnEdges
+		};
+	}
+	/** Release everything (mode change, lost link, deactivation). */
+	releaseAll() {
+		const keys = this.diff(/* @__PURE__ */ new Set());
+		const buttons = [...this.mouseHeld].map((button) => ({
+			button,
+			down: false
+		}));
+		this.mouseHeld.clear();
+		this.dir = {
+			up: false,
+			down: false,
+			left: false,
+			right: false
+		};
+		this.trig = {
+			LT: false,
+			RT: false
+		};
+		this.acc.reset();
+		return {
+			keys,
+			move: [0, 0],
+			buttons
+		};
+	}
+	/** Edges from the held set to `want`: releases first (modifiers last), then presses (modifiers first). */
+	diff(want) {
+		const ups = [...this.held].filter((key) => !want.has(key));
+		const downs = [...want].filter((key) => !this.held.has(key));
+		return [
+			...ups.filter((key) => !isMod(key)).map((key) => [key, false]),
+			...ups.filter(isMod).map((key) => [key, false]),
+			...downs.filter(isMod).map((key) => [key, true]),
+			...downs.filter((key) => !isMod(key)).map((key) => [key, true])
+		].map(([key, down]) => {
+			if (down) this.held.add(key);
+			else this.held.delete(key);
+			return {
+				key,
+				down,
+				mods: this.mods
+			};
+		});
+	}
+};
 //#endregion
 //#region src/shared/route.ts
 /**
@@ -955,8 +1359,9 @@ function electFrame(frames, role) {
 	for (const f of frames) if (role === "keys" ? f.focus && (!best || f.focusAt > best.focusAt) : f.area >= 19200 && (!best || f.area > best.area)) best = f;
 	return best ?? top;
 }
-/** Which frames get input frames in a mode: every frame for the controller, one elected frame otherwise. */
+/** Which frames get input frames in a mode: every frame for the controller, one elected frame otherwise, none for the PC. */
 function recipients(frames, mode) {
+	if (mode === "pc") return [];
 	if (mode === "gamepad") return [...frames];
 	const f = electFrame(frames, mode === "keys" ? "keys" : "viewer");
 	return f ? [f] : [];
@@ -1034,7 +1439,7 @@ function isActive(p, d, tl, pt = null) {
 	if (!p) return false;
 	return p[0] !== 0 || p.slice(1).some((v) => Math.abs(v) > .02);
 }
-var modeIndex = (mode) => TARGET_MODES.indexOf(mode);
+var modeIndex = (mode) => PAGE_MODES.indexOf(mode);
 function buildFrame(mode, dt, p, d, tl, pt = null) {
 	const f = {
 		t: "in",
@@ -1098,15 +1503,38 @@ function suggestForFrames(hosts, table = SITE_PROFILES) {
 	return null;
 }
 //#endregion
+//#region src/shared/viewer.ts
+var DEFAULT_VIEWER = {
+	padGain: 1.6,
+	aimGain: 12,
+	stickSpeed: 900,
+	tiltSpeed: 700,
+	panGain: 1.4,
+	panStickSpeed: 700,
+	wheelPerZoom: 480,
+	triggerWheel: 1400,
+	wheelStep: 8,
+	deadzone: .15,
+	tiltDeadzone: .04,
+	triggerDeadzone: .05,
+	expo: 1.5,
+	releaseMs: 120,
+	pan: "right"
+};
+//#endregion
 //#region src/offscreen.ts
 /**
 * Offscreen document (reason WEB_RTC). An MV3 service worker cannot hold an RTCPeerConnection, so the ob.Pal
-* Remote lives here: the pairing QR payload, signaling, and the WebRTC link to the phone.
-* About 60 times a second it samples the phone (remote.pad and remote.consume()) and streams compact input
-* frames to the page bridges of the controlled tab over runtime ports: the controller to every frame, keys to
-* the focused frame, 3D drags to the frame with the largest canvas.
+* Remote lives here: the pairing QR payload, signaling, and the WebRTC link to the phone. It keeps a persistent
+* DTLS certificate and remembers paired phones, so when the room service is unreachable it publishes a direct
+* LAN code instead (see the popup), and a remembered phone connects with no server at all.
+* About 60 times a second, and immediately when a packet arrives, it samples the phone (remote.pad and
+* remote.consume()) and streams compact input frames to the page bridges of the controlled tab over runtime
+* ports: the controller to every frame, keys to the focused frame, 3D drags to the frame with the largest canvas.
 */
 var TICK_MS = 1e3 / 60;
+/** A clock tick this soon after a packet-driven one is skipped: packets set the pace while input flows. */
+var TICK_MIN_GAP_MS = 6;
 var HEARTBEAT_MS = 250;
 var RUMBLE_GAP_MS = 50;
 /** What the phone offers: gamepad, tilt and point modes, plus a tray picker for what it drives in the browser. */
@@ -1140,6 +1568,12 @@ var layout = {
 				label: "Keys",
 				glyph: "⌨",
 				detail: "Keyboard and mouse games"
+			},
+			{
+				value: "pc",
+				label: "PC",
+				glyph: "▭",
+				detail: "Keyboard and mouse for programs you allow"
 			}
 		]
 	}]
@@ -1176,12 +1610,27 @@ function syncSuggestion() {
 	remote?.setLayout(layoutFor(next));
 }
 var toBg = (m) => chrome.runtime.sendMessage(m).catch(() => void 0);
-chrome.runtime.onMessage.addListener((raw, sender) => {
+chrome.runtime.onMessage.addListener((raw, sender, respond) => {
 	if (sender.id !== chrome.runtime.id || sender.tab) return;
 	const req = parseOffscreenRequest(raw);
 	if (!req) return;
-	if (req.type === "config") applyConfig(req.tabId, req.mode);
-	else remote?.disconnect();
+	switch (req.type) {
+		case "config":
+			applyConfig(req.tabId, req.mode);
+			break;
+		case "unpair":
+			remote?.disconnect();
+			break;
+		case "forget":
+			remote?.forget(req.id);
+			break;
+		case "lan":
+			remote?.selectLan(req.id);
+			break;
+		case "diag":
+			respond(remote?.diag() ?? null);
+			return true;
+	}
 });
 chrome.runtime.onConnect.addListener((port) => {
 	if (port.name !== "obpal-link/page") return;
@@ -1224,9 +1673,91 @@ function applyConfig(tabId, mode) {
 	}
 	if (modeChanged) {
 		for (const l of links) l.sig = "";
+		if (mode !== "pc") pcLetGo();
 		remote?.setValues({ target: mode });
 	}
 	syncSuggestion();
+}
+var pc = {
+	mapper: new KeyMapper(),
+	held: new HeldState(),
+	port: null,
+	lastTick: 0,
+	lastSent: 0,
+	retryAt: 0,
+	retryMs: 250
+};
+function pcPort() {
+	if (pc.port) return pc.port;
+	const now = performance.now();
+	if (now < pc.retryAt) return null;
+	let port;
+	try {
+		port = chrome.runtime.connect({ name: NATIVE_PORT_NAME });
+	} catch {
+		pc.retryAt = now + pc.retryMs;
+		pc.retryMs = Math.min(pc.retryMs * 2, 5e3);
+		return null;
+	}
+	pc.port = port;
+	pc.retryMs = 250;
+	port.onDisconnect.addListener(() => {
+		chrome.runtime.lastError;
+		if (pc.port === port) pc.port = null;
+		pc.retryAt = performance.now() + pc.retryMs;
+		pc.retryMs = Math.min(pc.retryMs * 2, 5e3);
+	});
+	return port;
+}
+var tupleToPad = (p) => p ? {
+	buttons: p[0],
+	axes: [
+		p[1],
+		p[2],
+		p[3],
+		p[4]
+	],
+	triggers: [p[5], p[6]]
+} : null;
+function pcTick(f, pad, ptr, now) {
+	const dt = pc.lastTick ? Math.min(50, now - pc.lastTick) : TICK_MS;
+	pc.lastTick = now;
+	const padIn = !!ptr && (ptr.flags & PointerFlag.relative) !== 0 && pad ? tupleToPad(withRelativeAim(padTuple(pad), relativeRate(ptr, now))) : pad;
+	const tilt = f.connected && !pad && f.mode === Mode.tilt ? f.tilt : null;
+	const out = pc.mapper.update({
+		pad: padIn,
+		tilt,
+		aim: f.aim,
+		pad1: f.pad1,
+		dtMs: dt
+	});
+	pc.held.apply(out);
+	const wheel = Math.round(-f.zoom * DEFAULT_VIEWER.wheelPerZoom * 1.2);
+	const frame = buildNativeFrame(pc.held, out.move, [0, wheel]);
+	if (isIdleFrame(frame) && now - pc.lastSent < 250) return;
+	const port = pcPort();
+	if (!port) return;
+	try {
+		port.postMessage(frame);
+		pc.lastSent = now;
+	} catch {
+		pc.port = null;
+	}
+}
+/** Leaving the PC target: nothing stays held, and the worker closes the helper port (which releases too). */
+function pcLetGo() {
+	pc.mapper.releaseAll();
+	pc.held.clear();
+	pc.lastTick = 0;
+	const port = pc.port;
+	pc.port = null;
+	if (!port) return;
+	try {
+		port.postMessage(buildNativeFrame(pc.held, [0, 0]));
+	} catch {}
+	try {
+		port.disconnect();
+	} catch {}
 }
 function forget(l) {
 	links.delete(l);
@@ -1274,6 +1805,7 @@ function post(l, m) {
 		forget(l);
 	}
 }
+var lastTick = 0;
 var lastPtr = null;
 var relRate = [0, 0];
 var relAt = 0;
@@ -1298,9 +1830,11 @@ function tick() {
 	const r = remote;
 	if (!r) return;
 	const now = performance.now();
+	lastTick = now;
 	const f = r.consume(now);
 	const pad = r.pad;
 	const ptr = r.pointer;
+	if (config.mode === "pc") pcTick(f, pad, ptr, now);
 	if (config.tabId === null || !links.size) {
 		lastTargets.clear();
 		return;
@@ -1312,6 +1846,7 @@ function tick() {
 		l.sig = "";
 	}
 	lastTargets = targets;
+	if (config.mode === "pc") return;
 	const gamepad = config.mode === "gamepad";
 	const relative = !!ptr && (ptr.flags & PointerFlag.relative) !== 0;
 	const ptFrame = ptr ? electFrame([...links], "pointer") : null;
@@ -1323,25 +1858,30 @@ function tick() {
 	const tl = tiltTuple(f.connected && !pad && f.mode === Mode.tilt ? f.tilt : null);
 	const d = deltaTuple(f);
 	const active = isActive(p, d, tl, pt);
-	const sig = frameSignature(config.mode, p, tl);
+	const mode = config.mode;
+	const sig = frameSignature(mode, p, tl);
 	for (const l of targets) {
 		if (!active && l.sig === sig && now - l.lastSent < HEARTBEAT_MS) continue;
-		const dt = l.wasActive ? Math.min(50, now - l.lastSent) : TICK_MS;
-		post(l, buildFrame(config.mode, dt, p, d, tl, gamepad && l !== ptFrame ? null : pt));
+		post(l, buildFrame(mode, l.wasActive ? Math.min(50, now - l.lastSent) : TICK_MS, p, d, tl, gamepad && l !== ptFrame ? null : pt));
 		l.lastSent = now;
 		l.wasActive = active;
 		l.sig = sig;
 	}
 }
+/** Clock ticks keep heartbeats and rate inputs going; a packet from the phone is sampled the moment it lands. */
+function clockTick() {
+	if (performance.now() - lastTick < TICK_MIN_GAP_MS) return;
+	tick();
+}
 function startClock() {
-	const fallback = () => setInterval(tick, TICK_MS);
+	const fallback = () => setInterval(clockTick, TICK_MS);
 	try {
 		const worker = new Worker(new URL(
 			/* @vite-ignore */
 			"/assets/ticker-BhYtNb2H.js",
 			"" + import.meta.url
 		), { type: "module" });
-		worker.onmessage = tick;
+		worker.onmessage = clockTick;
 		worker.onerror = () => {
 			worker.terminate();
 			fallback();
@@ -1354,24 +1894,31 @@ async function boot() {
 	const r = await Remote.create({
 		appName: APP_NAME,
 		service: SERVICE,
-		layout: layoutFor(suggested)
+		layout: layoutFor(suggested),
+		remember: true
 	});
 	remote = r;
+	const state = () => ({
+		status: r.status,
+		url: r.pairingUrl,
+		device: r.deviceName,
+		lan: r.lanUrl,
+		lanFor: r.lanFor,
+		pairs: r.remembered
+	});
 	const report = () => void toBg({
 		to: "bg",
 		type: "link",
-		link: {
-			status: r.status,
-			url: r.pairingUrl,
-			device: r.deviceName
-		}
+		link: state()
 	});
 	r.on("status", report);
+	r.on("lan", report);
 	r.on("connect", () => {
 		report();
 		r.setValues({ target: config.mode });
 	});
 	r.on("disconnect", report);
+	r.on("input", tick);
 	r.on("value", ({ id, v }) => {
 		if (id === "target" && isTargetMode(v)) toBg({
 			to: "bg",
@@ -1395,7 +1942,10 @@ boot().catch((e) => {
 		link: {
 			status: "offline",
 			url: "",
-			device: null
+			device: null,
+			lan: "",
+			lanFor: null,
+			pairs: []
 		}
 	});
 });

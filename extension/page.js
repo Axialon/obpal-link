@@ -167,11 +167,15 @@
 	//#region src/shared/constants.ts
 	/** window.postMessage channel id shared by the isolated-world bridge and the MAIN-world page script. */
 	var CHANNEL = "obpal-link/v1";
-	/** What the phone drives in the controlled tab. Index order is the wire encoding (InputFrame.m). */
+	/**
+	* What the phone drives: the controlled tab (Controller, 3D and Keys go to page frames; index order is the
+	* wire encoding, InputFrame.m) or the PC itself through the native helper (no page frames at all).
+	*/
 	var TARGET_MODES = [
 		"gamepad",
 		"viewer",
-		"keys"
+		"keys",
+		"pc"
 	];
 	//#endregion
 	//#region src/shared/math.ts
