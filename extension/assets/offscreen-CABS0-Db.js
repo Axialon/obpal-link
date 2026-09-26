@@ -53,13 +53,15 @@ var Flag = {
 	tsFromSensor: 64,
 	lowPower: 128
 };
+/** track: 6-DOF, the device's position and orientation in space (POSE packets beside STATE; see ./pose.ts). */
 var Mode = {
 	hold: 0,
 	orbit: 1,
 	point: 2,
 	tilt: 3,
 	pad: 4,
-	gamepad: 5
+	gamepad: 5,
+	track: 6
 };
 var Tier = {
 	touch: 0,
@@ -269,6 +271,36 @@ function pointerDelta(a, b) {
 	const d = (x, y) => ((Math.round((x - y) * 100) % 65536 + 98304) % 65536 - 32768) / 100;
 	return [d(a.yaw, b.yaw), d(a.pitch, b.pitch)];
 }
+var PoseFlag = {
+	tracked: 1,
+	touching: 2
+};
+function decodePose(buf) {
+	if (buf.byteLength < 32) return null;
+	const dv = new DataView(buf);
+	if (dv.getUint8(0) !== 21) return null;
+	const p = [
+		dv.getFloat32(8, true),
+		dv.getFloat32(12, true),
+		dv.getFloat32(16, true)
+	];
+	if (!p.every(Number.isFinite) || p.some((v) => Math.abs(v) > 1e3)) return null;
+	const q = [
+		0,
+		1,
+		2,
+		3
+	].map((i) => dv.getInt16(20 + i * 2, true) / 32767);
+	const l = Math.hypot(...q) || 1;
+	return {
+		flags: dv.getUint8(1),
+		seq: dv.getUint16(2, true),
+		t: dv.getUint32(4, true),
+		p,
+		q: q.map((v) => v / l),
+		gen: dv.getUint8(28)
+	};
+}
 /**
 * Motion below this (as a fraction of full travel, 0.01 = 1.8°/s) counts as a still phone, so sensor noise
 * never rides the deadzone jump into the game.
@@ -313,6 +345,224 @@ function mixStick(thumb, motions) {
 	if (!live) return [thumb[0], thumb[1]];
 	return jumpDeadzone(addStick(thumb, sum), d);
 }
+//#endregion
+//#region ../packages/host/src/stream.ts
+/** A pointer stream that stops (the utility was switched off, the phone went away) is gone after this long. */
+var POINTER_STALE_MS = 300;
+/** A pose stream that stops is gone after this long. */
+var POSE_STALE_MS = 250;
+var zeroAcc = () => ({
+	aim: [0, 0],
+	pad1: [0, 0],
+	pad2: [0, 0],
+	zoom: 0,
+	twist: 0
+});
+function combineAcc(a, b, k) {
+	return {
+		aim: [a.aim[0] + b.aim[0] * k, a.aim[1] + b.aim[1] * k],
+		pad1: [a.pad1[0] + b.pad1[0] * k, a.pad1[1] + b.pad1[1] * k],
+		pad2: [a.pad2[0] + b.pad2[0] * k, a.pad2[1] + b.pad2[1] * k],
+		zoom: a.zoom + b.zoom * k,
+		twist: a.twist + b.twist * k
+	};
+}
+var lerpAcc = (a, b, t) => combineAcc(a, combineAcc(b, a, -1), t);
+/** One device's input: its STATE, PAD and POINTER packets, buffered and interpolated for the host's frames. */
+var Stream = class {
+	constructor(hooks, latency = "smooth") {
+		this.hooks = hooks;
+		this.latency = latency;
+		this.latest = null;
+		this.padState = null;
+		this.padAt = 0;
+		this.ptr = null;
+		this.ptrAt = 0;
+		this.pose = null;
+		this.poseAt = 0;
+		this.stateAt = 0;
+		this.latestAcc = null;
+		this.outAcc = null;
+		this.outMode = null;
+		this.lastConsumeAt = 0;
+		this.buf = [];
+		this.offsets = [];
+		this.tBase = 0;
+		this.tLast = -1;
+		this.lastMode = null;
+	}
+	reset() {
+		this.padState = null;
+		this.padAt = 0;
+		this.ptr = null;
+		this.ptrAt = 0;
+		this.pose = null;
+		this.poseAt = 0;
+		this.stateAt = 0;
+		this.latest = null;
+		this.latestAcc = null;
+		this.outAcc = null;
+		this.outMode = null;
+		this.buf = [];
+		this.offsets = [];
+		this.tBase = 0;
+		this.tLast = -1;
+		this.lastMode = null;
+	}
+	unwrapMs(t) {
+		if (this.tLast >= 0 && t < this.tLast && this.tLast - t > 2147483648) this.tBase += 4294967296;
+		this.tLast = t;
+		return (this.tBase + t) / 1e3;
+	}
+	onState(data) {
+		const s = decodeState(data);
+		if (!s || this.latest && !seqNewer(s.seq, this.latest.seq)) return;
+		const now = performance.now();
+		const dev = this.unwrapMs(s.t);
+		this.offsets.push([now, now - dev]);
+		while (this.offsets.length && now - this.offsets[0][0] > 2e3) this.offsets.shift();
+		const offset = Math.min(...this.offsets.map((o) => o[1]));
+		const acc = this.latest && this.latestAcc ? combineAcc(this.latestAcc, accumDelta(s, this.latest), 1) : zeroAcc();
+		this.buf.push({
+			t: dev + offset,
+			s,
+			acc
+		});
+		if (this.buf.length > 40) this.buf.shift();
+		this.latest = s;
+		this.latestAcc = acc;
+		this.stateAt = now;
+		if (s.mode !== this.lastMode) {
+			this.lastMode = s.mode;
+			this.hooks.mode(s.mode);
+		}
+		this.hooks.input();
+	}
+	onPad(data) {
+		const p = decodePad(data);
+		if (!p || this.padState && !seqNewer(p.seq, this.padState.seq)) return;
+		const was = this.padLive;
+		this.padState = p;
+		this.padAt = performance.now();
+		if (!was) this.hooks.pad(true);
+		this.hooks.input();
+	}
+	onPointer(data) {
+		const p = decodePointer(data);
+		if (!p || !(p.flags & PointerFlag.valid) || this.ptr && !seqNewer(p.seq, this.ptr.seq)) return;
+		this.ptr = p;
+		this.ptrAt = performance.now();
+		this.hooks.input();
+	}
+	onPose(data) {
+		const p = decodePose(data);
+		if (!p || this.pose && p.gen === this.pose.gen && !seqNewer(p.seq, this.pose.seq)) return;
+		this.pose = p;
+		this.poseAt = performance.now();
+		this.hooks.input();
+	}
+	get padLive() {
+		return !!this.padState && performance.now() - this.padAt < 1500;
+	}
+	/** Latest controller state while the device is in gamepad mode (null otherwise). */
+	get pad() {
+		if (this.padState && !this.padLive) {
+			this.padState = null;
+			this.hooks.pad(false);
+		}
+		return this.padState;
+	}
+	/**
+	* Where the device points (PROTOCOL §6) while a pointing utility is on, else null. Absolute pointers (the Wii-style
+	* cursor) end the moment the pad says Point is off; any pointer ends after a short silence.
+	*/
+	get pointer() {
+		const p = this.ptr;
+		if (!p) return null;
+		const pad = this.padState;
+		if (pad && this.padLive && !(p.flags & PointerFlag.relative) && !(pad.flags & PadFlag.point) && this.padAt >= this.ptrAt || performance.now() - this.ptrAt > POINTER_STALE_MS) {
+			this.ptr = null;
+			return null;
+		}
+		return p;
+	}
+	/** Read input for this frame. Call once per rendered frame (e.g. inside requestAnimationFrame). */
+	consume(now, connected) {
+		const s = this.latest;
+		const frame = {
+			connected,
+			mode: s?.mode ?? Mode.hold,
+			tier: s?.tier ?? Tier.touch,
+			clutch: false,
+			grab: s?.grab ?? 0,
+			qRel: qIdentity(),
+			touching: false,
+			aim: [0, 0],
+			tilt: [0, 0],
+			pad1: [0, 0],
+			pad2: [0, 0],
+			zoom: 0,
+			twist: 0,
+			pose: this.pose && now - this.poseAt < POSE_STALE_MS ? {
+				p: this.pose.p,
+				q: this.pose.q,
+				tracked: (this.pose.flags & PoseFlag.tracked) !== 0,
+				touching: (this.pose.flags & PoseFlag.touching) !== 0,
+				gen: this.pose.gen
+			} : null
+		};
+		if (!s || !this.buf.length) return frame;
+		if (this.padLive && this.padAt > this.stateAt) {
+			frame.mode = Mode.gamepad;
+			return frame;
+		}
+		let ai = this.buf.length - 1;
+		let bi = -1;
+		let alpha = 0;
+		if (this.latency !== "direct") {
+			const target = now - 1e3 / 60;
+			ai = 0;
+			for (let i = this.buf.length - 1; i >= 0; i--) if (this.buf[i].t <= target) {
+				ai = i;
+				if (i + 1 < this.buf.length) {
+					bi = i + 1;
+					alpha = Math.min(1, Math.max(0, (target - this.buf[i].t) / Math.max(1, this.buf[bi].t - this.buf[i].t)));
+				}
+				break;
+			}
+		}
+		const A = this.buf[ai];
+		const B = bi >= 0 ? this.buf[bi] : null;
+		const accNow = B ? lerpAcc(A.acc, B.acc, alpha) : A.acc;
+		const fresh = !!this.outAcc && now - this.lastConsumeAt < 250;
+		const d = fresh ? combineAcc(accNow, this.outAcc, -1) : zeroAcc();
+		if (!fresh && this.outAcc && this.outMode === Mode.point && A.s.mode === Mode.point) d.aim = [accNow.aim[0] - this.outAcc.aim[0], accNow.aim[1] - this.outAcc.aim[1]];
+		this.outAcc = accNow;
+		this.outMode = A.s.mode;
+		this.lastConsumeAt = now;
+		frame.aim = d.aim;
+		frame.pad1 = d.pad1;
+		frame.pad2 = d.pad2;
+		frame.zoom = d.zoom;
+		frame.twist = d.twist;
+		frame.touching = (s.flags & Flag.touching) !== 0;
+		const a = A.s;
+		const b = B?.s;
+		frame.mode = a.mode;
+		frame.tilt = b ? [a.tilt[0] + (b.tilt[0] - a.tilt[0]) * alpha, a.tilt[1] + (b.tilt[1] - a.tilt[1]) * alpha] : a.tilt;
+		frame.clutch = (a.flags & Flag.clutch) !== 0;
+		frame.grab = a.grab;
+		frame.qRel = a.qRel;
+		if (b && frame.clutch && b.flags & Flag.clutch && b.grab === a.grab) frame.qRel = qSlerp(a.qRel, b.qRel, Math.min(1, Math.max(0, alpha)));
+		const silent = now - this.stateAt;
+		if (silent > 250) {
+			const k = Math.max(0, 1 - (silent - 250) / 150);
+			frame.tilt = [frame.tilt[0] * k, frame.tilt[1] * k];
+			frame.touching = false;
+		}
+		return frame;
+	}
+};
 //#endregion
 //#region \0vite/preload-helper.js
 var scriptRel = /* @__PURE__ */ (function detectScriptRel() {
@@ -395,27 +645,28 @@ var DEFAULT_LAYOUT = {
 		Mode.point
 	]
 };
-/** A pointer stream that stops (the utility was switched off, the phone went away) is gone after this long. */
-var POINTER_STALE_MS = 300;
 /** How long the direct code's offer may gather host candidates before the code is published. */
 var LAN_GATHER_MS = 800;
-var zeroAcc = () => ({
-	aim: [0, 0],
-	pad1: [0, 0],
-	pad2: [0, 0],
-	zoom: 0,
-	twist: 0
-});
-function combineAcc(a, b, k) {
-	return {
-		aim: [a.aim[0] + b.aim[0] * k, a.aim[1] + b.aim[1] * k],
-		pad1: [a.pad1[0] + b.pad1[0] * k, a.pad1[1] + b.pad1[1] * k],
-		pad2: [a.pad2[0] + b.pad2[0] * k, a.pad2[1] + b.pad2[1] * k],
-		zoom: a.zoom + b.zoom * k,
-		twist: a.twist + b.twist * k
-	};
-}
-var lerpAcc = (a, b, t) => combineAcc(a, combineAcc(b, a, -1), t);
+/**
+* Participant colours in a shared scene, in the order they're handed out: the Blackboxes family accents (sky, rose,
+* amber, mint, lavender, lime, turquoise, candy), so a device can wear its colour as its accent. The screen's own
+* colour is skipped.
+*/
+var PARTICIPANT_COLORS = [
+	"#38bdf8",
+	"#fb7185",
+	"#fcd34d",
+	"#6ee7b7",
+	"#d2c3f6",
+	"#c6ff34",
+	"#99e1d9",
+	"#b2d5e5"
+];
+var quiet = {
+	mode: () => {},
+	pad: () => {},
+	input: () => {}
+};
 /** Host side of an ob-pal link, for any web page. */
 var Remote = class Remote {
 	constructor(opts) {
@@ -435,32 +686,30 @@ var Remote = class Remote {
 		this.lanBusy = Promise.resolve();
 		this.connectedAt = 0;
 		this.firstInputAt = 0;
-		this.latest = null;
-		this.padState = null;
-		this.padAt = 0;
-		this.ptr = null;
-		this.ptrAt = 0;
-		this.stateAt = 0;
-		this.latestAcc = null;
-		this.outAcc = null;
-		this.outMode = null;
-		this.lastConsumeAt = 0;
-		this.buf = [];
-		this.offsets = [];
-		this.tBase = 0;
-		this.tLast = -1;
-		this.lastMode = null;
-		this.lostTimer = null;
+		this.idle = new Stream(quiet);
+		this.values = {};
+		this.host = {
+			id: "host",
+			name: "Screen",
+			color: "#c6ff34"
+		};
+		this.nodes = [];
+		this.nodesVersion = 0;
+		this.held = {};
+		this.scenePending = false;
 		this.handlers = {
 			status: [],
 			connect: [],
 			disconnect: [],
+			join: [],
+			leave: [],
 			button: [],
 			value: [],
 			mode: [],
 			recenter: [],
 			pad: [],
 			input: [],
+			claim: [],
 			lan: []
 		};
 		this.cards = [];
@@ -471,6 +720,13 @@ var Remote = class Remote {
 		const r = new Remote(opts);
 		await r.init();
 		return r;
+	}
+	get seats() {
+		return Math.max(1, Math.min(8, Math.floor(this.opts.seats ?? 1)));
+	}
+	/** A shared scene: several devices at once, each with its own claim. */
+	get shared() {
+		return this.seats > 1;
 	}
 	async init() {
 		if (this.opts.remember) {
@@ -485,6 +741,11 @@ var Remote = class Remote {
 			});
 			this.fp = await certFingerprint(this.cert);
 		}
+		await this.openRoom();
+		this.prepareLan();
+	}
+	/** Join the signaling room of the current secret: the invite the pairing code carries. */
+	async openRoom() {
 		this.roomId = await roomIdFor(this.secret);
 		this.pairingUrl = `${this.service}/p/#${encodePairing({
 			secret: this.secret,
@@ -497,10 +758,26 @@ var Remote = class Remote {
 			if (!open && this.status !== "connected") this.setStatus("offline");
 		};
 		this.sig.connect();
+		const room = this.roomId;
 		setTimeout(async () => {
-			this.ice = await fetchIceServers(this.service, this.roomId);
+			const ice = await fetchIceServers(this.service, room);
+			if (room === this.roomId) this.ice = ice;
 		}, 400);
-		this.prepareLan();
+	}
+	/**
+	* A new invite: the old code and link stop working, and everyone connected stays. Devices that joined but haven't
+	* finished connecting have to scan again.
+	*/
+	async resetInvite() {
+		const old = this.sig;
+		this.secret = newSecret();
+		old.onmessage = () => {};
+		old.onstatus = () => {};
+		old.close();
+		for (const p of [...this.peers.values()]) if (!p.bound && !p.lan) this.dropPeer(p.id);
+		await this.openRoom();
+		for (const c of this.cards) this.renderQr(c);
+		this.renderCards();
 	}
 	on(ev, fn) {
 		this.handlers[ev].push(fn);
@@ -680,31 +957,49 @@ var Remote = class Remote {
 			fp,
 			bound: false,
 			name: "Phone",
-			cands: []
+			cands: [],
+			color: this.host.color,
+			since: 0,
+			caps: null,
+			lost: null,
+			nodesSent: -1,
+			stream: new Stream({
+				mode: (m) => this.emit("mode", m, this.participant(peer)),
+				pad: (on) => this.emit("pad", on, this.participant(peer)),
+				input: () => {
+					if (!this.firstInputAt) this.firstInputAt = Date.now();
+					this.emit("input", this.participant(peer));
+				}
+			}, this.opts.latency)
 		};
 		this.peers.set(id, peer);
 		pc.onconnectionstatechange = () => {
 			const s = pc.connectionState;
-			if ((s === "failed" || s === "closed" || s === "disconnected") && this.active === peer) this.scheduleLost();
+			if ((s === "failed" || s === "closed" || s === "disconnected") && peer.bound) this.scheduleLost(peer);
 			if ((s === "failed" || s === "closed") && !peer.bound && this.lan?.peer === peer) {
 				this.lan = null;
 				this.dropPeer(id);
 				this.prepareLan();
 			}
-			if (s === "connected" && this.active === peer && this.lostTimer) {
-				clearTimeout(this.lostTimer);
-				this.lostTimer = null;
+			if (s === "connected" && peer.lost) {
+				clearTimeout(peer.lost);
+				peer.lost = null;
 			}
 		};
 		ctl.onmessage = (e) => void this.onCtl(peer, e.data);
 		st.onmessage = (e) => {
-			if (!peer.bound || this.active !== peer || !(e.data instanceof ArrayBuffer)) return;
+			if (!this.listening(peer) || !(e.data instanceof ArrayBuffer)) return;
 			const type = packetType(e.data);
-			if (type === 18) this.onPad(e.data);
-			else if (type === 20) this.onPointer(e.data);
-			else this.onState(e.data);
+			if (type === 18) peer.stream.onPad(e.data);
+			else if (type === 20) peer.stream.onPointer(e.data);
+			else if (type === 21) peer.stream.onPose(e.data);
+			else peer.stream.onState(e.data);
 		};
 		return peer;
+	}
+	/** Whether a bound device's input counts: every participant in a shared scene, only the device in control otherwise. */
+	listening(peer) {
+		return peer.bound && (this.shared || this.active === peer);
 	}
 	async onPayload(id, d) {
 		if ("offer" in d) {
@@ -757,24 +1052,39 @@ var Remote = class Remote {
 				this.reject(peer);
 				return;
 			}
+			if (this.shared && this.bound().length >= this.seats) {
+				this.send(peer, {
+					t: "lock",
+					reason: "full"
+				});
+				setTimeout(() => this.dropPeer(peer.id), 200);
+				return;
+			}
 			peer.bound = true;
 			peer.name = String(m.name || "Phone").slice(0, 40);
-			const prev = this.active;
-			if (prev && prev !== peer) {
-				this.send(prev, {
-					t: "lock",
-					reason: "taken-over"
-				});
-				setTimeout(() => this.dropPeer(prev.id), 300);
+			peer.caps = m.caps ?? null;
+			peer.since = Date.now();
+			if (this.shared) {
+				peer.color = this.freeColor(peer);
+				if (!this.active) this.active = peer;
+			} else {
+				const prev = this.active;
+				if (prev && prev !== peer) {
+					this.send(prev, {
+						t: "lock",
+						reason: "taken-over"
+					});
+					setTimeout(() => this.dropPeer(prev.id), 300);
+				}
+				this.active = peer;
 			}
-			this.active = peer;
-			this.resetStream();
-			this.deviceName = peer.name;
+			peer.stream.reset();
+			this.deviceName = this.active?.name ?? null;
 			this.connectedAt = Date.now();
 			this.firstInputAt = 0;
-			if (this.lostTimer) {
-				clearTimeout(this.lostTimer);
-				this.lostTimer = null;
+			if (peer.lost) {
+				clearTimeout(peer.lost);
+				peer.lost = null;
 			}
 			let pair;
 			if (peer.lan) {
@@ -790,34 +1100,49 @@ var Remote = class Remote {
 				layout: this.layout,
 				...pair ? { pair } : {}
 			});
+			if (this.shared) this.send(peer, {
+				t: "state",
+				values: {
+					...this.values,
+					color: peer.color
+				}
+			});
+			const first = this.status !== "connected";
 			this.setStatus("connected");
-			this.emit("connect", {
+			if (first || !this.shared) this.emit("connect", {
 				name: peer.name,
 				caps: m.caps
 			});
+			this.emit("join", this.participant(peer));
+			this.renderCards();
+			this.sceneChanged();
 			this.prepareLan();
 			return;
 		}
-		if (this.active !== peer) return;
+		if (!this.listening(peer)) return;
+		const who = this.participant(peer);
 		switch (m.t) {
 			case "btn":
 				this.emit("button", {
 					id: m.id,
 					ev: m.ev
-				});
+				}, who);
 				break;
 			case "value":
 				this.emit("value", {
 					id: m.id,
 					v: m.v,
 					add: m.add === true
-				});
+				}, who);
 				break;
 			case "mode":
-				this.emit("mode", m.m);
+				this.emit("mode", m.m, who);
 				break;
 			case "recenter":
-				this.emit("recenter");
+				this.emit("recenter", who);
+				break;
+			case "claim":
+				if (this.shared && (m.node === null || typeof m.node === "string" && m.node.length <= 64)) this.emit("claim", { node: m.node }, who);
 				break;
 			case "ping":
 				this.send(peer, {
@@ -835,203 +1160,156 @@ var Remote = class Remote {
 		});
 		setTimeout(() => this.dropPeer(peer.id), 200);
 	}
-	unwrapMs(t) {
-		if (this.tLast >= 0 && t < this.tLast && this.tLast - t > 2147483648) this.tBase += 4294967296;
-		this.tLast = t;
-		return (this.tBase + t) / 1e3;
+	/** Bound devices, oldest first. */
+	bound() {
+		return [...this.peers.values()].filter((p) => p.bound).sort((a, b) => a.since - b.since);
 	}
-	onState(data) {
-		if (!(data instanceof ArrayBuffer)) return;
-		const s = decodeState(data);
-		if (!s || this.latest && !seqNewer(s.seq, this.latest.seq)) return;
-		const now = performance.now();
-		const dev = this.unwrapMs(s.t);
-		this.offsets.push([now, now - dev]);
-		while (this.offsets.length && now - this.offsets[0][0] > 2e3) this.offsets.shift();
-		const offset = Math.min(...this.offsets.map((o) => o[1]));
-		const acc = this.latest && this.latestAcc ? combineAcc(this.latestAcc, accumDelta(s, this.latest), 1) : zeroAcc();
-		this.buf.push({
-			t: dev + offset,
-			s,
-			acc
-		});
-		if (this.buf.length > 40) this.buf.shift();
-		this.latest = s;
-		this.latestAcc = acc;
-		this.stateAt = now;
-		if (!this.firstInputAt) this.firstInputAt = Date.now();
-		if (s.mode !== this.lastMode) {
-			this.lastMode = s.mode;
-			this.emit("mode", s.mode);
+	participant(p) {
+		return {
+			id: p.id,
+			name: p.name,
+			color: p.color,
+			lead: p === this.active,
+			since: p.since,
+			caps: p.caps
+		};
+	}
+	/** Everyone controlling the scene, oldest (the lead) first. */
+	get participants() {
+		return this.bound().map((p) => this.participant(p));
+	}
+	freeColor(peer) {
+		const used = /* @__PURE__ */ new Set([this.host.color.toLowerCase(), ...this.bound().filter((p) => p !== peer).map((p) => p.color)]);
+		return PARTICIPANT_COLORS.find((c) => !used.has(c)) ?? PARTICIPANT_COLORS[used.size % PARTICIPANT_COLORS.length];
+	}
+	/** The peers a message for `who` goes to: that participant, else everyone in a shared scene, else the device in control. */
+	targets(who) {
+		if (who) {
+			const p = this.peers.get(who);
+			return p?.bound ? [p] : [];
 		}
-		this.emit("input");
+		return this.shared ? this.bound() : this.active ? [this.active] : [];
 	}
-	onPad(data) {
-		const p = decodePad(data);
-		if (!p || this.padState && !seqNewer(p.seq, this.padState.seq)) return;
-		const was = this.padLive;
-		this.padState = p;
-		this.padAt = performance.now();
-		if (!this.firstInputAt) this.firstInputAt = Date.now();
-		if (!was) this.emit("pad", true);
-		this.emit("input");
-	}
-	get padLive() {
-		return !!this.padState && performance.now() - this.padAt < 1500;
-	}
-	/** Latest controller state while the phone is in gamepad mode (null otherwise). */
+	/** Latest controller state while the device in control (the lead) is in gamepad mode (null otherwise). */
 	get pad() {
-		if (this.padState && !this.padLive) {
-			this.padState = null;
-			this.emit("pad", false);
-		}
-		return this.padState;
+		return this.active?.stream.pad ?? null;
 	}
-	onPointer(data) {
-		const p = decodePointer(data);
-		if (!p || !(p.flags & PointerFlag.valid) || this.ptr && !seqNewer(p.seq, this.ptr.seq)) return;
-		this.ptr = p;
-		this.ptrAt = performance.now();
-		if (!this.firstInputAt) this.firstInputAt = Date.now();
-		this.emit("input");
-	}
-	/**
-	* Where the phone points (PROTOCOL §6) while a pointing utility is on, else null. Absolute pointers (the Wii-style
-	* cursor) end the moment the pad says Point is off; any pointer ends after a short silence.
-	*/
+	/** Where the device in control (the lead) points (PROTOCOL §6) while a pointing utility is on, else null. */
 	get pointer() {
-		const p = this.ptr;
-		if (!p) return null;
-		const pad = this.padState;
-		if (pad && this.padLive && !(p.flags & PointerFlag.relative) && !(pad.flags & PadFlag.point) && this.padAt >= this.ptrAt || performance.now() - this.ptrAt > POINTER_STALE_MS) {
-			this.ptr = null;
-			return null;
-		}
-		return p;
+		return this.active?.stream.pointer ?? null;
 	}
-	/** Vibrate the phone (Gamepad API dual-rumble semantics). */
-	rumble(strong, weak, ms) {
-		if (this.active) this.send(this.active, {
+	/** Read the device in control's (the lead's) input for this frame. Call once per rendered frame. */
+	consume(now = performance.now()) {
+		return (this.active?.stream ?? this.idle).consume(now, this.status === "connected");
+	}
+	/** One participant's gamepad state, pointer and frame (shared scenes). */
+	padOf(who) {
+		const p = this.peers.get(who);
+		return p?.bound ? p.stream.pad : null;
+	}
+	pointerOf(who) {
+		const p = this.peers.get(who);
+		return p?.bound ? p.stream.pointer : null;
+	}
+	consumeOf(who, now = performance.now()) {
+		const p = this.peers.get(who);
+		return (p?.bound ? p.stream : this.idle).consume(now, !!p?.bound);
+	}
+	/** Vibrate a device (Gamepad API dual-rumble semantics): `who`, else the device in control. */
+	rumble(strong, weak, ms, who) {
+		const p = who ? this.peers.get(who) : this.active;
+		if (p?.bound) this.send(p, {
 			t: "rumble",
 			strong,
 			weak,
 			ms
 		});
 	}
-	resetStream() {
-		this.padState = null;
-		this.padAt = 0;
-		this.ptr = null;
-		this.ptrAt = 0;
-		this.stateAt = 0;
-		this.latest = null;
-		this.latestAcc = null;
-		this.outAcc = null;
-		this.outMode = null;
-		this.buf = [];
-		this.offsets = [];
-		this.tBase = 0;
-		this.tLast = -1;
-		this.lastMode = null;
-	}
-	/** Read input for this frame. Call once per rendered frame (e.g. inside requestAnimationFrame). */
-	consume(now = performance.now()) {
-		const s = this.latest;
-		const frame = {
-			connected: this.status === "connected",
-			mode: s?.mode ?? Mode.hold,
-			tier: s?.tier ?? Tier.touch,
-			clutch: false,
-			grab: s?.grab ?? 0,
-			qRel: qIdentity(),
-			touching: false,
-			aim: [0, 0],
-			tilt: [0, 0],
-			pad1: [0, 0],
-			pad2: [0, 0],
-			zoom: 0,
-			twist: 0
-		};
-		if (!s || !this.buf.length) return frame;
-		if (this.padLive && this.padAt > this.stateAt) {
-			frame.mode = Mode.gamepad;
-			return frame;
-		}
-		let ai = this.buf.length - 1;
-		let bi = -1;
-		let alpha = 0;
-		if (this.opts.latency !== "direct") {
-			const target = now - 1e3 / 60;
-			ai = 0;
-			for (let i = this.buf.length - 1; i >= 0; i--) if (this.buf[i].t <= target) {
-				ai = i;
-				if (i + 1 < this.buf.length) {
-					bi = i + 1;
-					alpha = Math.min(1, Math.max(0, (target - this.buf[i].t) / Math.max(1, this.buf[bi].t - this.buf[i].t)));
-				}
-				break;
-			}
-		}
-		const A = this.buf[ai];
-		const B = bi >= 0 ? this.buf[bi] : null;
-		const accNow = B ? lerpAcc(A.acc, B.acc, alpha) : A.acc;
-		const fresh = !!this.outAcc && now - this.lastConsumeAt < 250;
-		const d = fresh ? combineAcc(accNow, this.outAcc, -1) : zeroAcc();
-		if (!fresh && this.outAcc && this.outMode === Mode.point && A.s.mode === Mode.point) d.aim = [accNow.aim[0] - this.outAcc.aim[0], accNow.aim[1] - this.outAcc.aim[1]];
-		this.outAcc = accNow;
-		this.outMode = A.s.mode;
-		this.lastConsumeAt = now;
-		frame.aim = d.aim;
-		frame.pad1 = d.pad1;
-		frame.pad2 = d.pad2;
-		frame.zoom = d.zoom;
-		frame.twist = d.twist;
-		frame.touching = (s.flags & Flag.touching) !== 0;
-		const a = A.s;
-		const b = B?.s;
-		frame.mode = a.mode;
-		frame.tilt = b ? [a.tilt[0] + (b.tilt[0] - a.tilt[0]) * alpha, a.tilt[1] + (b.tilt[1] - a.tilt[1]) * alpha] : a.tilt;
-		frame.clutch = (a.flags & Flag.clutch) !== 0;
-		frame.grab = a.grab;
-		frame.qRel = a.qRel;
-		if (b && frame.clutch && b.flags & Flag.clutch && b.grab === a.grab) frame.qRel = qSlerp(a.qRel, b.qRel, Math.min(1, Math.max(0, alpha)));
-		const silent = now - this.stateAt;
-		if (silent > 250) {
-			const k = Math.max(0, 1 - (silent - 250) / 150);
-			frame.tilt = [frame.tilt[0] * k, frame.tilt[1] * k];
-			frame.touching = false;
-		}
-		return frame;
-	}
-	setLayout(layout) {
-		this.layout = layout;
-		if (this.active) this.send(this.active, {
+	/** The tray and modes: for `who`, else for everyone. */
+	setLayout(layout, who) {
+		if (!who) this.layout = layout;
+		for (const p of this.targets(who)) this.send(p, {
 			t: "layout",
 			layout
 		});
 	}
-	/** Sync toggle/label state shown on the phone. */
-	setValues(values) {
-		if (this.active) this.send(this.active, {
+	/** Sync toggle/label state shown on devices: for `who`, else for everyone. */
+	setValues(values, who) {
+		if (!who) Object.assign(this.values, values);
+		for (const p of this.targets(who)) this.send(p, {
 			t: "state",
 			values
 		});
 	}
-	feedback(f) {
-		if (this.active) this.send(this.active, {
+	/** A haptic tick or bump and an optional toast: for `who`, else for the device in control. */
+	feedback(f, who) {
+		const p = who ? this.peers.get(who) : this.active;
+		if (p?.bound) this.send(p, {
 			t: "feedback",
 			...f
 		});
 	}
-	/** Disconnect the current phone (it can rescan to reconnect). */
-	disconnect() {
-		const p = this.active;
-		if (!p) return;
-		this.send(p, {
-			t: "lock",
-			reason: "host-closed"
+	/** How the screen appears among the participants (CATALOGUE §5: the screen is participant `host`). */
+	setHostPerson(p) {
+		this.host = {
+			...this.host,
+			...p,
+			id: "host"
+		};
+		this.sceneChanged();
+	}
+	/**
+	* Publish the scene: what can be claimed (omit `nodes` to keep the last list) and who holds what (node id ->
+	* participant id, `host` for the screen). Every participant receives it.
+	*/
+	setScene(s) {
+		if (s.nodes) {
+			this.nodes = s.nodes.map((n) => ({
+				...n,
+				id: n.id.slice(0, 64),
+				...n.parent ? { parent: n.parent.slice(0, 64) } : {}
+			}));
+			this.nodesVersion++;
+		}
+		this.held = { ...s.held };
+		this.sceneChanged();
+	}
+	sceneChanged() {
+		if (!this.shared || this.scenePending) return;
+		this.scenePending = true;
+		queueMicrotask(() => {
+			this.scenePending = false;
+			const people = [this.host, ...this.bound().map((p) => ({
+				id: p.id,
+				name: p.name,
+				color: p.color,
+				...p === this.active ? { lead: true } : {}
+			}))];
+			for (const p of this.bound()) {
+				const m = {
+					t: "scene",
+					you: p.id,
+					people,
+					held: this.held
+				};
+				if (p.nodesSent !== this.nodesVersion) {
+					m.nodes = this.nodes;
+					p.nodesSent = this.nodesVersion;
+				}
+				this.send(p, m);
+			}
 		});
-		setTimeout(() => this.dropPeer(p.id), 200);
+	}
+	/** Disconnect a participant (it can't rejoin by itself; a new invite keeps it out), or with no `who` everyone. */
+	disconnect(who) {
+		const list = who ? this.targets(who) : this.bound();
+		for (const p of list) {
+			this.send(p, {
+				t: "lock",
+				reason: who ? "removed" : "host-closed"
+			});
+			setTimeout(() => this.dropPeer(p.id), 200);
+		}
 	}
 	destroy() {
 		this.lan = null;
@@ -1043,28 +1321,38 @@ var Remote = class Remote {
 	send(peer, m) {
 		if (peer.ctl.readyState === "open") peer.ctl.send(JSON.stringify(m));
 	}
-	scheduleLost() {
-		if (this.lostTimer) return;
-		this.lostTimer = setTimeout(() => {
-			this.lostTimer = null;
-			if (this.active && this.active.pc.connectionState !== "connected") this.dropPeer(this.active.id);
+	scheduleLost(peer) {
+		if (peer.lost) return;
+		peer.lost = setTimeout(() => {
+			peer.lost = null;
+			if (peer.pc.connectionState !== "connected") this.dropPeer(peer.id);
 		}, 4e3);
 	}
 	dropPeer(id) {
 		const p = this.peers.get(id);
 		if (!p) return;
 		this.peers.delete(id);
+		if (p.lost) {
+			clearTimeout(p.lost);
+			p.lost = null;
+		}
 		if (this.lan?.peer === p) this.lan = null;
 		try {
 			p.pc.close();
 		} catch {}
-		if (this.active === p) {
-			this.active = null;
-			this.deviceName = null;
-			this.resetStream();
+		if (!p.bound) return;
+		const who = this.participant(p);
+		p.bound = false;
+		for (const [node, holder] of Object.entries(this.held)) if (holder === id) delete this.held[node];
+		if (this.active === p) this.active = this.shared ? this.bound()[0] ?? null : null;
+		this.deviceName = this.active?.name ?? null;
+		this.emit("leave", who);
+		this.renderCards();
+		if (!this.bound().length) {
 			this.setStatus(this.sig?.open ? "ready" : "offline");
 			this.emit("disconnect");
 		}
+		this.sceneChanged();
 	}
 	/**
 	* Render the pairing card into an element. 'full' shows numbered steps; 'compact' is visual-first:
@@ -1084,39 +1372,46 @@ var Remote = class Remote {
         ${opts.testLink === false ? "" : `<a class="obpal-link" target="_blank" rel="noopener" title="Open the controller on this device">${compact ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4.5h5.5V10M19.5 4.5 11 13M18 14v4a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 18V8a1.5 1.5 0 0 1 1.5-1.5h4"/></svg><span>This device</span>` : "Open the controller on this device"}</a>`}
       </div>`;
 		card.querySelector(".obpal-title-text").textContent = opts.title ?? (compact ? "Scan to control" : "Use your phone as a remote");
-		const link = card.querySelector(".obpal-link");
-		if (link) link.href = this.pairingUrl;
+		el.appendChild(card);
+		const entry = {
+			el: card,
+			status: card.querySelector(".obpal-status"),
+			qr: card.querySelector(".obpal-qr"),
+			link: card.querySelector(".obpal-link"),
+			compact
+		};
+		this.cards.push(entry);
+		this.renderQr(entry);
+		this.renderCards();
+		return card;
+	}
+	renderQr(c) {
+		const url = this.pairingUrl;
+		if (c.link) c.link.href = url;
 		__vitePreload(async () => {
 			const { renderSVG } = await import("./dist-lkpp0okm.js").then((n) => n.t);
 			return { renderSVG };
 		}, []).then(({ renderSVG }) => {
-			card.querySelector(".obpal-qr").innerHTML = renderSVG(this.pairingUrl, {
+			if (url === this.pairingUrl) c.qr.innerHTML = renderSVG(url, {
 				border: 2,
 				ecc: "M"
 			});
 		});
-		el.appendChild(card);
-		this.cards.push({
-			el: card,
-			status: card.querySelector(".obpal-status"),
-			compact
-		});
-		this.renderCards();
-		return card;
 	}
 	renderCards() {
+		const n = this.bound().length;
 		const text = {
 			starting: "Starting…",
 			ready: "Waiting for your phone",
 			connecting: "Phone found, connecting…",
-			connected: `Connected${this.deviceName ? ` to ${this.deviceName}` : ""}`,
+			connected: n > 1 ? `${n} devices connected` : `Connected${this.deviceName ? ` to ${this.deviceName}` : ""}`,
 			offline: "Offline, retrying…"
 		};
 		const short = {
 			starting: "Starting",
 			ready: "Waiting",
 			connecting: "Connecting",
-			connected: "Connected",
+			connected: n > 1 ? `${n} connected` : "Connected",
 			offline: "Offline"
 		};
 		for (const c of this.cards) {

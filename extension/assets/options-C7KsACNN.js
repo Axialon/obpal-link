@@ -1,4 +1,4 @@
-import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-dJnNNgY2.js";
+import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-DRqwoTlq.js";
 import { d as parsePcState, n as EMPTY_PC } from "./native-Cu2mF5Lq.js";
 //#region src/options/options.ts
 /**

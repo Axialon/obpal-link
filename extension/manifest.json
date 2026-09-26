@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ob.Pal Link",
   "short_name": "ob.Pal Link",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Your phone as a controller for any website: Gamepad API games, 3D viewers and keyboard games. Pair by QR.",
   "minimum_chrome_version": "120",
   "homepage_url": "https://obpal.blackboxes.net",

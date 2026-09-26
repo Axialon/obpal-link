@@ -567,6 +567,8 @@ var family = window.BlackboxesFamily;
 var s$1 = (d) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 var ICONS = {
 	rotate: s$1("<path d=\"M19.5 12a7.5 7.5 0 1 1-2.2-5.3\"/><path d=\"M19.5 4.5v4h-4\"/>"),
+	lock: s$1("<rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2.6\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5\"/><path d=\"M12 14.4v2\" stroke-width=\"2.2\"/>"),
+	unlock: s$1("<rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2.6\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 6.6-1.6\"/><path d=\"M12 14.4v2\" stroke-width=\"2.2\"/>"),
 	point: s$1("<circle cx=\"12\" cy=\"12\" r=\"7.5\"/><circle cx=\"12\" cy=\"12\" r=\"2.4\"/><path d=\"M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3\"/>"),
 	tilt: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><circle cx=\"12\" cy=\"12\" r=\"2.2\"/><path d=\"M3.6 10.6h6.2M14.2 10.6h6.2M12 14.2v6.3\"/>"),
 	match: s$1("<path d=\"M12 3.2 19.8 7.6v8.8L12 20.8 4.2 16.4V7.6L12 3.2Z\"/><path d=\"M4.2 7.6 12 12l7.8-4.4M12 12v8.8\"/>"),
@@ -575,6 +577,7 @@ var ICONS = {
 	settings: s$1("<path d=\"M4 7.5h9M17 7.5h3M4 16.5h3M11 16.5h9\"/><circle cx=\"15\" cy=\"7.5\" r=\"2.2\"/><circle cx=\"9\" cy=\"16.5\" r=\"2.2\"/>"),
 	models: s$1("<rect x=\"3.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"3.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/>"),
 	reset: s$1("<path d=\"M4.5 12a7.5 7.5 0 1 0 2.2-5.3\"/><path d=\"M4.5 4.5v4h4\"/>"),
+	grip: s$1("<path d=\"M12 21v-5.5\"/><path d=\"M6.5 15.5h11\"/><path d=\"M6.5 15.5V9.2l2.6-4.7\"/><path d=\"M17.5 15.5V9.2l-2.6-4.7\"/>"),
 	frame: s$1("<path d=\"M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15\"/>"),
 	spin: s$1("<path d=\"M12 5.5c4.4 0 8 1.6 8 3.5s-3.6 3.5-8 3.5-8-1.6-8-3.5\"/><path d=\"M4 9v5c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5V9\"/><path d=\"M7.5 3.8 4 5.5l1.8 3.3\"/>"),
 	grid: s$1("<rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"3\"/><path d=\"M3.5 9.5h17M3.5 14.5h17M9.5 3.5v17M14.5 3.5v17\"/>"),
@@ -617,11 +620,6 @@ var ICONS = {
 	fly: s$1("<path d=\"M4 15.5c2.2-1.6 5-2.5 8-2.5s5.8.9 8 2.5\"/><path d=\"M12 13V7.5M9.5 9.2 12 6.5l2.5 2.7\"/><path d=\"M4.5 19h15\"/>")
 };
 var markSeq = 0;
-/**
-* The ob.Pal mark: the Blackboxes family cube (obsidian facets, hairline seams) whose lower faces and front
-* edges catch the accent light, wrapped in ob.Pal's orbit with a satellite, the "." of ob.Pal. Everything lit
-* takes the theme accent; a scan line sweeps the box on hover. Static twin: public/favicon.svg (scripts/brand-icons.mjs).
-*/
 function logoMark() {
 	const id = `obm${++markSeq}`;
 	const A = "var(--accent, #C6FF34)";

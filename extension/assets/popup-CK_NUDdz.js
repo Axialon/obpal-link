@@ -1,5 +1,5 @@
 import { n as renderSVG } from "./dist-lkpp0okm.js";
-import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-dJnNNgY2.js";
+import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-DRqwoTlq.js";
 import { R as DEFAULT_MODE, U as TARGET_MODES, W as isTargetMode, a as parseLink } from "./messages-DmNWkKJF.js";
 import { d as parsePcState, f as pcView, n as EMPTY_PC, p as scopeLabel, t as DESKTOP_URL } from "./native-Cu2mF5Lq.js";
 //#region src/popup/popup.ts
