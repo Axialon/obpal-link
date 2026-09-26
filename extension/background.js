@@ -1,4 +1,4 @@
-import { C as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom, v as DEFAULT_MODE } from "./assets/messages-CRLNDzIz.js";
+import { T as isTargetMode, a as parseLink, b as DEFAULT_MODE, n as parseBgRequest, s as senderKind, t as allowedFrom } from "./assets/messages-BPWJyNvl.js";
 //#region src/background.ts
 /**
 * Service worker: message routing and per-tab enablement.

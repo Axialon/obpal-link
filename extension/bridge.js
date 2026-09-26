@@ -6,6 +6,28 @@
 	var CHANNEL = "obpal-link/v1";
 	new TextEncoder();
 	//#endregion
+	//#region ../packages/core/src/catalogue.ts
+	var Utility = {
+		pad: "pad",
+		aim: "motion.aim",
+		steer: "motion.steer",
+		point: "motion.point",
+		trackpad: "touch.trackpad",
+		hold: "motion.hold",
+		tilt: "motion.tilt"
+	};
+	Utility.aim, Utility.steer, Utility.point;
+	var u = (route, over = {}) => ({
+		route,
+		gain: 1,
+		curve: 1,
+		deadzone: .2,
+		invertY: false,
+		edgeTurn: false,
+		...over
+	});
+	u("stick.right"), u("stick.wheel"), u("pointer"), u("stick.right"), u("stick.fly"), u("pointer"), u("stick.right"), u("stick.wheel"), u("pointer"), u("mouse"), u("stick.wheel"), u("pointer", { edgeTurn: true }), u("stick.right"), u("stick.wheel"), u("pointer");
+	//#endregion
 	//#region src/shared/math.ts
 	/** Small numeric helpers shared by the key and 3D mappers. Pure. */
 	var clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
@@ -38,15 +60,17 @@
 	}
 	var isDeltaTuple = (x) => tuple(x, 7) && x.every((v) => within(v, -1e5, MAX_DELTA));
 	var isTilt = (x) => tuple(x, 2) && within(x[0], -1, 1) && within(x[1], -1, 1);
+	var isPointerTuple = (x) => tuple(x, 5) && within(x[0], -400, 400) && within(x[1], -400, 400) && Number.isInteger(x[2]) && within(x[2], 0, 255) && Number.isInteger(x[3]) && within(x[3], 0, 255) && Number.isInteger(x[4]) && within(x[4], 0, 3);
 	/** Validate an input frame and return a clean copy (unknown fields dropped), or null. */
 	function parseInputFrame(x) {
 		if (!isObj(x) || x.t !== "in") return null;
-		const { m, dt, p, d, tl } = x;
+		const { m, dt, p, d, tl, pt } = x;
 		if (m !== 0 && m !== 1 && m !== 2 || !within(dt, 0, 1e3)) return null;
 		if (p !== null && !isPadTuple(p)) return null;
 		if (d !== null && !isDeltaTuple(d)) return null;
 		if (tl !== null && !isTilt(tl)) return null;
-		return {
+		if (pt !== void 0 && pt !== null && !isPointerTuple(pt)) return null;
+		const f = {
 			t: "in",
 			m,
 			dt,
@@ -54,6 +78,8 @@
 			d: d ? [...d] : null,
 			tl: tl ? [tl[0], tl[1]] : null
 		};
+		if (pt) f.pt = [...pt];
+		return f;
 	}
 	function parseToPage(x) {
 		if (isObj(x) && (x.t === "rel" || x.t === "off")) return { t: x.t };
@@ -253,6 +279,7 @@
 				addEventListener("resize", report);
 				document.addEventListener("focusin", report, true);
 				document.addEventListener("visibilitychange", report);
+				document.addEventListener("pointerlockchange", report);
 				addEventListener("load", onLoadCapture, true);
 				frames.observe(document, {
 					childList: true,
@@ -305,6 +332,7 @@
 			removeEventListener("resize", report);
 			document.removeEventListener("focusin", report, true);
 			document.removeEventListener("visibilitychange", report);
+			document.removeEventListener("pointerlockchange", report);
 			removeEventListener("load", onLoadCapture, true);
 			frames.disconnect();
 			toMain({ t: "off" });
@@ -330,9 +358,10 @@
 			const rep = {
 				t: "rep",
 				focus: document.hasFocus() && !isFrameElement(deepActiveElement()),
-				area: Math.round(view?.area ?? 0)
+				area: Math.round(view?.area ?? 0),
+				lock: !!document.pointerLockElement
 			};
-			const key = `${rep.focus}|${Math.round(rep.area / 1e3)}`;
+			const key = `${rep.focus}|${Math.round(rep.area / 1e3)}|${rep.lock}`;
 			if (key === lastReport) return;
 			lastReport = key;
 			send(rep);

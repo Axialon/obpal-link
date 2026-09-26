@@ -1,4 +1,4 @@
-import { C as isTargetMode, S as TARGET_MODES, _ as APP_NAME, c as decodePad, d as certFingerprint, f as encodePairing, g as sdpFingerprint, h as roomIdFor, i as parseFromPage, l as packetType, m as newSecret, o as parseOffscreenRequest, p as equalBytes, r as parseConfig, u as bindMac, v as DEFAULT_MODE, x as SERVICE } from "./messages-CRLNDzIz.js";
+import { C as SERVICE, T as isTargetMode, _ as roomIdFor, b as DEFAULT_MODE, c as PadButton, d as packetType, f as bindMac, g as newSecret, h as equalBytes, i as parseFromPage, l as PadFlag, m as encodePairing, o as parseOffscreenRequest, p as certFingerprint, r as parseConfig, u as decodePad, v as sdpFingerprint, w as TARGET_MODES, y as APP_NAME } from "./messages-BPWJyNvl.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -203,6 +203,80 @@ async function fetchIceServers(service, roomId) {
 	} catch {}
 	return [{ urls: "stun:stun.cloudflare.com:3478" }];
 }
+var PointerFlag = {
+	/** The device has an orientation; without it the angles are meaningless. */
+	valid: 1,
+	/** Only changes carry meaning (integrated turn rate for a mouse), not the absolute angle. */
+	relative: 2,
+	/** The device asks for the Wii shooter's edge turn (CATALOGUE §4). */
+	edgeTurn: 4
+};
+function decodePointer(buf) {
+	if (buf.byteLength < 16) return null;
+	const dv = new DataView(buf);
+	if (dv.getUint8(0) !== 20) return null;
+	return {
+		flags: dv.getUint8(1),
+		seq: dv.getUint16(2, true),
+		t: dv.getUint32(4, true),
+		yaw: dv.getInt16(8, true) / 100,
+		pitch: dv.getInt16(10, true) / 100,
+		gen: dv.getUint8(12)
+	};
+}
+/**
+* Change of aim from packet `b` to packet `a` in degrees, wrap-safe (the wire is 0.01° in an int16).
+* Zero across a recentre (a different generation), so a relative mouse never jumps.
+*/
+function pointerDelta(a, b) {
+	if (a.gen !== b.gen) return [0, 0];
+	const d = (x, y) => ((Math.round((x - y) * 100) % 65536 + 98304) % 65536 - 32768) / 100;
+	return [d(a.yaw, b.yaw), d(a.pitch, b.pitch)];
+}
+/**
+* Motion below this (as a fraction of full travel, 0.01 = 1.8°/s) counts as a still phone, so sensor noise
+* never rides the deadzone jump into the game.
+*/
+var REST = .01;
+var clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+/** Player-space turn rates (yaw + = left, pitch + = up, °/s) as a raw stick vector (+x right, +y down). */
+function rateToUnit(yawDps, pitchDps, full = 180) {
+	return [clamp(-yawDps / full, -1, 1), clamp(-pitchDps / full, -1, 1)];
+}
+/**
+* The deadzone jump: `sign(v) · (d + (1 − d) · |v|)` applied to the vector's magnitude, so any deliberate motion
+* lands past the game's deadzone `d` while the direction stays exact. Below `rest` the phone counts as still.
+*/
+function jumpDeadzone(v, d, rest = REST) {
+	const m = Math.hypot(v[0], v[1]);
+	if (m <= rest) return [0, 0];
+	const out = d + (1 - d) * Math.min(1, m);
+	return [v[0] / m * out, v[1] / m * out];
+}
+/** Sum of stick vectors, clamped to the unit circle (a thumb plus motion can't exceed a full deflection). */
+function addStick(a, b) {
+	const x = a[0] + b[0];
+	const y = a[1] + b[1];
+	const m = Math.hypot(x, y);
+	return m > 1 ? [x / m, y / m] : [x, y];
+}
+/**
+* What a stick finally carries: the thumb alone when no motion contributes, otherwise the thumb plus every
+* contribution, clamped, then one deadzone jump (the largest requested), so two small inputs never jump twice.
+*/
+function mixStick(thumb, motions) {
+	let sum = [0, 0];
+	let d = 0;
+	let live = false;
+	for (const m of motions) {
+		if (m.v[0] === 0 && m.v[1] === 0) continue;
+		live = true;
+		sum = addStick(sum, m.v);
+		d = Math.max(d, m.deadzone);
+	}
+	if (!live) return [thumb[0], thumb[1]];
+	return jumpDeadzone(addStick(thumb, sum), d);
+}
 //#endregion
 //#region \0vite/preload-helper.js
 var scriptRel = /* @__PURE__ */ (function detectScriptRel() {
@@ -285,6 +359,8 @@ var DEFAULT_LAYOUT = {
 		Mode.point
 	]
 };
+/** A pointer stream that stops (the utility was switched off, the phone went away) is gone after this long. */
+var POINTER_STALE_MS = 300;
 var zeroAcc = () => ({
 	aim: [0, 0],
 	pad1: [0, 0],
@@ -318,6 +394,8 @@ var Remote = class Remote {
 		this.latest = null;
 		this.padState = null;
 		this.padAt = 0;
+		this.ptr = null;
+		this.ptrAt = 0;
 		this.stateAt = 0;
 		this.latestAcc = null;
 		this.outAcc = null;
@@ -435,7 +513,9 @@ var Remote = class Remote {
 			ctl.onmessage = (e) => void this.onCtl(peer, e.data);
 			st.onmessage = (e) => {
 				if (!peer.bound || this.active !== peer || !(e.data instanceof ArrayBuffer)) return;
-				if (packetType(e.data) === 18) this.onPad(e.data);
+				const type = packetType(e.data);
+				if (type === 18) this.onPad(e.data);
+				else if (type === 20) this.onPointer(e.data);
 				else this.onState(e.data);
 			};
 			await pc.setRemoteDescription(d.offer);
@@ -581,6 +661,26 @@ var Remote = class Remote {
 		}
 		return this.padState;
 	}
+	onPointer(data) {
+		const p = decodePointer(data);
+		if (!p || !(p.flags & PointerFlag.valid) || this.ptr && !seqNewer(p.seq, this.ptr.seq)) return;
+		this.ptr = p;
+		this.ptrAt = performance.now();
+	}
+	/**
+	* Where the phone points (PROTOCOL §6) while a pointing utility is on, else null. Absolute pointers (the Wii-style
+	* cursor) end the moment the pad says Point is off; any pointer ends after a short silence.
+	*/
+	get pointer() {
+		const p = this.ptr;
+		if (!p) return null;
+		const pad = this.padState;
+		if (pad && this.padLive && !(p.flags & PointerFlag.relative) && !(pad.flags & PadFlag.point) && this.padAt >= this.ptrAt || performance.now() - this.ptrAt > POINTER_STALE_MS) {
+			this.ptr = null;
+			return null;
+		}
+		return p;
+	}
 	/** Vibrate the phone (Gamepad API dual-rumble semantics). */
 	rumble(strong, weak, ms) {
 		if (this.active) this.send(this.active, {
@@ -593,6 +693,8 @@ var Remote = class Remote {
 	resetStream() {
 		this.padState = null;
 		this.padAt = 0;
+		this.ptr = null;
+		this.ptrAt = 0;
 		this.stateAt = 0;
 		this.latest = null;
 		this.latestAcc = null;
@@ -845,6 +947,10 @@ function injectStyles() {
 function electFrame(frames, role) {
 	if (!frames.length) return null;
 	const top = frames.find((f) => f.frameId === 0) ?? frames[0];
+	if (role === "pointer") {
+		const locked = frames.find((f) => f.lock);
+		if (locked) return locked;
+	}
 	let best = null;
 	for (const f of frames) if (role === "keys" ? f.focus && (!best || f.focusAt > best.focusAt) : f.area >= 19200 && (!best || f.area > best.area)) best = f;
 	return best ?? top;
@@ -883,20 +989,54 @@ function deltaTuple(f) {
 	];
 	return d.some((v) => v !== 0) ? d : null;
 }
+/** The pointer for a page, with the A / B bits of the pad that click at it. */
+function pointerTuple(p, buttons) {
+	if (!p) return null;
+	return [
+		round(p.yaw, 100),
+		round(p.pitch, 100),
+		p.gen & 255,
+		p.flags & 255,
+		buttons & 3
+	];
+}
+/** The A and B bits removed: while they click at the cursor they are not also gamepad buttons (CATALOGUE §4). */
+function withoutClickButtons(p) {
+	if (!p) return null;
+	const out = [...p];
+	out[0] = (p[0] & ~(1 << PadButton.A | 1 << PadButton.B)) >>> 0;
+	return out;
+}
+/**
+* Aim on the mouse route without pointer lock: the host finishes the route on the right stick (CATALOGUE §3, shooter),
+* turning the change of aim per second into a deflection with the default deadzone jump. Signs: yaw + = right, pitch + = up.
+*/
+function withRelativeAim(p, rateDps, deadzone = .2) {
+	if (!p) return null;
+	const v = rateToUnit(-rateDps[0], rateDps[1]);
+	const [rx, ry] = mixStick([p[3], p[4]], [{
+		v,
+		deadzone
+	}]);
+	const out = [...p];
+	out[3] = round(rx, 1e4);
+	out[4] = round(ry, 1e4);
+	return out;
+}
 function tiltTuple(t) {
 	if (!t) return null;
 	const v = [round(Math.max(-1, Math.min(1, t[0])), 1e3), round(Math.max(-1, Math.min(1, t[1])), 1e3)];
 	return v[0] || v[1] ? v : null;
 }
 /** Is anything being pressed or moved? Active input streams at the full rate; idle input only heartbeats. */
-function isActive(p, d, tl) {
-	if (d || tl) return true;
+function isActive(p, d, tl, pt = null) {
+	if (d || tl || pt) return true;
 	if (!p) return false;
 	return p[0] !== 0 || p.slice(1).some((v) => Math.abs(v) > .02);
 }
 var modeIndex = (mode) => TARGET_MODES.indexOf(mode);
-function buildFrame(mode, dt, p, d, tl) {
-	return {
+function buildFrame(mode, dt, p, d, tl, pt = null) {
+	const f = {
 		t: "in",
 		m: modeIndex(mode),
 		dt: round(Math.max(0, Math.min(1e3, dt)), 10),
@@ -904,6 +1044,8 @@ function buildFrame(mode, dt, p, d, tl) {
 		d,
 		tl
 	};
+	if (pt) f.pt = pt;
+	return f;
 }
 /** Identity of the held (non-delta) state; a change is sent at once even when idle. */
 var frameSignature = (mode, p, tl) => JSON.stringify([
@@ -911,6 +1053,50 @@ var frameSignature = (mode, p, tl) => JSON.stringify([
 	p,
 	tl
 ]);
+//#endregion
+//#region src/shared/sites.ts
+var SITE_PROFILES = [
+	{
+		host: "tesana.com",
+		profile: "flight"
+	},
+	{
+		host: "play.tesana.ai",
+		profile: "flight"
+	},
+	{
+		host: "krunker.io",
+		profile: "shooter"
+	},
+	{
+		host: "venge.io",
+		profile: "shooter"
+	},
+	{
+		host: "shellshock.io",
+		profile: "shooter"
+	},
+	{
+		host: "voxiom.io",
+		profile: "shooter"
+	}
+];
+/** The profile suggested for a host name, or null when the table has nothing for it. */
+function suggestProfile(hostname, table = SITE_PROFILES) {
+	const h = hostname.toLowerCase().replace(/\.$/, "");
+	if (!h) return null;
+	for (const s of table) if (h === s.host || h.endsWith(`.${s.host}`)) return s.profile;
+	return null;
+}
+/** One suggestion for a tab from the hosts of its frames: the top frame first, then any frame that matches. */
+function suggestForFrames(hosts, table = SITE_PROFILES) {
+	const sorted = [...hosts].sort((a, b) => a.frameId - b.frameId);
+	for (const f of sorted) {
+		const p = suggestProfile(f.host, table);
+		if (p) return p;
+	}
+	return null;
+}
 //#endregion
 //#region src/offscreen.ts
 /**
@@ -958,6 +1144,11 @@ var layout = {
 		]
 	}]
 };
+/** The layout with the site's suggested catalogue profile (CATALOGUE §3), when the table has one. */
+var layoutFor = (profile) => profile ? {
+	...layout,
+	profile
+} : layout;
 var remote = null;
 var config = {
 	tabId: null,
@@ -966,6 +1157,24 @@ var config = {
 var configured = false;
 var links = /* @__PURE__ */ new Set();
 var lastTargets = /* @__PURE__ */ new Set();
+var suggested = null;
+var hostOf = (url) => {
+	try {
+		return url ? new URL(url).hostname : "";
+	} catch {
+		return "";
+	}
+};
+/** The controlled tab's frames changed: suggest the profile the site table has for them, if it differs. */
+function syncSuggestion() {
+	const next = suggestForFrames([...links].filter((l) => l.tabId === config.tabId).map((l) => ({
+		frameId: l.frameId,
+		host: l.host
+	})));
+	if (next === suggested) return;
+	suggested = next;
+	remote?.setLayout(layoutFor(next));
+}
 var toBg = (m) => chrome.runtime.sendMessage(m).catch(() => void 0);
 chrome.runtime.onMessage.addListener((raw, sender) => {
 	if (sender.id !== chrome.runtime.id || sender.tab) return;
@@ -985,6 +1194,8 @@ chrome.runtime.onConnect.addListener((port) => {
 		port,
 		tabId,
 		frameId: port.sender?.frameId ?? 0,
+		host: hostOf(port.sender?.url),
+		lock: false,
 		focus: false,
 		focusAt: 0,
 		area: 0,
@@ -995,6 +1206,7 @@ chrome.runtime.onConnect.addListener((port) => {
 	links.add(link);
 	port.onMessage.addListener((raw) => onPageMessage(link, raw));
 	port.onDisconnect.addListener(() => forget(link));
+	syncSuggestion();
 });
 function applyConfig(tabId, mode) {
 	const modeChanged = mode !== config.mode;
@@ -1014,10 +1226,12 @@ function applyConfig(tabId, mode) {
 		for (const l of links) l.sig = "";
 		remote?.setValues({ target: mode });
 	}
+	syncSuggestion();
 }
 function forget(l) {
 	links.delete(l);
 	lastTargets.delete(l);
+	syncSuggestion();
 }
 function onPageMessage(link, raw) {
 	const m = parseFromPage(raw);
@@ -1026,6 +1240,7 @@ function onPageMessage(link, raw) {
 		if (m.focus && !link.focus) link.focusAt = performance.now();
 		link.focus = m.focus;
 		link.area = m.area;
+		link.lock = m.lock === true;
 	} else rumble(m.s, m.w, m.ms);
 }
 var rumbleAt = 0;
@@ -1059,12 +1274,33 @@ function post(l, m) {
 		forget(l);
 	}
 }
+var lastPtr = null;
+var relRate = [0, 0];
+var relAt = 0;
+function relativeRate(ptr, now) {
+	if (!ptr || !(ptr.flags & PointerFlag.relative)) {
+		lastPtr = ptr;
+		relRate = [0, 0];
+		return relRate;
+	}
+	if (ptr !== lastPtr) {
+		if (lastPtr && lastPtr.flags & PointerFlag.relative) {
+			const [dy, dp] = pointerDelta(ptr, lastPtr);
+			const dtMs = Math.min(100, Math.max(8, (ptr.t - lastPtr.t >>> 0) / 1e3));
+			relRate = [dy * 1e3 / dtMs, dp * 1e3 / dtMs];
+		}
+		lastPtr = ptr;
+		relAt = now;
+	} else if (now - relAt > 150) relRate = [0, 0];
+	return relRate;
+}
 function tick() {
 	const r = remote;
 	if (!r) return;
 	const now = performance.now();
 	const f = r.consume(now);
 	const pad = r.pad;
+	const ptr = r.pointer;
 	if (config.tabId === null || !links.size) {
 		lastTargets.clear();
 		return;
@@ -1076,15 +1312,22 @@ function tick() {
 		l.sig = "";
 	}
 	lastTargets = targets;
-	const p = padTuple(pad);
+	const gamepad = config.mode === "gamepad";
+	const relative = !!ptr && (ptr.flags & PointerFlag.relative) !== 0;
+	const ptFrame = ptr ? electFrame([...links], "pointer") : null;
+	const rate = relativeRate(ptr, now);
+	let p = padTuple(pad);
+	if (gamepad && relative && !ptFrame?.lock) p = withRelativeAim(p, rate);
+	if (gamepad && ptr && !relative) p = withoutClickButtons(p);
+	const pt = ptr && (!gamepad || !relative || ptFrame?.lock) ? pointerTuple(ptr, pad?.buttons ?? 0) : null;
 	const tl = tiltTuple(f.connected && !pad && f.mode === Mode.tilt ? f.tilt : null);
 	const d = deltaTuple(f);
-	const active = isActive(p, d, tl);
+	const active = isActive(p, d, tl, pt);
 	const sig = frameSignature(config.mode, p, tl);
 	for (const l of targets) {
 		if (!active && l.sig === sig && now - l.lastSent < HEARTBEAT_MS) continue;
 		const dt = l.wasActive ? Math.min(50, now - l.lastSent) : TICK_MS;
-		post(l, buildFrame(config.mode, dt, p, d, tl));
+		post(l, buildFrame(config.mode, dt, p, d, tl, gamepad && l !== ptFrame ? null : pt));
 		l.lastSent = now;
 		l.wasActive = active;
 		l.sig = sig;
@@ -1111,7 +1354,7 @@ async function boot() {
 	const r = await Remote.create({
 		appName: APP_NAME,
 		service: SERVICE,
-		layout
+		layout: layoutFor(suggested)
 	});
 	remote = r;
 	const report = () => void toBg({

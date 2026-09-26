@@ -23,6 +23,37 @@
 		Guide: 16
 	};
 	//#endregion
+	//#region ../packages/core/src/response.ts
+	/** Sum of stick vectors, clamped to the unit circle (a thumb plus motion can't exceed a full deflection). */
+	function addStick(a, b) {
+		const x = a[0] + b[0];
+		const y = a[1] + b[1];
+		const m = Math.hypot(x, y);
+		return m > 1 ? [x / m, y / m] : [x, y];
+	}
+	//#endregion
+	//#region ../packages/core/src/catalogue.ts
+	var Utility = {
+		pad: "pad",
+		aim: "motion.aim",
+		steer: "motion.steer",
+		point: "motion.point",
+		trackpad: "touch.trackpad",
+		hold: "motion.hold",
+		tilt: "motion.tilt"
+	};
+	Utility.aim, Utility.steer, Utility.point;
+	var u = (route, over = {}) => ({
+		route,
+		gain: 1,
+		curve: 1,
+		deadzone: .2,
+		invertY: false,
+		edgeTurn: false,
+		...over
+	});
+	u("stick.right"), u("stick.wheel"), u("pointer"), u("stick.right"), u("stick.fly"), u("pointer"), u("stick.right"), u("stick.wheel"), u("pointer"), u("mouse"), u("stick.wheel"), u("pointer", { edgeTurn: true }), u("stick.right"), u("stick.wheel"), u("pointer");
+	//#endregion
 	//#region ../packages/host/src/gamepad.ts
 	var GAMEPAD_ID = "ob.Pal Controller (STANDARD GAMEPAD Vendor: 0b0a Product: 0001)";
 	/** Build a Gamepad-like object from a PAD state. Triggers map to buttons 6/7 with analog values. */
@@ -450,15 +481,17 @@
 	}
 	var isDeltaTuple = (x) => tuple(x, 7) && x.every((v) => within(v, -1e5, MAX_DELTA));
 	var isTilt = (x) => tuple(x, 2) && within(x[0], -1, 1) && within(x[1], -1, 1);
+	var isPointerTuple = (x) => tuple(x, 5) && within(x[0], -400, 400) && within(x[1], -400, 400) && Number.isInteger(x[2]) && within(x[2], 0, 255) && Number.isInteger(x[3]) && within(x[3], 0, 255) && Number.isInteger(x[4]) && within(x[4], 0, 3);
 	/** Validate an input frame and return a clean copy (unknown fields dropped), or null. */
 	function parseInputFrame(x) {
 		if (!isObj(x) || x.t !== "in") return null;
-		const { m, dt, p, d, tl } = x;
+		const { m, dt, p, d, tl, pt } = x;
 		if (m !== 0 && m !== 1 && m !== 2 || !within(dt, 0, 1e3)) return null;
 		if (p !== null && !isPadTuple(p)) return null;
 		if (d !== null && !isDeltaTuple(d)) return null;
 		if (tl !== null && !isTilt(tl)) return null;
-		return {
+		if (pt !== void 0 && pt !== null && !isPointerTuple(pt)) return null;
+		const f = {
 			t: "in",
 			m,
 			dt,
@@ -466,6 +499,8 @@
 			d: d ? [...d] : null,
 			tl: tl ? [tl[0], tl[1]] : null
 		};
+		if (pt) f.pt = [...pt];
+		return f;
 	}
 	function parseToPage(x) {
 		if (isObj(x) && (x.t === "rel" || x.t === "off")) return { t: x.t };
@@ -492,6 +527,206 @@
 			m
 		} : null;
 	}
+	/** Past this angle tan() runs away; the point just stays far off-screen. */
+	var LIMIT = 75;
+	/** The edge turn zone: the last 12% of the screen on each side (CATALOGUE §4). */
+	var EDGE_BAND = .12;
+	/** The wire carries 0.01° in an int16 (65536 steps), so relative accumulators wrap at 655.36°. */
+	var WRAP_STEPS = 65536;
+	var D2R = Math.PI / 180;
+	var PointerBit = {
+		valid: 1,
+		relative: 2,
+		edgeTurn: 4
+	};
+	/** Where a pointing ray meets the screen: x = cx + tan(yaw)·K with K = (width / 2) / tan(16°). */
+	function projectPointer(yaw, pitch, w, h) {
+		const K = w / 2 / Math.tan(16 * D2R);
+		const lim = (a) => clamp(a, -75, LIMIT) * D2R;
+		const x = w / 2 + Math.tan(lim(yaw)) * K;
+		const y = h / 2 - Math.tan(lim(pitch)) * K;
+		return {
+			x,
+			y,
+			off: x < 0 || x >= w || y < 0 || y >= h
+		};
+	}
+	/** Right-stick deflection toward a screen edge, in proportion to how far into the last `band` the cursor is. */
+	function edgeTurn(x, y, w, h, band = EDGE_BAND) {
+		const axis = (v, size) => {
+			const z = size * band;
+			if (z <= 0) return 0;
+			if (v < z) return -clamp(1 - v / z, 0, 1);
+			if (v > size - z) return clamp((v - (size - z)) / z, 0, 1);
+			return 0;
+		};
+		return [axis(x, w), axis(y, h)];
+	}
+	/** Wrap-safe change of one pointer angle (degrees), in whole wire steps so no float error creeps in. */
+	var dAngle = (a, b) => ((Math.round((a - b) * 100) % WRAP_STEPS + WRAP_STEPS * 1.5) % WRAP_STEPS - WRAP_STEPS / 2) / 100;
+	/** Change of aim between two pointer samples as the STATE aim convention [yaw + left, pitch + up]; zero across a recentre. */
+	function pointerAim(cur, prev) {
+		if (!prev || prev[2] !== cur[2]) return [0, 0];
+		return [-dAngle(cur[0], prev[0]), dAngle(cur[1], prev[1])];
+	}
+	/**
+	* Stateful pointer -> cursor / click / drag / gyro-mouse mapper. Call update() once per input frame.
+	*   Absolute pointer, no lock:  a cursor; A presses, releases and clicks; B holds the left button and drags.
+	*   Pointer lock:               relative movementX/Y from the change of aim; A and B are the left button.
+	*   Relative pointer, no lock:  nothing here (the link mixes it into the right stick before the pad reaches the page).
+	*/
+	var PointerMapper = class {
+		pxPerDeg;
+		last = null;
+		cursor = null;
+		/** Which phone button holds the left mouse button: 0 none, 1 A, 2 B. */
+		held = 0;
+		lockAcc = new Accum();
+		moveAcc = new Accum();
+		constructor(pxPerDeg = 14) {
+			this.pxPerDeg = pxPerDeg;
+		}
+		get dragging() {
+			return this.held !== 0;
+		}
+		update(f) {
+			const pt = f.pt;
+			if (!pt) return {
+				acts: this.release(),
+				stick: [0, 0]
+			};
+			const acts = [];
+			const prev = this.last;
+			this.last = pt;
+			const [yaw, pitch, , flags, ab] = pt;
+			const relative = (flags & PointerBit.relative) !== 0;
+			const a = (ab & 1) !== 0;
+			const b = (ab & 2) !== 0;
+			const wasA = !!prev && (prev[4] & 1) !== 0;
+			const wasB = !!prev && (prev[4] & 2) !== 0;
+			if (f.locked || relative) {
+				if (this.cursor) {
+					this.cursor = null;
+					acts.push({ type: "hide" });
+				}
+				if (relative && !f.locked) {
+					this.lockAcc.reset();
+					return {
+						acts,
+						stick: [0, 0]
+					};
+				}
+				const [dyaw, dpitch] = prev && prev[2] === pt[2] ? [dAngle(yaw, prev[0]), dAngle(pitch, prev[1])] : [0, 0];
+				const buttons = this.held ? 1 : 0;
+				const [dx, dy] = this.lockAcc.take(dyaw * this.pxPerDeg, -dpitch * this.pxPerDeg);
+				if (dx || dy) acts.push({
+					type: "lock",
+					dx,
+					dy,
+					buttons
+				});
+				if (!relative) this.buttons(acts, a, b, wasA, wasB, 0, 0);
+				return {
+					acts,
+					stick: [0, 0]
+				};
+			}
+			const p = projectPointer(yaw, pitch, f.w, f.h);
+			const x = clamp(Math.round(p.x), 0, Math.max(0, f.w - 1));
+			const y = clamp(Math.round(p.y), 0, Math.max(0, f.h - 1));
+			const [dx, dy] = this.cursor ? this.moveAcc.take(x - this.cursor.x, y - this.cursor.y) : [0, 0];
+			this.cursor = {
+				x,
+				y
+			};
+			if (dx || dy) acts.push(this.held ? {
+				type: "drag",
+				x,
+				y,
+				dx,
+				dy
+			} : {
+				type: "hover",
+				x,
+				y,
+				dx,
+				dy
+			});
+			this.buttons(acts, a, b, wasA, wasB, x, y);
+			acts.push({
+				type: "cursor",
+				x,
+				y,
+				grab: this.held === 2,
+				off: p.off
+			});
+			return {
+				acts,
+				stick: flags & PointerBit.edgeTurn ? edgeTurn(x, y, f.w, f.h) : [0, 0]
+			};
+		}
+		/** A presses and clicks; B holds. Whichever went down first owns the button until it is released. */
+		buttons(acts, a, b, wasA, wasB, x, y) {
+			if (this.held === 1 && !a) {
+				this.held = 0;
+				acts.push({
+					type: "up",
+					x,
+					y,
+					click: true
+				});
+			} else if (this.held === 2 && !b) {
+				this.held = 0;
+				acts.push({
+					type: "up",
+					x,
+					y,
+					click: false
+				});
+			}
+			if (this.held) return;
+			if (a && !wasA) {
+				this.held = 1;
+				acts.push({
+					type: "down",
+					x,
+					y
+				});
+			} else if (b && !wasB) {
+				this.held = 2;
+				acts.push({
+					type: "down",
+					x,
+					y
+				});
+			}
+		}
+		/** Let go: lift a held button and hide the cursor (mode change, lost link, pointer switched off). */
+		release() {
+			const acts = [];
+			const c = this.cursor ?? {
+				x: 0,
+				y: 0
+			};
+			if (this.held) {
+				this.held = 0;
+				acts.push({
+					type: "up",
+					x: c.x,
+					y: c.y,
+					click: false
+				});
+			}
+			if (this.cursor) {
+				this.cursor = null;
+				acts.push({ type: "hide" });
+			}
+			this.last = null;
+			this.lockAcc.reset();
+			this.moveAcc.reset();
+			return acts;
+		}
+	};
 	//#endregion
 	//#region src/shared/viewer.ts
 	/**
@@ -738,14 +973,57 @@
 		return best;
 	}
 	/** Hit-test through open shadow roots, so <model-viewer> and other web components get events on their inner surface. */
-	function deepElementFromPoint(x, y) {
-		let el = document.elementFromPoint(x, y);
+	function deepElementFromPoint(x, y, doc = document) {
+		let el = doc.elementFromPoint(x, y);
 		for (let i = 0; el?.shadowRoot && i < 16; i++) {
 			const inner = el.shadowRoot.elementFromPoint(x, y);
 			if (!inner || inner === el) break;
 			el = inner;
 		}
 		return el;
+	}
+	/**
+	* Hit-test through open shadow roots and into same-origin frames (a cross-origin frame stays the target itself), so a
+	* click at a cursor lands on the element a real mouse would hit. ox/oy turn this window's coordinates into the target
+	* window's: local = (x − ox, y − oy).
+	*/
+	function deepHit(x, y) {
+		let view = window;
+		let doc = document;
+		let ox = 0;
+		let oy = 0;
+		for (let i = 0; i < 8; i++) {
+			const el = deepElementFromPoint(x - ox, y - oy, doc) ?? doc.body ?? doc.documentElement;
+			let inner = null;
+			let win = null;
+			if (el instanceof HTMLIFrameElement || view !== window && el.tagName === "IFRAME" || el.tagName === "FRAME") try {
+				inner = el.contentDocument;
+				win = el.contentWindow;
+			} catch {
+				inner = null;
+			}
+			if (!inner || !win) return {
+				el,
+				view,
+				x: x - ox,
+				y: y - oy,
+				ox,
+				oy
+			};
+			const r = el.getBoundingClientRect();
+			ox += r.left + el.clientLeft;
+			oy += r.top + el.clientTop;
+			view = win;
+			doc = inner;
+		}
+		return {
+			el: doc.body ?? doc.documentElement,
+			view,
+			x: x - ox,
+			y: y - oy,
+			ox,
+			oy
+		};
 	}
 	/** The focused element, looking inside open shadow roots. */
 	function deepActiveElement() {
@@ -755,6 +1033,14 @@
 	}
 	//#endregion
 	//#region src/content/page.ts
+	/**
+	* MAIN-world page script, injected by the service worker into each bridged frame of the controlled tab.
+	* It runs in the page's own JavaScript realm, which is what lets it
+	*   (a) patch navigator.getGamepads with the phone's virtual controller (the @obpal/host shim), and
+	*   (b, c) dispatch pointer, wheel and keyboard events whose legacy fields (keyCode, which) page code can read,
+	*   (d) draw the Wii-style pointer and click, drag or move the mouse where the phone points.
+	* It listens only to its own frame's bridge: same window, same origin, CHANNEL, and the session id it bound to.
+	*/
 	/** Chrome's real mouse is pointer 1, so page calls like setPointerCapture(e.pointerId) keep working. */
 	var POINTER_ID = 1;
 	var ZERO = [0, 0];
@@ -806,7 +1092,8 @@
 				});
 			}
 		};
-		function setPad(p) {
+		/** The pad as the page sees it; `extra` is the pointer's edge turn, added to the right stick. */
+		function setPad(p, extra = ZERO) {
 			if (!shim) shim = {
 				uninstall: installGamepadShim(source),
 				timer: void 0
@@ -819,6 +1106,7 @@
 				return;
 			}
 			seq = seq + 1 & 65535;
+			const [rx, ry] = extra[0] || extra[1] ? addStick([p[3], p[4]], [extra[0], extra[1]]) : [p[3], p[4]];
 			pad = {
 				flags: 0,
 				seq,
@@ -827,8 +1115,8 @@
 				axes: [
 					p[1],
 					p[2],
-					p[3],
-					p[4]
+					rx,
+					ry
 				],
 				triggers: [p[5], p[6]]
 			};
@@ -846,16 +1134,16 @@
 			}, 250);
 		}
 		let compatBlocked = false;
-		function pointer(ptype, mtype, target, x, y, dx, dy, button, buttons, shift = false) {
+		function pointer(ptype, mtype, target, x, y, dx, dy, button, buttons, shift = false, view = window) {
 			const init = {
 				bubbles: true,
 				cancelable: true,
 				composed: true,
-				view: window,
+				view,
 				clientX: x,
 				clientY: y,
-				screenX: window.screenX + x,
-				screenY: window.screenY + Math.max(0, window.outerHeight - window.innerHeight) + y,
+				screenX: view.screenX + x,
+				screenY: view.screenY + Math.max(0, view.outerHeight - view.innerHeight) + y,
 				movementX: dx,
 				movementY: dy,
 				button,
@@ -919,9 +1207,16 @@
 			return area;
 		}
 		function runViewer(f, now) {
+			const d = deltasOf(f.d) ?? (f.pt ? {
+				aim: ZERO,
+				pad1: ZERO,
+				pad2: ZERO,
+				zoom: 0
+			} : null);
+			if (d && f.pt) d.aim = pointerAim(f.pt, lastPt);
 			const motion = viewerMotion({
 				pad: padInput(f.p),
-				deltas: deltasOf(f.d),
+				deltas: d,
 				tilt: f.tl,
 				dtMs: f.dt
 			});
@@ -961,10 +1256,11 @@
 		let dotTimer;
 		function runKeys(f) {
 			const d = f.d;
+			const aim = f.pt ? pointerAim(f.pt, lastPt) : d ? [d[0], d[1]] : ZERO;
 			applyKeys(mapper.update({
 				pad: padInput(f.p),
 				tilt: f.tl,
-				aim: d ? [d[0], d[1]] : ZERO,
+				aim,
 				pad1: d ? [d[2], d[3]] : ZERO,
 				dtMs: f.dt
 			}));
@@ -1059,6 +1355,96 @@
 			dot?.remove();
 			dot = null;
 		}
+		const wii = new PointerMapper();
+		let lastPt = null;
+		let ring = null;
+		let ptrDown = null;
+		/** The pointer this frame: the mapper decides what to do, this fires it. Returns the edge turn for the pad. */
+		function runPointer(pt) {
+			const out = wii.update({
+				pt,
+				w: innerWidth,
+				h: innerHeight,
+				locked: !!document.pointerLockElement
+			});
+			applyActs(out.acts);
+			return out.stick;
+		}
+		function applyActs(acts) {
+			for (const a of acts) if (a.type === "cursor") showRing(a.x, a.y, a.grab, a.off);
+			else if (a.type === "hide") hideRing();
+			else if (a.type === "hover") {
+				const h = deepHit(a.x, a.y);
+				pointer("pointermove", "mousemove", h.el, h.x, h.y, a.dx, a.dy, -1, 0, false, h.view);
+			} else if (a.type === "down") {
+				const h = document.pointerLockElement ? lockHit() : deepHit(a.x, a.y);
+				ptrDown = h;
+				pointer("pointerdown", "mousedown", h.el, h.x, h.y, 0, 0, 0, 1, false, h.view);
+			} else if (a.type === "drag") {
+				const h = ptrDown?.el.isConnected ? ptrDown : deepHit(a.x, a.y);
+				pointer("pointermove", "mousemove", h.el, a.x - h.ox, a.y - h.oy, a.dx, a.dy, -1, 1, false, h.view);
+			} else if (a.type === "up") {
+				const h = ptrDown?.el.isConnected ? ptrDown : document.pointerLockElement ? lockHit() : deepHit(a.x, a.y);
+				const x = a.x - h.ox;
+				const y = a.y - h.oy;
+				const init = pointer("pointerup", "mouseup", h.el, x, y, 0, 0, 0, 0, false, h.view);
+				if (a.click && (document.pointerLockElement || h.el.contains(deepHit(a.x, a.y).el))) h.el.dispatchEvent(new MouseEvent("click", {
+					...init,
+					button: 0,
+					buttons: 0,
+					detail: 1
+				}));
+				ptrDown = null;
+			} else if (a.type === "lock") {
+				const h = lockHit();
+				pointer("pointermove", "mousemove", h.el, h.x, h.y, a.dx, a.dy, -1, a.buttons, false, h.view);
+			}
+		}
+		/** Under pointer lock every mouse event goes to the element that captured the mouse. */
+		function lockHit() {
+			return {
+				el: document.pointerLockElement ?? document.body ?? document.documentElement,
+				view: window,
+				x: Math.round(innerWidth / 2),
+				y: Math.round(innerHeight / 2),
+				ox: 0,
+				oy: 0
+			};
+		}
+		/** The Wii cursor: a lime ring with a dot, filled while B holds, dimmed while the phone points off-screen. */
+		function showRing(x, y, grab, off) {
+			if (!(document.documentElement instanceof HTMLElement)) return;
+			if (!ring) {
+				ring = document.createElement("obpal-link-pointer");
+				for (const [k, v] of Object.entries({
+					position: "fixed",
+					left: "0",
+					top: "0",
+					width: "26px",
+					height: "26px",
+					margin: "-13px 0 0 -13px",
+					display: "block",
+					"box-sizing": "border-box",
+					"border-radius": "50%",
+					border: "3px solid #c6ff34",
+					background: "radial-gradient(circle, #c6ff34 0 3px, transparent 3.5px)",
+					"box-shadow": "0 0 0 2px rgba(10,10,10,.8), inset 0 0 0 2px rgba(10,10,10,.8), 0 0 16px rgba(198,255,52,.7)",
+					"pointer-events": "none",
+					"z-index": "2147483647",
+					transition: "opacity .2s, background .12s, border-width .12s",
+					"will-change": "transform"
+				})) ring.style.setProperty(k, v, "important");
+				document.documentElement.appendChild(ring);
+			}
+			ring.style.setProperty("transform", `translate(${x}px, ${y}px)${off ? " scale(.7)" : ""}`, "important");
+			ring.style.setProperty("opacity", off ? "0.45" : "1", "important");
+			ring.style.setProperty("background", grab ? "#c6ff34" : "radial-gradient(circle, #c6ff34 0 3px, transparent 3.5px)", "important");
+			ring.dataset.grab = grab ? "1" : "0";
+		}
+		function hideRing() {
+			ring?.remove();
+			ring = null;
+		}
 		function onFrame(f) {
 			const now = performance.now();
 			lastFrameAt = now;
@@ -1067,9 +1453,10 @@
 				release();
 				mode = next;
 			}
-			if (mode === "gamepad") setPad(f.p);
+			if (mode === "gamepad") setPad(f.p, runPointer(f.pt ?? null));
 			else if (mode === "viewer") runViewer(f, now);
 			else runKeys(f);
+			lastPt = f.pt ?? null;
 			if (watchdog === void 0) watchdog = setInterval(checkStale, 250);
 		}
 		/** Frames only stop when the link is gone, so release held input rather than leave keys or buttons stuck. */
@@ -1079,13 +1466,16 @@
 			clearInterval(watchdog);
 			watchdog = void 0;
 		}
-		/** Let go of everything held in any mode: keys, mouse buttons, a drag, the virtual pad. */
+		/** Let go of everything held in any mode: keys, mouse buttons, a drag, the pointer, the virtual pad. */
 		function release() {
 			fire(synth.reset());
 			applyKeys(mapper.releaseAll());
+			applyActs(wii.release());
+			lastPt = null;
 			mods = NO_MODS;
 			if (pad || shim) dropPad();
 			hideCursor();
+			hideRing();
 		}
 		function onMessage(e) {
 			if (e.source !== window || e.origin !== origin) return;
@@ -1099,7 +1489,7 @@
 				}
 				post({
 					t: "ready",
-					v: 1
+					v: 2
 				});
 				return;
 			}
@@ -1115,13 +1505,13 @@
 		addEventListener("message", onMessage, true);
 		post({
 			t: "loaded",
-			v: 1
+			v: 2
 		}, "");
 		return {
-			version: 1,
+			version: 2,
 			announce: () => post({
 				t: "loaded",
-				v: 1
+				v: 2
 			}, ""),
 			destroy: () => {
 				release();
@@ -1135,7 +1525,7 @@
 	var HANDLE = Symbol.for("obpal-link.page");
 	var slot = window;
 	var existing = slot[HANDLE];
-	if (existing?.version === 1) existing.announce();
+	if (existing?.version === 2) existing.announce();
 	else {
 		existing?.destroy?.();
 		slot[HANDLE] = createPage();

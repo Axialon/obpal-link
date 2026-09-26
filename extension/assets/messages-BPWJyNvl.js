@@ -85,6 +85,32 @@ async function bindMac(secret, fpDevice, fpHost, roomId) {
 	const sig = await crypto.subtle.sign("HMAC", key, concat(fpDevice, fpHost, enc.encode(roomId)));
 	return b64url(new Uint8Array(sig));
 }
+/** Standard-mapping button indices (https://w3c.github.io/gamepad/#remapping). */
+var PadButton = {
+	A: 0,
+	B: 1,
+	X: 2,
+	Y: 3,
+	LB: 4,
+	RB: 5,
+	LT: 6,
+	RT: 7,
+	View: 8,
+	Menu: 9,
+	L3: 10,
+	R3: 11,
+	Up: 12,
+	Down: 13,
+	Left: 14,
+	Right: 15,
+	Guide: 16
+};
+/** flags: b0 gyro aim is on, b1 tilt steering is on, b2 the Wii-style pointer is on (POINTER packets follow). */
+var PadFlag = {
+	gyroAim: 1,
+	tiltSteer: 2,
+	point: 4
+};
 function decodePad(buf) {
 	if (buf.byteLength < 24) return null;
 	const dv = new DataView(buf);
@@ -103,8 +129,30 @@ function decodePad(buf) {
 		triggers: [dv.getUint8(20) / 255, dv.getUint8(21) / 255]
 	};
 }
-/** Packet type from the first byte (0x11 STATE, 0x12 PAD, …) without decoding. */
+/** Packet type from the first byte (0x11 STATE, 0x12 PAD, 0x14 POINTER, …) without decoding. */
 var packetType = (buf) => buf.byteLength ? new DataView(buf).getUint8(0) : 0;
+//#endregion
+//#region ../packages/core/src/catalogue.ts
+var Utility = {
+	pad: "pad",
+	aim: "motion.aim",
+	steer: "motion.steer",
+	point: "motion.point",
+	trackpad: "touch.trackpad",
+	hold: "motion.hold",
+	tilt: "motion.tilt"
+};
+Utility.aim, Utility.steer, Utility.point;
+var u = (route, over = {}) => ({
+	route,
+	gain: 1,
+	curve: 1,
+	deadzone: .2,
+	invertY: false,
+	edgeTurn: false,
+	...over
+});
+u("stick.right"), u("stick.wheel"), u("pointer"), u("stick.right"), u("stick.fly"), u("pointer"), u("stick.right"), u("stick.wheel"), u("pointer"), u("mouse"), u("stick.wheel"), u("pointer", { edgeTurn: true }), u("stick.right"), u("stick.wheel"), u("pointer");
 //#endregion
 //#region src/shared/math.ts
 /** Small numeric helpers shared by the key and 3D mappers. Pure. */
@@ -145,7 +193,8 @@ function parseFromPage(x) {
 	if (x.t === "rep" && typeof x.focus === "boolean" && within(x.area, 0, 1e9)) return {
 		t: "rep",
 		focus: x.focus,
-		area: Math.round(x.area)
+		area: Math.round(x.area),
+		lock: x.lock === true
 	};
 	if (x.t === "rumble") return sanitizeRumble(x.s, x.w, x.ms);
 	return null;
@@ -248,4 +297,4 @@ var ALLOWED_SENDERS = {
 };
 var allowedFrom = (type, kind) => ALLOWED_SENDERS[type].includes(kind);
 //#endregion
-export { isTargetMode as C, TARGET_MODES as S, APP_NAME as _, parseLink as a, PORT_NAME as b, decodePad as c, certFingerprint as d, encodePairing as f, sdpFingerprint as g, roomIdFor as h, parseFromPage as i, packetType as l, newSecret as m, parseBgRequest as n, parseOffscreenRequest as o, equalBytes as p, parseConfig as r, senderKind as s, allowedFrom as t, bindMac as u, DEFAULT_MODE as v, SERVICE as x, MIN_VIEW_AREA as y };
+export { SERVICE as C, PORT_NAME as S, isTargetMode as T, roomIdFor as _, parseLink as a, DEFAULT_MODE as b, PadButton as c, packetType as d, bindMac as f, newSecret as g, equalBytes as h, parseFromPage as i, PadFlag as l, encodePairing as m, parseBgRequest as n, parseOffscreenRequest as o, certFingerprint as p, parseConfig as r, senderKind as s, allowedFrom as t, decodePad as u, sdpFingerprint as v, TARGET_MODES as w, MIN_VIEW_AREA as x, APP_NAME as y };

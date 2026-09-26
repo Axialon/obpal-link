@@ -54,6 +54,16 @@ To update, replace the folder with the new release, then click the reload icon o
 - Rumble (`vibrationActuator.playEffect('dual-rumble', …)`) vibrates the phone.
 - The phone must be in its **Gamepad** mode.
 
+**Motion.** The phone's Motion chips follow the [control catalogue](https://github.com/Axialon/obpal/blob/main/spec/CATALOGUE.md). Hold a chip for its options (route, sensitivity, deadzone jump, invert Y). The profile pill picks a profile: Default, Flight, Driving, Shooter or Pointer. Some sites suggest one (tesana.com suggests Flight), and your own choice always wins.
+
+| Utility | Page receives |
+|---|---|
+| **Aim** (gyro turn rate) | Right-stick values that clear the game's deadzone with a small turn; with Shooter, mouse movement under pointer lock |
+| **Steer** (tilt angle) | Flight: tilt = right-stick X and tip = right-stick Y, like a yoke. Default and Driving: tilt = left-stick X, like a wheel |
+| **Point** (Wii-style) | A lime cursor where the phone points. A clicks under it and holding B drags, through frames and open shadow roots. Under pointer lock it becomes mouse movement |
+
+While A or B click at the cursor, they don't also reach the game as gamepad buttons.
+
 ### 3D
 
 The target is the largest visible canvas or `<model-viewer>` in the page.
