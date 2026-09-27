@@ -1,6 +1,6 @@
 import { n as renderSVG } from "./dist-lkpp0okm.js";
-import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-Cfu-Uw6O.js";
-import { G as isTargetMode, W as TARGET_MODES, a as parseLink, c as workerStale, z as DEFAULT_MODE } from "./messages-C4kzpYnI.js";
+import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-oOncADSv.js";
+import { G as isTargetMode, W as TARGET_MODES, a as parseLink, c as workerStale, z as DEFAULT_MODE } from "./messages-Cj9v-zYH.js";
 import { h as scopeLabel, m as pcView, n as EMPTY_PC, p as parsePcState, t as DESKTOP_URL } from "./native-CYWtXzmG.js";
 //#region src/popup/popup.ts
 /**

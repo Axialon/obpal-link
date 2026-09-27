@@ -544,7 +544,8 @@ function parseOffscreenRequest(x) {
 	return x.type === "config" && cfg ? {
 		to: "offscreen",
 		type: "config",
-		...cfg
+		...cfg,
+		...x.desktop === true ? { desktop: true } : {}
 	} : null;
 }
 /** The routing config the offscreen link needs: which tab is controlled and in which mode. */

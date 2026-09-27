@@ -1,4 +1,4 @@
-import { A as lanAnswerSdp, C as bindMac, D as encodePairing, E as encodeLanPairing, F as readLocalIce, G as isTargetMode, I as roomIdFor, L as sdpFingerprint, M as lanIceCredentials, N as newSecret, O as equalBytes, P as randomBytes, R as APP_NAME, S as b64url, T as certFingerprint, U as SERVICE, V as PAGE_MODES, _ as packetType, b as loadCertificate, d as clamp$1, f as hysteresis, g as decodePad, h as PadFlag, i as parseFromPage, j as lanContext, k as fromB64url, l as Accum, m as PadButton, o as parseOffscreenRequest, p as stickCurve, r as parseConfig, u as buttonValue, v as forgetPair, w as candidatesOf, x as putPair, y as listPairs, z as DEFAULT_MODE } from "./messages-C4kzpYnI.js";
+import { A as lanAnswerSdp, C as bindMac, D as encodePairing, E as encodeLanPairing, F as readLocalIce, G as isTargetMode, I as roomIdFor, L as sdpFingerprint, M as lanIceCredentials, N as newSecret, O as equalBytes, P as randomBytes, R as APP_NAME, S as b64url, T as certFingerprint, U as SERVICE, V as PAGE_MODES, _ as packetType, b as loadCertificate, d as clamp$1, f as hysteresis, g as decodePad, h as PadFlag, i as parseFromPage, j as lanContext, k as fromB64url, l as Accum, m as PadButton, o as parseOffscreenRequest, p as stickCurve, r as parseConfig, u as buttonValue, v as forgetPair, w as candidatesOf, x as putPair, y as listPairs, z as DEFAULT_MODE } from "./messages-Cj9v-zYH.js";
 import { a as NATIVE_PORT_NAME, c as heldSignature, l as isIdleFrame, r as HeldState, s as buildNativeFrame } from "./native-CYWtXzmG.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
@@ -704,6 +704,8 @@ var Remote = class Remote {
 			join: [],
 			leave: [],
 			button: [],
+			text: [],
+			toss: [],
 			value: [],
 			mode: [],
 			recenter: [],
@@ -1128,6 +1130,17 @@ var Remote = class Remote {
 					ev: m.ev
 				}, who);
 				break;
+			case "text": {
+				const del = m.del ?? 0;
+				if (typeof m.s === "string" && m.s.length <= 256 && Number.isInteger(del) && del >= 0 && del <= 256 && (m.s || del)) this.emit("text", {
+					s: m.s,
+					del
+				}, who);
+				break;
+			}
+			case "toss":
+				if (typeof m.v === "number" && m.v > 0 && m.v <= 4) this.emit("toss", { v: m.v }, who);
+				break;
 			case "value":
 				this.emit("value", {
 					id: m.id,
@@ -1496,6 +1509,51 @@ var DEFAULT_KEYS = {
 	},
 	tiltMoves: true
 };
+/**
+* The whole PC (ob.Pal Desktop's whole-PC mode): a controller for the desktop, the way Gopher360 and Steam's desktop
+* layout work, that types no letters into whatever has focus. Left stick: the pointer. Right stick: scroll. A or RT:
+* click (held, it drags). X or LT: right-click. Left stick press: middle click. B: Esc. Y: Enter. D-pad: arrows.
+* LB / RB: back / forward (Alt+Left / Alt+Right). Menu: the Start menu (Ctrl+Esc). View: the last app (Alt+Tab).
+*/
+var DESKTOP_KEYS = {
+	move: null,
+	buttons: {
+		B: "Escape",
+		Y: "Enter",
+		Up: "ArrowUp",
+		Down: "ArrowDown",
+		Left: "ArrowLeft",
+		Right: "ArrowRight",
+		LB: ["AltLeft", "ArrowLeft"],
+		RB: ["AltLeft", "ArrowRight"],
+		Menu: ["ControlLeft", "Escape"],
+		View: ["AltLeft", "Tab"]
+	},
+	mouse: {
+		stick: "left",
+		speed: 1400,
+		deadzone: .14,
+		expo: 2,
+		aimGain: 14,
+		padGain: 1.5,
+		buttons: {
+			A: 0,
+			RT: 0,
+			X: 2,
+			LT: 2,
+			L3: 1
+		},
+		press: .5,
+		release: .35
+	},
+	scroll: {
+		stick: "right",
+		speed: 2400,
+		deadzone: .18,
+		expo: 1.8
+	},
+	tiltMoves: false
+};
 var MOD_OF = {
 	ShiftLeft: "shift",
 	ControlLeft: "ctrl",
@@ -1518,12 +1576,10 @@ var KeyMapper = class {
 		left: false,
 		right: false
 	};
-	trig = {
-		LT: false,
-		RT: false
-	};
+	trig = {};
 	mouseHeld = /* @__PURE__ */ new Set();
 	acc = new Accum();
+	wheelCarry = [0, 0];
 	constructor(cfg = DEFAULT_KEYS) {
 		this.cfg = cfg;
 	}
@@ -1540,25 +1596,27 @@ var KeyMapper = class {
 		return m;
 	}
 	update(input) {
-		const { move, buttons, mouse } = this.cfg;
+		const { move, buttons, mouse, scroll } = this.cfg;
 		const pad = input.pad;
 		const stick = pad ? [pad.axes[0], pad.axes[1]] : this.cfg.tiltMoves && input.tilt ? input.tilt : [0, 0];
-		this.dir.up = hysteresis(this.dir.up, -stick[1], move.press, move.release);
-		this.dir.down = hysteresis(this.dir.down, stick[1], move.press, move.release);
-		this.dir.left = hysteresis(this.dir.left, -stick[0], move.press, move.release);
-		this.dir.right = hysteresis(this.dir.right, stick[0], move.press, move.release);
 		const want = /* @__PURE__ */ new Set();
-		for (const d of DIRS) if (this.dir[d]) want.add(move[d]);
-		if (pad) {
-			for (const [name, key] of Object.entries(buttons)) if (key && buttonValue(pad, PadButton[name]) >= .5) want.add(key);
+		if (move) {
+			this.dir.up = hysteresis(this.dir.up, -stick[1], move.press, move.release);
+			this.dir.down = hysteresis(this.dir.down, stick[1], move.press, move.release);
+			this.dir.left = hysteresis(this.dir.left, -stick[0], move.press, move.release);
+			this.dir.right = hysteresis(this.dir.right, stick[0], move.press, move.release);
+			for (const d of DIRS) if (this.dir[d]) want.add(move[d]);
+		}
+		if (pad) for (const [name, key] of Object.entries(buttons)) {
+			if (!key || buttonValue(pad, PadButton[name]) < .5) continue;
+			for (const one of typeof key === "string" ? [key] : key) want.add(one);
 		}
 		const keys = this.diff(want);
 		const wantBtn = /* @__PURE__ */ new Set();
-		for (const t of ["LT", "RT"]) {
-			const b = mouse.buttons[t];
-			const v = pad ? buttonValue(pad, PadButton[t]) : 0;
-			this.trig[t] = hysteresis(this.trig[t], v, mouse.press, mouse.release);
-			if (this.trig[t] && b !== void 0) wantBtn.add(b);
+		for (const [name, b] of Object.entries(mouse.buttons)) {
+			const v = pad ? buttonValue(pad, PadButton[name]) : 0;
+			this.trig[name] = hysteresis(!!this.trig[name], v, mouse.press, mouse.release);
+			if (this.trig[name] && b !== void 0) wantBtn.add(b);
 		}
 		const btnEdges = [];
 		for (const b of [...this.mouseHeld]) if (!wantBtn.has(b)) {
@@ -1578,14 +1636,24 @@ var KeyMapper = class {
 		const dt = clamp$1(input.dtMs, 0, 100) / 1e3;
 		let dx = -input.aim[0] * mouse.aimGain + input.pad1[0] * mouse.padGain;
 		let dy = -input.aim[1] * mouse.aimGain + input.pad1[1] * mouse.padGain;
-		if (pad) {
-			dx += stickCurve(pad.axes[2], mouse.deadzone, mouse.expo) * mouse.speed * dt;
-			dy += stickCurve(pad.axes[3], mouse.deadzone, mouse.expo) * mouse.speed * dt;
+		const axes = (s) => pad ? s === "left" ? [pad.axes[0], pad.axes[1]] : [pad.axes[2], pad.axes[3]] : [0, 0];
+		const aim = axes(mouse.stick ?? "right");
+		dx += stickCurve(aim[0], mouse.deadzone, mouse.expo) * mouse.speed * dt;
+		dy += stickCurve(aim[1], mouse.deadzone, mouse.expo) * mouse.speed * dt;
+		const wheel = [0, 0];
+		if (scroll) {
+			const s = axes(scroll.stick);
+			for (const i of [0, 1]) {
+				const v = stickCurve(s[i], scroll.deadzone, scroll.expo) * scroll.speed * dt + this.wheelCarry[i];
+				wheel[i] = Math.trunc(v) || 0;
+				this.wheelCarry[i] = v - wheel[i];
+			}
 		}
 		return {
 			keys,
 			move: this.acc.take(dx, dy),
-			buttons: btnEdges
+			buttons: btnEdges,
+			wheel
 		};
 	}
 	/** Release everything (mode change, lost link, deactivation). */
@@ -1602,15 +1670,14 @@ var KeyMapper = class {
 			left: false,
 			right: false
 		};
-		this.trig = {
-			LT: false,
-			RT: false
-		};
+		this.trig = {};
 		this.acc.reset();
+		this.wheelCarry = [0, 0];
 		return {
 			keys,
 			move: [0, 0],
-			buttons
+			buttons,
+			wheel: [0, 0]
 		};
 	}
 	/** Edges from the held set to `want`: releases first (modifiers last), then presses (modifiers first). */
@@ -1643,6 +1710,8 @@ var SCROLL_PER_PX = 2.4;
 /** Pinch (log2) per zoom step: a pinch to double the finger spread zooms three steps. */
 var PINCH_PER_NOTCH = 1 / 3;
 var NOTCH = 120;
+/** The most the wheel may turn between two ticks (units): a stalled link catching up doesn't fling the page. */
+var WHEEL_MAX = 4800;
 /** A flick keeps scrolling after the fingers lift when faster than this (units/ms), fading with this time constant (ms). */
 var FLING_MIN = .6;
 var FLING_TAU = 330;
@@ -1658,6 +1727,10 @@ var PcGestures = class {
 	hold = null;
 	/** Point's B held: aiming scrolls. */
 	grab = false;
+	/** The mouse face's Left (0) and Right (2) while down: held still where they went down until they mean something. */
+	press = {};
+	/** Wheel units the mouse face's wheel turned since the last tick (+ scrolls down). */
+	turn = 0;
 	/** The two-finger gesture while fingers are down. */
 	two = null;
 	pinchAcc = 0;
@@ -1699,6 +1772,26 @@ var PcGestures = class {
 				if (ev === "down") this.grab = true;
 				else if (ev === "up") this.grab = false;
 				return;
+			case "mouse-left":
+			case "mouse-right": {
+				const b = id === "mouse-left" ? 0 : 2;
+				if (ev === "down") this.press[b] ??= {
+					at: now,
+					dx: 0,
+					dy: 0,
+					drag: false,
+					held: false
+				};
+				else if (ev === "up") {
+					const p = this.press[b];
+					if (p && !p.drag && !p.held) this.queue.push(b);
+					delete this.press[b];
+				}
+				return;
+			}
+			case "mouse-middle":
+				if (ev === "tap") this.queue.push(1);
+				return;
 			case "wii-plus":
 				if (ev === "tap") this.steps -= 1;
 				return;
@@ -1706,6 +1799,12 @@ var PcGestures = class {
 				if (ev === "tap") this.steps += 1;
 				return;
 		}
+	}
+	/** The mouse face's wheel turned: wheel units, 120 a notch, + scrolls down. */
+	wheel(units) {
+		if (!Number.isFinite(units)) return;
+		this.fling = null;
+		this.turn = Math.max(-4800, Math.min(WHEEL_MAX, this.turn + units));
 	}
 	tick(t) {
 		const dt = this.last ? Math.min(100, Math.max(1, t.now - this.last)) : 16;
@@ -1741,6 +1840,20 @@ var PcGestures = class {
 				}
 			}
 			if (a.drag) held.add(0);
+		}
+		for (const b of [0, 2]) {
+			const p = this.press[b];
+			if (!p) continue;
+			if (!p.drag && !p.held) {
+				p.dx += out.move[0];
+				p.dy += out.move[1];
+				out.move = [0, 0];
+				if (Math.hypot(p.dx, p.dy) > 12) {
+					p.drag = true;
+					out.move = [p.dx, p.dy];
+				} else if (t.now - p.at >= 450) p.held = true;
+			}
+			if (p.drag || p.held) held.add(b);
 		}
 		const h = this.hold;
 		if (h) {
@@ -1820,6 +1933,8 @@ var PcGestures = class {
 			wheel[1] += Math.sign(this.steps) * NOTCH;
 			this.steps -= Math.sign(this.steps);
 		}
+		wheel[1] += this.turn;
+		this.turn = 0;
 		if (this.grab) {
 			wheel[0] -= out.move[0] * 2;
 			wheel[1] -= out.move[1] * 2;
@@ -1846,7 +1961,7 @@ var PcGestures = class {
 	}
 	/** Something is going on that needs frames even without phone input: a click, a drag, a flick, a zoom step. */
 	get busy() {
-		return !!(this.click || this.queue.length || this.a?.drag || this.hold?.drag || this.grab || this.fling || this.steps || this.a);
+		return !!(this.click || this.queue.length || this.a?.drag || this.hold?.drag || this.grab || this.fling || this.steps || this.a || this.press[0] || this.press[2] || this.turn);
 	}
 	/** Let go of everything: the phone went away, or the PC target was left. */
 	reset() {
@@ -1855,6 +1970,8 @@ var PcGestures = class {
 		this.a = null;
 		this.hold = null;
 		this.grab = false;
+		this.press = {};
+		this.turn = 0;
 		this.two = null;
 		this.pinchAcc = 0;
 		this.steps = 0;
@@ -2084,11 +2201,18 @@ var layout = {
 		]
 	}]
 };
-/** The layout with the site's suggested catalogue profile (CATALOGUE §3), when the table has one. */
-var layoutFor = (profile) => profile ? {
+/**
+* The layout with the site's suggested catalogue profile (CATALOGUE §3), when the table has one. The PC target gets
+* the mouse face in Point (Left, Right and a wheel instead of A and B) and a scroll wheel on the trackpad.
+*/
+var layoutFor = (profile) => ({
 	...layout,
-	profile
-} : layout;
+	...profile ? { profile } : {},
+	...config.mode === "pc" ? {
+		point: "mouse",
+		wheel: true
+	} : {}
+});
 var remote = null;
 var config = {
 	tabId: null,
@@ -2122,7 +2246,7 @@ chrome.runtime.onMessage.addListener((raw, sender, respond) => {
 	if (!req) return;
 	switch (req.type) {
 		case "config":
-			applyConfig(req.tabId, req.mode);
+			applyConfig(req.tabId, req.mode, req.desktop === true);
 			break;
 		case "unpair":
 			remote?.disconnect();
@@ -2163,13 +2287,18 @@ chrome.runtime.onConnect.addListener((port) => {
 	port.onDisconnect.addListener(() => forget(link));
 	syncSuggestion();
 });
-function applyConfig(tabId, mode) {
+function applyConfig(tabId, mode, desktop = false) {
 	const modeChanged = mode !== config.mode;
 	config = {
 		tabId,
 		mode
 	};
 	configured = true;
+	const keys = desktop ? DESKTOP_KEYS : DEFAULT_KEYS;
+	if (pc.mapper.cfg !== keys) {
+		pc.held.apply(pc.mapper.releaseAll());
+		pc.mapper.cfg = keys;
+	}
 	for (const l of [...links]) {
 		if (l.tabId === tabId) continue;
 		forget(l);
@@ -2181,6 +2310,7 @@ function applyConfig(tabId, mode) {
 		for (const l of links) l.sig = "";
 		if (mode !== "pc") pcLetGo();
 		remote?.setValues({ target: mode });
+		remote?.setLayout(layoutFor(suggested));
 	}
 	syncSuggestion();
 }
@@ -2257,7 +2387,7 @@ function pcTick(f, pad, ptr, now) {
 		pinch: f.zoom
 	});
 	if (g.buzz) remote?.rumble(BUZZ.strong, BUZZ.weak, BUZZ.ms);
-	const frame = buildNativeFrame(pc.held, g.move, g.wheel, {
+	const frame = buildNativeFrame(pc.held, g.move, [g.wheel[0] + out.wheel[0], g.wheel[1] + out.wheel[1]], {
 		buttons: g.buttons,
 		keys: g.ctrl ? CTRL : []
 	});
@@ -2464,6 +2594,10 @@ async function boot() {
 			type: "mode",
 			mode: v
 		});
+		else if (id === "mouse-wheel" && typeof v === "number" && config.mode === "pc") {
+			pc.gestures.wheel(v);
+			tick();
+		}
 	});
 	report();
 	const cfg = parseConfig(await toBg({

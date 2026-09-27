@@ -1,4 +1,4 @@
-import { G as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom, z as DEFAULT_MODE } from "./assets/messages-C4kzpYnI.js";
+import { G as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom, z as DEFAULT_MODE } from "./assets/messages-Cj9v-zYH.js";
 import { d as parseNativeFrame, g as toHelperRequest, i as NATIVE_HOST, n as EMPTY_PC, u as parseHelperMessage } from "./assets/native-CYWtXzmG.js";
 //#region src/native.ts
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
@@ -18,6 +18,12 @@ var NativeBridge = class {
 	pages = 0;
 	retries = 0;
 	retryTimer;
+	/** Called when whole-PC control turns on or off. */
+	onDesktop = null;
+	/** ob.Pal Desktop controls the whole PC (not one program). */
+	get desktop() {
+		return !!this.state.config?.desktop;
+	}
 	/** Reconcile with the target mode: connect and arm for PC, disarm (and let go) otherwise. */
 	async sync(mode) {
 		this.wantMode = mode === "pc";
@@ -114,13 +120,16 @@ var NativeBridge = class {
 				});
 				this.arm(this.wantMode);
 				break;
-			case "config":
+			case "config": {
+				const was = this.desktop;
 				this.set({ config: {
 					paused: m.paused,
 					desktop: m.desktop,
 					programs: m.programs
 				} });
+				if (this.desktop !== was) this.onDesktop?.(this.desktop);
 				break;
+			}
 			case "status":
 				this.set({ status: {
 					enabled: m.enabled,
@@ -219,6 +228,7 @@ var SELF = {
 };
 /** The PC target: the native messaging port to ob.Pal Desktop, connected while the target is PC. */
 var native = new NativeBridge();
+native.onDesktop = () => void pushConfig();
 async function controlledTab() {
 	const { tab } = await chrome.storage.session.get("tab");
 	return typeof tab === "number" ? tab : null;
@@ -268,7 +278,8 @@ async function pushConfig() {
 		to: "offscreen",
 		type: "config",
 		tabId,
-		mode
+		mode,
+		desktop: mode === "pc" && native.desktop
 	});
 }
 /** The bridge goes into every frame we may access: the tab's own origin via activeTab, all frames with "All sites". */

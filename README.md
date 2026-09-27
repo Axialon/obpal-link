@@ -103,10 +103,12 @@ The target is the largest visible canvas or `<model-viewer>` in the page.
 |---|---|
 | Trackpad: drag · tap · tap again | move the pointer · click · double-click |
 | hold, then lift · hold, then move | right-click · drag |
-| two fingers · pinch | scroll (a flick carries on) · zoom |
-| Point: aim · A · hold A | move the pointer · click where A went down · right-click |
-| press A and aim away · hold B and aim · + / − | drag · scroll · zoom |
-| Gamepad | the Keys mapping above |
+| two fingers · pinch · the wheel along its edge | scroll (a flick carries on) · zoom · scroll |
+| Point (a mouse, held like a remote): aim · Left · Right | move the pointer · click where it went down · right-click |
+| press Left and aim away · turn the wheel · tap it · hold it and aim | drag · scroll (turned fast, it spins free) · middle-click · scroll |
+| zoom out · centre · zoom in | zoom · re-aim at the centre · zoom |
+| Gamepad, whole PC | left stick: pointer · right stick: scroll · A / RT: click · X / LT: right-click · B: Esc · Y: Enter · D-pad: arrows · LB / RB: back / forward · Menu: Start |
+| Gamepad, one program | the Keys mapping above |
 
 - Nothing reaches the PC until you pick **PC** and turn on the whole PC or allow a program. Manage both in the extension's options, where **Pause all** stops everything.
 - `Ctrl`+`Alt`+`Backspace` stops everything at once. Windows keeps programs running as administrator out of reach.

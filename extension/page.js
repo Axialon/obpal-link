@@ -222,8 +222,9 @@
 	//#endregion
 	//#region src/shared/keys.ts
 	/**
-	* Keys mode: turn a phone controller into keyboard and mouse input for keyboard/mouse web games.
-	* Pure: the mapper returns key and mouse edges; the MAIN-world page script dispatches them.
+	* Keys mode: turn a phone controller into keyboard and mouse input for keyboard/mouse web games, and (DESKTOP_KEYS)
+	* into a desktop controller for the whole PC, which types no letters.
+	* Pure: the mapper returns key and mouse edges; the MAIN-world page script (or ob.Pal Desktop) carries them out.
 	*/
 	var k = (key, code, keyCode, location = 0) => ({
 		key,
@@ -320,12 +321,10 @@
 			left: false,
 			right: false
 		};
-		trig = {
-			LT: false,
-			RT: false
-		};
+		trig = {};
 		mouseHeld = /* @__PURE__ */ new Set();
 		acc = new Accum();
+		wheelCarry = [0, 0];
 		constructor(cfg = DEFAULT_KEYS) {
 			this.cfg = cfg;
 		}
@@ -342,25 +341,27 @@
 			return m;
 		}
 		update(input) {
-			const { move, buttons, mouse } = this.cfg;
+			const { move, buttons, mouse, scroll } = this.cfg;
 			const pad = input.pad;
 			const stick = pad ? [pad.axes[0], pad.axes[1]] : this.cfg.tiltMoves && input.tilt ? input.tilt : [0, 0];
-			this.dir.up = hysteresis(this.dir.up, -stick[1], move.press, move.release);
-			this.dir.down = hysteresis(this.dir.down, stick[1], move.press, move.release);
-			this.dir.left = hysteresis(this.dir.left, -stick[0], move.press, move.release);
-			this.dir.right = hysteresis(this.dir.right, stick[0], move.press, move.release);
 			const want = /* @__PURE__ */ new Set();
-			for (const d of DIRS) if (this.dir[d]) want.add(move[d]);
-			if (pad) {
-				for (const [name, key] of Object.entries(buttons)) if (key && buttonValue(pad, PadButton[name]) >= .5) want.add(key);
+			if (move) {
+				this.dir.up = hysteresis(this.dir.up, -stick[1], move.press, move.release);
+				this.dir.down = hysteresis(this.dir.down, stick[1], move.press, move.release);
+				this.dir.left = hysteresis(this.dir.left, -stick[0], move.press, move.release);
+				this.dir.right = hysteresis(this.dir.right, stick[0], move.press, move.release);
+				for (const d of DIRS) if (this.dir[d]) want.add(move[d]);
+			}
+			if (pad) for (const [name, key] of Object.entries(buttons)) {
+				if (!key || buttonValue(pad, PadButton[name]) < .5) continue;
+				for (const one of typeof key === "string" ? [key] : key) want.add(one);
 			}
 			const keys = this.diff(want);
 			const wantBtn = /* @__PURE__ */ new Set();
-			for (const t of ["LT", "RT"]) {
-				const b = mouse.buttons[t];
-				const v = pad ? buttonValue(pad, PadButton[t]) : 0;
-				this.trig[t] = hysteresis(this.trig[t], v, mouse.press, mouse.release);
-				if (this.trig[t] && b !== void 0) wantBtn.add(b);
+			for (const [name, b] of Object.entries(mouse.buttons)) {
+				const v = pad ? buttonValue(pad, PadButton[name]) : 0;
+				this.trig[name] = hysteresis(!!this.trig[name], v, mouse.press, mouse.release);
+				if (this.trig[name] && b !== void 0) wantBtn.add(b);
 			}
 			const btnEdges = [];
 			for (const b of [...this.mouseHeld]) if (!wantBtn.has(b)) {
@@ -380,14 +381,24 @@
 			const dt = clamp(input.dtMs, 0, 100) / 1e3;
 			let dx = -input.aim[0] * mouse.aimGain + input.pad1[0] * mouse.padGain;
 			let dy = -input.aim[1] * mouse.aimGain + input.pad1[1] * mouse.padGain;
-			if (pad) {
-				dx += stickCurve(pad.axes[2], mouse.deadzone, mouse.expo) * mouse.speed * dt;
-				dy += stickCurve(pad.axes[3], mouse.deadzone, mouse.expo) * mouse.speed * dt;
+			const axes = (s) => pad ? s === "left" ? [pad.axes[0], pad.axes[1]] : [pad.axes[2], pad.axes[3]] : [0, 0];
+			const aim = axes(mouse.stick ?? "right");
+			dx += stickCurve(aim[0], mouse.deadzone, mouse.expo) * mouse.speed * dt;
+			dy += stickCurve(aim[1], mouse.deadzone, mouse.expo) * mouse.speed * dt;
+			const wheel = [0, 0];
+			if (scroll) {
+				const s = axes(scroll.stick);
+				for (const i of [0, 1]) {
+					const v = stickCurve(s[i], scroll.deadzone, scroll.expo) * scroll.speed * dt + this.wheelCarry[i];
+					wheel[i] = Math.trunc(v) || 0;
+					this.wheelCarry[i] = v - wheel[i];
+				}
 			}
 			return {
 				keys,
 				move: this.acc.take(dx, dy),
-				buttons: btnEdges
+				buttons: btnEdges,
+				wheel
 			};
 		}
 		/** Release everything (mode change, lost link, deactivation). */
@@ -404,15 +415,14 @@
 				left: false,
 				right: false
 			};
-			this.trig = {
-				LT: false,
-				RT: false
-			};
+			this.trig = {};
 			this.acc.reset();
+			this.wheelCarry = [0, 0];
 			return {
 				keys,
 				move: [0, 0],
-				buttons
+				buttons,
+				wheel: [0, 0]
 			};
 		}
 		/** Edges from the held set to `want`: releases first (modifiers last), then presses (modifiers first). */
