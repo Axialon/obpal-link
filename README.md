@@ -31,6 +31,8 @@ The Chrome Web Store listing is on its way. Until then, install it from this rep
 
 To update, replace the folder with the new release, then click the reload icon on the extension's card.
 
+Keep the folder where it is, and don't load it from inside the zip or a folder that gets rebuilt: Chrome loads an unpacked extension from that folder every time it starts.
+
 **Updating from 1.1 or earlier:** version 1.2 has a fixed extension ID (so the PC helper can recognise it). Remove the old ob.Pal Link from the extensions page, then load the new folder.
 
 ## Pair and play
@@ -109,6 +111,7 @@ The target is the largest visible canvas or `<model-viewer>` in the page.
 - Nothing reaches the PC until you pick **PC** and turn on the whole PC or allow a program. Manage both in the extension's options, where **Pause all** stops everything.
 - `Ctrl`+`Alt`+`Backspace` stops everything at once. Windows keeps programs running as administrator out of reach.
 - **Updating the helper:** switch ob.Pal Link away from **PC** (or close the browser), then unzip the new version over the old folder.
+- **Removing it:** double-click `uninstall.cmd` in its folder. It removes the helper, its settings and its files, with the browser still open.
 
 The helper isn't code-signed yet, so Windows may warn about it. Its source is in [`desktop/`](https://github.com/Axialon/obpal/tree/main/desktop).
 
