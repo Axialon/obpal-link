@@ -1,5 +1,5 @@
-import { A as lanContext, B as PAGE_MODES, C as candidatesOf, D as equalBytes, E as encodePairing, F as roomIdFor, H as SERVICE, I as sdpFingerprint, L as APP_NAME, M as newSecret, N as randomBytes, O as fromB64url, P as readLocalIce, R as DEFAULT_MODE, S as bindMac, T as encodeLanPairing, W as isTargetMode, _ as forgetPair, b as putPair, c as Accum, d as hysteresis, f as stickCurve, g as packetType, h as decodePad, i as parseFromPage, j as lanIceCredentials, k as lanAnswerSdp, l as buttonValue, m as PadFlag, o as parseOffscreenRequest, p as PadButton, r as parseConfig, u as clamp$1, v as listPairs, w as certFingerprint, x as b64url, y as loadCertificate } from "./messages-DmNWkKJF.js";
-import { a as NATIVE_PORT_NAME, o as buildNativeFrame, r as HeldState, s as isIdleFrame } from "./native-Cu2mF5Lq.js";
+import { A as lanContext, B as PAGE_MODES, C as candidatesOf, D as equalBytes, E as encodePairing, F as roomIdFor, H as SERVICE, I as sdpFingerprint, L as APP_NAME, M as newSecret, N as randomBytes, O as fromB64url, P as readLocalIce, R as DEFAULT_MODE, S as bindMac, T as encodeLanPairing, W as isTargetMode, _ as forgetPair, b as putPair, c as Accum, d as hysteresis, f as stickCurve, g as packetType, h as decodePad, i as parseFromPage, j as lanIceCredentials, k as lanAnswerSdp, l as buttonValue, m as PadFlag, o as parseOffscreenRequest, p as PadButton, r as parseConfig, u as clamp$1, v as listPairs, w as certFingerprint, x as b64url, y as loadCertificate } from "./messages-B_-Maqev.js";
+import { a as NATIVE_PORT_NAME, c as heldSignature, l as isIdleFrame, r as HeldState, s as buildNativeFrame } from "./native-CYWtXzmG.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -1633,6 +1633,236 @@ var KeyMapper = class {
 		});
 	}
 };
+/** A 'tap' this soon after A's own press ended is that press, not another click (ms). */
+var TAP_ECHO_MS = 600;
+/** Which two-finger gesture it is: this much pan (px) or pinch (log2) first. */
+var PAN_LOCK = 10;
+var PINCH_LOCK = .08;
+/** Wheel units per px of two-finger pan (120 units scroll about 100 px, so the page moves about twice the fingers). */
+var SCROLL_PER_PX = 2.4;
+/** Pinch (log2) per zoom step: a pinch to double the finger spread zooms three steps. */
+var PINCH_PER_NOTCH = 1 / 3;
+var NOTCH = 120;
+/** A flick keeps scrolling after the fingers lift when faster than this (units/ms), fading with this time constant (ms). */
+var FLING_MIN = .6;
+var FLING_TAU = 330;
+var FLING_STOP = .04;
+var FLING_MAX_MS = 2500;
+var PcGestures = class {
+	queue = [];
+	click = null;
+	/** Point's A while it is down: where it went down is held until it is a click, a right-click or a drag. */
+	a = null;
+	aEndedAt = -Infinity;
+	/** A trackpad hold ('long'), until the finger lifts. */
+	hold = null;
+	/** Point's B held: aiming scrolls. */
+	grab = false;
+	/** The two-finger gesture while fingers are down. */
+	two = null;
+	pinchAcc = 0;
+	/** Zoom steps asked for with + / −: negative zooms in (wheel up). */
+	steps = 0;
+	vel = [0, 0];
+	fling = null;
+	/** Sub-unit wheel left over from earlier ticks. */
+	carry = [0, 0];
+	last = 0;
+	/** A button event from the phone (Remote 'button'): the trackpad's taps and the Point face's A, B, + and −. */
+	button(id, ev, now) {
+		this.fling = null;
+		switch (id) {
+			case "pad":
+				if (ev === "tap" || ev === "double") this.queue.push(0);
+				else if (ev === "long") this.hold = {
+					dx: 0,
+					dy: 0,
+					drag: false
+				};
+				return;
+			case "wii-a":
+				if (ev === "down") {
+					if (!this.a) this.a = {
+						at: now,
+						dx: 0,
+						dy: 0,
+						decided: false,
+						drag: false
+					};
+				} else if (ev === "up") {
+					if (this.a && !this.a.decided) this.queue.push(0);
+					if (this.a) this.aEndedAt = now;
+					this.a = null;
+				} else if (ev === "tap" && !this.a && now - this.aEndedAt > TAP_ECHO_MS) this.queue.push(0);
+				return;
+			case "wii-b":
+				if (ev === "down") this.grab = true;
+				else if (ev === "up") this.grab = false;
+				return;
+			case "wii-plus":
+				if (ev === "tap") this.steps -= 1;
+				return;
+			case "wii-minus":
+				if (ev === "tap") this.steps += 1;
+				return;
+		}
+	}
+	tick(t) {
+		const dt = this.last ? Math.min(100, Math.max(1, t.now - this.last)) : 16;
+		this.last = t.now;
+		const out = {
+			buttons: [],
+			ctrl: false,
+			move: [t.move[0], t.move[1]],
+			wheel: [0, 0],
+			buzz: false
+		};
+		if (!t.connected) {
+			this.reset();
+			out.move = [0, 0];
+			return out;
+		}
+		const held = /* @__PURE__ */ new Set();
+		const wheel = [0, 0];
+		const a = this.a;
+		if (a) {
+			if (!a.decided) {
+				a.dx += out.move[0];
+				a.dy += out.move[1];
+				out.move = [0, 0];
+				if (Math.hypot(a.dx, a.dy) > 12) {
+					a.decided = true;
+					a.drag = true;
+					out.move = [a.dx, a.dy];
+				} else if (t.now - a.at >= 450) {
+					a.decided = true;
+					this.queue.push(2);
+					out.buzz = true;
+				}
+			}
+			if (a.drag) held.add(0);
+		}
+		const h = this.hold;
+		if (h) {
+			if (!t.touching) {
+				if (!h.drag) this.queue.push(2);
+				this.hold = null;
+			} else {
+				if (!h.drag) {
+					h.dx += out.move[0];
+					h.dy += out.move[1];
+					out.move = [0, 0];
+					if (Math.hypot(h.dx, h.dy) > 6) {
+						h.drag = true;
+						out.move = [h.dx, h.dy];
+					}
+				}
+				if (h.drag) held.add(0);
+			}
+		}
+		if (t.touching) {
+			this.fling = null;
+			const pan = Math.hypot(t.pan[0], t.pan[1]);
+			if (pan || t.pinch) this.two ??= {
+				mode: "none",
+				pan: 0,
+				pinch: 0
+			};
+			const g = this.two;
+			if (g) {
+				if (g.mode === "none") {
+					g.pan += pan;
+					g.pinch += Math.abs(t.pinch);
+					if (g.pinch > PINCH_LOCK) g.mode = "zoom";
+					else if (g.pan > PAN_LOCK) g.mode = "scroll";
+				}
+				if (g.mode === "scroll") {
+					const wx = -t.pan[0] * SCROLL_PER_PX;
+					const wy = -t.pan[1] * SCROLL_PER_PX;
+					wheel[0] += wx;
+					wheel[1] += wy;
+					this.vel = [this.vel[0] * .6 + wx / dt * .4, this.vel[1] * .6 + wy / dt * .4];
+				} else if (g.mode === "zoom") {
+					out.ctrl = true;
+					this.pinchAcc += t.pinch;
+				}
+				if (g.mode !== "none") out.move = [0, 0];
+			}
+		} else {
+			if (this.two?.mode === "scroll" && Math.hypot(this.vel[0], this.vel[1]) > FLING_MIN) this.fling = {
+				vx: this.vel[0],
+				vy: this.vel[1],
+				at: t.now
+			};
+			this.two = null;
+			this.pinchAcc = 0;
+			this.vel = [0, 0];
+		}
+		const f = this.fling;
+		if (f) {
+			const k = Math.exp(-dt / FLING_TAU);
+			f.vx *= k;
+			f.vy *= k;
+			wheel[0] += f.vx * dt;
+			wheel[1] += f.vy * dt;
+			if (Math.hypot(f.vx, f.vy) < FLING_STOP || t.now - f.at > FLING_MAX_MS) this.fling = null;
+		}
+		while (this.pinchAcc >= PINCH_PER_NOTCH) {
+			wheel[1] -= NOTCH;
+			this.pinchAcc -= PINCH_PER_NOTCH;
+		}
+		while (this.pinchAcc <= -.3333333333333333) {
+			wheel[1] += NOTCH;
+			this.pinchAcc += PINCH_PER_NOTCH;
+		}
+		if (this.steps) {
+			out.ctrl = true;
+			wheel[1] += Math.sign(this.steps) * NOTCH;
+			this.steps -= Math.sign(this.steps);
+		}
+		if (this.grab) {
+			wheel[0] -= out.move[0] * 2;
+			wheel[1] -= out.move[1] * 2;
+			out.move = [0, 0];
+		}
+		if (!this.click && this.queue.length) this.click = {
+			button: this.queue.shift(),
+			downAt: t.now,
+			upAt: 0
+		};
+		const c = this.click;
+		if (c) {
+			if (!c.upAt && t.now - c.downAt >= 30) c.upAt = t.now;
+			if (!c.upAt) held.add(c.button);
+			else if (t.now - c.upAt >= 30) this.click = null;
+		}
+		for (const i of [0, 1]) {
+			const v = wheel[i] + this.carry[i];
+			out.wheel[i] = Math.trunc(v) || 0;
+			this.carry[i] = v - out.wheel[i];
+		}
+		out.buttons = [...held].sort();
+		return out;
+	}
+	/** Something is going on that needs frames even without phone input: a click, a drag, a flick, a zoom step. */
+	get busy() {
+		return !!(this.click || this.queue.length || this.a?.drag || this.hold?.drag || this.grab || this.fling || this.steps || this.a);
+	}
+	/** Let go of everything: the phone went away, or the PC target was left. */
+	reset() {
+		this.queue = [];
+		this.click = null;
+		this.a = null;
+		this.hold = null;
+		this.grab = false;
+		this.two = null;
+		this.pinchAcc = 0;
+		this.steps = 0;
+		this.vel = [0, 0];
+		this.fling = null;
+		this.carry = [0, 0];
+	}
+};
 //#endregion
 //#region src/shared/route.ts
 /**
@@ -1798,25 +2028,6 @@ function suggestForFrames(hosts, table = SITE_PROFILES) {
 	return null;
 }
 //#endregion
-//#region src/shared/viewer.ts
-var DEFAULT_VIEWER = {
-	padGain: 1.6,
-	aimGain: 12,
-	stickSpeed: 900,
-	tiltSpeed: 700,
-	panGain: 1.4,
-	panStickSpeed: 700,
-	wheelPerZoom: 480,
-	triggerWheel: 1400,
-	wheelStep: 8,
-	deadzone: .15,
-	tiltDeadzone: .04,
-	triggerDeadzone: .05,
-	expo: 1.5,
-	releaseMs: 120,
-	pan: "right"
-};
-//#endregion
 //#region src/offscreen.ts
 /**
 * Offscreen document (reason WEB_RTC). An MV3 service worker cannot hold an RTCPeerConnection, so the ob.Pal
@@ -1976,11 +2187,21 @@ function applyConfig(tabId, mode) {
 var pc = {
 	mapper: new KeyMapper(),
 	held: new HeldState(),
+	gestures: new PcGestures(),
 	port: null,
 	lastTick: 0,
 	lastSent: 0,
+	/** What the last frame sent held: a change goes out at once, so a release never waits for the heartbeat. */
+	lastSig: "",
 	retryAt: 0,
 	retryMs: 250
+};
+var CTRL = ["ControlLeft"];
+/** A hold that became a right-click buzzes the phone this briefly. */
+var BUZZ = {
+	strong: .5,
+	weak: .3,
+	ms: 45
 };
 function pcPort() {
 	if (pc.port) return pc.port;
@@ -2027,14 +2248,27 @@ function pcTick(f, pad, ptr, now) {
 		dtMs: dt
 	});
 	pc.held.apply(out);
-	const wheel = Math.round(-f.zoom * DEFAULT_VIEWER.wheelPerZoom * 1.2);
-	const frame = buildNativeFrame(pc.held, out.move, [0, wheel]);
-	if (isIdleFrame(frame) && now - pc.lastSent < 250) return;
+	const g = pc.gestures.tick({
+		now,
+		connected: f.connected,
+		touching: f.touching,
+		move: out.move,
+		pan: f.pad2,
+		pinch: f.zoom
+	});
+	if (g.buzz) remote?.rumble(BUZZ.strong, BUZZ.weak, BUZZ.ms);
+	const frame = buildNativeFrame(pc.held, g.move, g.wheel, {
+		buttons: g.buttons,
+		keys: g.ctrl ? CTRL : []
+	});
+	const sig = heldSignature(frame);
+	if (isIdleFrame(frame) && sig === pc.lastSig && now - pc.lastSent < 250) return;
 	const port = pcPort();
 	if (!port) return;
 	try {
 		port.postMessage(frame);
 		pc.lastSent = now;
+		pc.lastSig = sig;
 	} catch {
 		pc.port = null;
 	}
@@ -2043,7 +2277,9 @@ function pcTick(f, pad, ptr, now) {
 function pcLetGo() {
 	pc.mapper.releaseAll();
 	pc.held.clear();
+	pc.gestures.reset();
 	pc.lastTick = 0;
+	pc.lastSig = "";
 	const port = pc.port;
 	pc.port = null;
 	if (!port) return;
@@ -2212,7 +2448,15 @@ async function boot() {
 		report();
 		r.setValues({ target: config.mode });
 	});
-	r.on("disconnect", report);
+	r.on("disconnect", () => {
+		pc.gestures.reset();
+		report();
+	});
+	r.on("button", ({ id, ev }) => {
+		if (config.mode !== "pc") return;
+		pc.gestures.button(id, ev, performance.now());
+		tick();
+	});
 	r.on("input", tick);
 	r.on("value", ({ id, v }) => {
 		if (id === "target" && isTargetMode(v)) toBg({

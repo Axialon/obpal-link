@@ -1,12 +1,14 @@
 # ob.Pal Desktop
 
-The small Windows helper that lets ob.Pal Link press keys and move the mouse in the programs you allow, from your phone.
+The small Windows helper that makes your phone this computer's mouse and keyboard, through ob.Pal Link: in every window, or only the programs you allow.
 
 ## Install
 
 1. Download **[obpal-desktop-windows-x64.zip](https://github.com/Axialon/obpal-link/releases/latest/download/obpal-desktop-windows-x64.zip)**. Unzip it into a folder you'll keep, and double-click `install.cmd`. It registers the helper for Chrome, Chromium, Edge, Brave and Vivaldi, for your Windows user only.
 2. In ob.Pal Link's popup, pick **PC**, and allow the permission it asks for.
-3. Bring the program you want to control to the front, then click **Allow** in the popup.
+3. Click **Control the whole PC**. Or bring one program to the front, come back to the popup and click **Allow**.
+
+To update, switch ob.Pal Link away from **PC** (or close the browser), then unzip the new version over the old folder. Version 0.2 adds the whole PC and clicks; ob.Pal Link 1.3 or later uses them.
 
 The helper isn't code-signed yet, so Windows SmartScreen may warn about it. Choose **More info**, then **Run anyway**.
 
@@ -19,9 +21,9 @@ The helper isn't code-signed yet, so Windows SmartScreen may warn about it. Choo
 
 ## Safety
 
-- Input reaches only the programs you've allowed, only while they're in front, and only the kinds you allowed (keyboard, mouse).
-- Never the browser itself, and never programs running as administrator.
-- `Ctrl`+`Alt`+`Backspace` stops everything, and switching windows releases every held key.
+- Nothing reaches the PC until you turn on the whole PC or allow a program, and only the kinds you chose (keyboard, mouse).
+- One program at a time: input reaches it only while it's in front, and switching windows releases every held key.
+- `Ctrl`+`Alt`+`Backspace` stops everything. Windows keeps programs running as administrator out of reach.
 
 ## Source
 

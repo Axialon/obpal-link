@@ -3,6 +3,8 @@
 var NATIVE_HOST = "net.blackboxes.obpal";
 /** runtime.connect() port the offscreen link opens to the service worker for PC frames. */
 var NATIVE_PORT_NAME = "obpal-link/native";
+/** runtime.connect() port an extension page holds while it shows the helper's state (the options page). */
+var PC_PAGE_PORT_NAME = "obpal-link/pc-page";
 /** Where to get the helper. */
 var DESKTOP_URL = "https://github.com/Axialon/obpal-link/tree/main/desktop#readme";
 var isObj = (x) => typeof x === "object" && x !== null && !Array.isArray(x);
@@ -31,10 +33,12 @@ var HeldState = class {
 };
 var int = (v, max) => Math.max(-max, Math.min(max, Math.round(v))) || 0;
 /** Build a frame from the held state and this frame's motion; empty parts are left out to keep idle frames tiny. */
-function buildNativeFrame(held, move, wheel = [0, 0]) {
+function buildNativeFrame(held, move, wheel = [0, 0], extra = {}) {
 	const f = { t: "f" };
-	if (held.keys.size) f.k = [...held.keys].slice(0, 16);
-	if (held.buttons.size) f.b = [...held.buttons];
+	const keys = /* @__PURE__ */ new Set([...held.keys, ...extra.keys ?? []]);
+	const buttons = /* @__PURE__ */ new Set([...held.buttons, ...extra.buttons ?? []]);
+	if (keys.size) f.k = [...keys].slice(0, 16);
+	if (buttons.size) f.b = [...buttons].sort();
 	const m = [int(move[0], MAX_MOVE), int(move[1], MAX_MOVE)];
 	if (m[0] || m[1]) f.m = m;
 	const w = [int(wheel[0], MAX_WHEEL), int(wheel[1], MAX_WHEEL)];
@@ -42,6 +46,8 @@ function buildNativeFrame(held, move, wheel = [0, 0]) {
 	return f;
 }
 var isIdleFrame = (f) => !f.k && !f.b && !f.m && !f.w;
+/** What a frame holds, to tell a change of held state (sent at once: a release must not wait) from a repeat. */
+var heldSignature = (f) => `${f.k?.join(",") ?? ""}|${f.b?.join(",") ?? ""}`;
 /** Validate a frame from the offscreen document before it goes to the helper (every hop validates). */
 function parseNativeFrame(x) {
 	if (!isObj(x) || x.t !== "f") return null;
@@ -88,6 +94,8 @@ function parseProgram(x) {
 }
 function parsePcConfig(x) {
 	if (!isObj(x) || !bool(x.paused) || !Array.isArray(x.programs) || x.programs.length > MAX_PROGRAMS) return null;
+	const desktop = x.desktop === void 0 || x.desktop === null ? null : parseScope(x.desktop);
+	if (desktop === null && x.desktop !== void 0 && x.desktop !== null) return null;
 	const programs = [];
 	for (const p of x.programs) {
 		if (!isObj(p) || !str(p.path, MAX_PATH) || !str(p.name, 260)) return null;
@@ -101,6 +109,7 @@ function parsePcConfig(x) {
 	}
 	return {
 		paused: x.paused,
+		desktop,
 		programs
 	};
 }
@@ -124,7 +133,7 @@ function parseHelperMessage(x) {
 			if (!Number.isInteger(x.v) || !str(x.version, 32) || !str(x.os, 16) || !isObj(x.caps)) return null;
 			if (x.hotkey !== null && !str(x.hotkey, 40)) return null;
 			const c = x.caps;
-			if (!bool(c.keyboard) || !bool(c.mouse) || !bool(c.gamepad)) return null;
+			if (!bool(c.keyboard) || !bool(c.mouse) || !bool(c.gamepad) || c.desktop !== void 0 && !bool(c.desktop)) return null;
 			return {
 				t: "hello",
 				v: x.v,
@@ -134,7 +143,8 @@ function parseHelperMessage(x) {
 				caps: {
 					keyboard: c.keyboard,
 					mouse: c.mouse,
-					gamepad: c.gamepad
+					gamepad: c.gamepad,
+					desktop: c.desktop === true
 				}
 			};
 		}
@@ -178,6 +188,7 @@ var PC_LINKS = [
 var EMPTY_PC = {
 	link: "off",
 	version: null,
+	desktopCap: false,
 	hotkey: null,
 	error: null,
 	config: null,
@@ -204,6 +215,7 @@ function parsePcState(x) {
 	return {
 		link: x.link,
 		version: x.version,
+		desktopCap: x.desktopCap === true,
 		hotkey: x.hotkey,
 		error: x.error,
 		config,
@@ -228,21 +240,34 @@ function pcView(s) {
 		hotkey: s.hotkey
 	};
 	const st = s.status;
+	const whole = s.config?.desktop;
+	if (whole && (whole.keyboard || whole.mouse)) return {
+		kind: "desktop",
+		scope: whole,
+		front: st?.front ?? null
+	};
+	const desktop = s.desktopCap;
 	const program = st?.front && !st.front.browser ? st.front : st?.program ?? null;
-	if (!program) return { kind: "idle" };
+	if (!program) return {
+		kind: "idle",
+		desktop
+	};
 	if (program.elevated) return {
 		kind: "elevated",
-		program
+		program,
+		desktop
 	};
 	if (!program.allowed) return {
 		kind: "allow",
-		program
+		program,
+		desktop
 	};
 	return {
 		kind: "active",
 		program,
 		scope: program.allowed,
-		inFront: st?.front?.pid === program.pid && !st?.front?.browser
+		inFront: st?.front?.pid === program.pid && !st?.front?.browser,
+		desktop
 	};
 }
 /** "keyboard + mouse", "keyboard", "mouse", or "nothing". */
@@ -272,6 +297,13 @@ function parsePcRequest(x) {
 			type: "pc-forget",
 			path: x.path
 		} : null;
+		case "pc-desktop": return bool(x.on) && bool(x.keyboard) && bool(x.mouse) ? {
+			to: "bg",
+			type: "pc-desktop",
+			on: x.on,
+			keyboard: x.keyboard,
+			mouse: x.mouse
+		} : null;
 		case "pc-pause": return bool(x.on) ? {
 			to: "bg",
 			type: "pc-pause",
@@ -299,6 +331,12 @@ function toHelperRequest(r) {
 			t: "forget",
 			path: r.path
 		};
+		case "pc-desktop": return {
+			t: "desktop",
+			on: r.on,
+			keyboard: r.keyboard,
+			mouse: r.mouse
+		};
 		case "pc-pause": return {
 			t: "pause",
 			on: r.on
@@ -309,4 +347,4 @@ function toHelperRequest(r) {
 	}
 }
 //#endregion
-export { NATIVE_PORT_NAME as a, parseHelperMessage as c, parsePcState as d, pcView as f, NATIVE_HOST as i, parseNativeFrame as l, toHelperRequest as m, EMPTY_PC as n, buildNativeFrame as o, scopeLabel as p, HeldState as r, isIdleFrame as s, DESKTOP_URL as t, parsePcRequest as u };
+export { NATIVE_PORT_NAME as a, heldSignature as c, parseNativeFrame as d, parsePcRequest as f, toHelperRequest as g, scopeLabel as h, NATIVE_HOST as i, isIdleFrame as l, pcView as m, EMPTY_PC as n, PC_PAGE_PORT_NAME as o, parsePcState as p, HeldState as r, buildNativeFrame as s, DESKTOP_URL as t, parseHelperMessage as u };

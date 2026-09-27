@@ -5,7 +5,7 @@ Your phone as a controller for any website. ob.Pal Link is a browser extension (
 - **Controller**: a standard gamepad for any game that uses the Gamepad API, cloud gaming included.
 - **3D**: drag to rotate, two fingers to pan and pinch to zoom, on any 3D viewer in the page.
 - **Keys**: keyboard and mouse input for keyboard games.
-- **PC** (Windows): keyboard and mouse for the desktop programs you allow, through the ob.Pal Desktop helper.
+- **PC** (Windows): your phone as this computer's mouse and keyboard, in every window or only the programs you allow, through the ob.Pal Desktop helper.
 
 A phone you've paired once also connects directly over your Wi-Fi when the internet is down.
 
@@ -95,11 +95,20 @@ The target is the largest visible canvas or `<model-viewer>` in the page.
 
 1. Download **[obpal-desktop-windows-x64.zip](https://github.com/Axialon/obpal-link/releases/latest/download/obpal-desktop-windows-x64.zip)**, unzip it into a folder you'll keep, and double-click `install.cmd`. It registers the helper for Chrome, Chromium, Edge, Brave and Vivaldi, for your Windows user only.
 2. In the popup, pick **PC** and allow the permission it asks for.
-3. Bring the program you want to control to the front, then click **Allow** in the popup.
+3. Click **Control the whole PC**: the phone is the mouse and keyboard of every window, the browser included. Or, one program at a time: bring the program to the front, come back to the popup and click **Allow**.
 
-- Input reaches only programs you've allowed, while they're in front, and only the kinds you allowed (keyboard, mouse). Manage the list in the extension's options.
-- Never the browser itself, and never programs running as administrator.
-- `Ctrl`+`Alt`+`Backspace` stops everything; switching windows releases every held key.
+| Phone | PC |
+|---|---|
+| Trackpad: drag · tap · tap again | move the pointer · click · double-click |
+| hold, then lift · hold, then move | right-click · drag |
+| two fingers · pinch | scroll (a flick carries on) · zoom |
+| Point: aim · A · hold A | move the pointer · click where A went down · right-click |
+| press A and aim away · hold B and aim · + / − | drag · scroll · zoom |
+| Gamepad | the Keys mapping above |
+
+- Nothing reaches the PC until you pick **PC** and turn on the whole PC or allow a program. Manage both in the extension's options, where **Pause all** stops everything.
+- `Ctrl`+`Alt`+`Backspace` stops everything at once. Windows keeps programs running as administrator out of reach.
+- **Updating the helper:** switch ob.Pal Link away from **PC** (or close the browser), then unzip the new version over the old folder.
 
 The helper isn't code-signed yet, so Windows may warn about it. Its source is in [`desktop/`](https://github.com/Axialon/obpal/tree/main/desktop).
 
@@ -130,7 +139,7 @@ The files in [`extension/`](extension) are the complete extension, unminified, e
 - **Cross-origin game frames need All sites.** That includes most itch.io games and many embeds.
 - **Some pages can't be controlled:** browser pages such as `chrome://`, extension stores, and other extensions' pages.
 - One phone and one controlled tab at a time.
-- PC control is Windows only for now, with keyboard and relative mouse (no virtual gamepad yet).
+- PC control is Windows only for now, with keyboard and relative mouse (no virtual gamepad yet). Windows' pointer speed and *Enhance pointer precision* apply to the phone as to a mouse.
 - The direct code needs both devices on the same network, with local network names (mDNS) working. Some Chrome builds are phasing out what the phone side needs, so it can fall back to online-only.
 
 ## Contact

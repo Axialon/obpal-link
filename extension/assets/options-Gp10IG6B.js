@@ -1,9 +1,9 @@
-import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-DRqwoTlq.js";
-import { d as parsePcState, n as EMPTY_PC } from "./native-Cu2mF5Lq.js";
+import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-Cfu-Uw6O.js";
+import { n as EMPTY_PC, o as PC_PAGE_PORT_NAME, p as parsePcState } from "./native-CYWtXzmG.js";
 //#region src/options/options.ts
 /**
-* Options page: the PC allowlist. Every allowed program with its scope (keyboard / mouse), remove, and a
-* global Pause. It renders from storage.session "pc" (mirrored there by the service worker from the helper)
+* Options page: PC control. Whole-PC mode on or off, every allowed program with its scope (keyboard / mouse),
+* remove, and a global Pause. It renders from storage.session "pc" (mirrored there by the service worker from the helper)
 * and asks the worker to change things; the helper is the one that persists them.
 */
 family.setProduct("obpal");
@@ -18,6 +18,11 @@ app.innerHTML = `
     <h1>PC control</h1>
   </header>
   <section class="panel glass" aria-label="All programs">
+    <button class="row" id="whole" type="button" role="switch" aria-checked="false" title="The phone is this PC's mouse and keyboard in every window, not only the programs below">
+      <span class="row-ic">${LINK_ICONS.pc}</span>
+      <span class="row-t"><b>Whole PC</b><small id="whole-t">Every window, not only the programs below</small></span>
+      <span class="sw" aria-hidden="true"><i></i></span>
+    </button>
     <button class="row" id="pause" type="button" role="switch" aria-checked="false" title="Stop all keyboard and mouse input from the phone">
       <span class="row-ic">${LINK_ICONS.pause}</span>
       <span class="row-t"><b>Pause all</b><small>Nothing reaches any program while paused</small></span>
@@ -70,6 +75,11 @@ function render() {
 	const pause = $("pause");
 	pause.setAttribute("aria-checked", String(!!pc.config?.paused));
 	pause.disabled = !ready;
+	const whole = $("whole");
+	const desktop = !!pc.config?.desktop && (pc.config.desktop.keyboard || pc.config.desktop.mouse);
+	whole.setAttribute("aria-checked", String(desktop));
+	whole.disabled = !ready || !pc.desktopCap;
+	$("whole-t").textContent = ready && !pc.desktopCap ? "Needs ob.Pal Desktop 0.2 or later" : "Every window, not only the programs below";
 	const list = $("list");
 	list.replaceChildren();
 	const programs = pc.config?.programs ?? [];
@@ -105,7 +115,7 @@ function render() {
 		if (pc.hotkey) h.querySelector(".hotkey").textContent = pc.hotkey;
 		foot.append(h);
 		const s = document.createElement("span");
-		s.textContent = "Only the program in front receives input, and only the kinds allowed here.";
+		s.textContent = desktop ? "Every window receives input, except those running as administrator: Windows keeps them out of reach." : "Only the program in front receives input, and only the kinds allowed here.";
 		foot.append(s);
 	}
 }
@@ -142,10 +152,7 @@ function noticeFor() {
 function requestPermission() {
 	chrome.permissions.request(NATIVE_PERMISSION).then((granted) => {
 		permission = granted;
-		if (granted) send({
-			to: "bg",
-			type: "pc-connect"
-		});
+		if (granted) chrome.runtime.connect({ name: PC_PAGE_PORT_NAME });
 		render();
 	}, () => render());
 }
@@ -153,6 +160,13 @@ $("pause").addEventListener("click", () => void send({
 	to: "bg",
 	type: "pc-pause",
 	on: !pc.config?.paused
+}));
+$("whole").addEventListener("click", () => void send({
+	to: "bg",
+	type: "pc-desktop",
+	on: !pc.config?.desktop,
+	keyboard: true,
+	mouse: true
 }));
 chrome.storage.onChanged.addListener((changes, area) => {
 	if (area !== "session" || !changes.pc) return;
@@ -164,10 +178,7 @@ async function init() {
 	pc = parsePcState(session.pc) ?? { ...EMPTY_PC };
 	permission = granted;
 	render();
-	if (granted) send({
-		to: "bg",
-		type: "pc-connect"
-	});
+	if (granted) chrome.runtime.connect({ name: PC_PAGE_PORT_NAME });
 }
 init();
 //#endregion

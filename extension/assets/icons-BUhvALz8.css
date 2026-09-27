@@ -477,5 +477,13 @@ a { color: var(--accent-text); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
 
 [data-bb-theme='light'] { --hl-rgb: 15 23 42; }
+/* The family's app switcher, by the logo on every page (its menu is family.js's). */
+.switch-btn { width: 30px; height: 30px; display: grid; place-items: center; flex: none; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; transition: background 0.2s var(--ease), color 0.2s; }
+.switch-btn:hover { background: rgb(var(--hl-rgb) / 0.07); color: var(--ink); }
+.switch-btn[aria-expanded='true'] { color: var(--accent-text); background: rgb(var(--accent-rgb) / 0.12); }
+.switch-btn .bb-ic { width: 18px; height: 18px; transition: transform 0.2s var(--ease); }
+.switch-btn[aria-expanded='true'] .bb-ic { transform: rotate(180deg); }
+.switcher { width: 300px; max-height: min(640px, calc(100vh - 100px)); overflow: auto; }
+
 /* The inline logo mark (icons.ts mountMarks) takes the place the logo image had. */
 .mark-slot { display: inline-grid; flex: none; }

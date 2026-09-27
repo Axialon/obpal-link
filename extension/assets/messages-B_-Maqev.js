@@ -1,4 +1,4 @@
-import { u as parsePcRequest } from "./native-Cu2mF5Lq.js";
+import { f as parsePcRequest } from "./native-CYWtXzmG.js";
 //#region src/shared/constants.ts
 /** Constants shared by every ob.Pal Link context. Pure: nothing here touches chrome.* or the DOM. */
 var APP_NAME = "ob.Pal Link";
@@ -578,6 +578,7 @@ var ALLOWED_SENDERS = {
 	"pc-allow": ["extension"],
 	"pc-scope": ["extension"],
 	"pc-forget": ["extension"],
+	"pc-desktop": ["extension"],
 	"pc-pause": ["extension"],
 	"pc-resume": ["extension"],
 	"pc-stats": ["extension"]

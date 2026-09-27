@@ -1,5 +1,5 @@
-import { R as DEFAULT_MODE, W as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom } from "./assets/messages-DmNWkKJF.js";
-import { c as parseHelperMessage, i as NATIVE_HOST, l as parseNativeFrame, m as toHelperRequest, n as EMPTY_PC } from "./assets/native-Cu2mF5Lq.js";
+import { R as DEFAULT_MODE, W as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom } from "./assets/messages-B_-Maqev.js";
+import { d as parseNativeFrame, g as toHelperRequest, i as NATIVE_HOST, n as EMPTY_PC, u as parseHelperMessage } from "./assets/native-CYWtXzmG.js";
 //#region src/native.ts
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
 var RETRY_MS = [
@@ -14,7 +14,8 @@ var NativeBridge = class {
 	ready = false;
 	armed = false;
 	wantMode = false;
-	wantPage = false;
+	/** Extension pages holding a PC_PAGE_PORT_NAME port. */
+	pages = 0;
 	retries = 0;
 	retryTimer;
 	/** Reconcile with the target mode: connect and arm for PC, disarm (and let go) otherwise. */
@@ -22,10 +23,19 @@ var NativeBridge = class {
 		this.wantMode = mode === "pc";
 		await this.reconcile();
 	}
-	/** An extension page wants the helper (to show or edit the allowlist) whatever the target is. */
+	/** Connect now if the helper is wanted (a Retry, or a page that just opened). */
 	async request() {
-		this.wantPage = true;
+		this.retries = 0;
 		await this.reconcile();
+	}
+	/** An extension page shows the helper's state (the allowlist) whatever the target is: keep it up while it is open. */
+	pageOpened() {
+		this.pages++;
+		this.reconcile();
+	}
+	pageClosed() {
+		this.pages = Math.max(0, this.pages - 1);
+		this.reconcile();
 	}
 	/** An action frame from the offscreen link; dropped unless the helper is up and armed. */
 	frame(f) {
@@ -48,7 +58,7 @@ var NativeBridge = class {
 		};
 	}
 	async reconcile() {
-		if (!this.wantMode && !this.wantPage) return this.drop("off");
+		if (!this.wantMode && !this.pages) return this.drop("off");
 		if (!await chrome.permissions.contains(NATIVE_PERMISSION)) return this.drop("permission");
 		if (!this.port) this.connect();
 		this.arm(this.wantMode);
@@ -98,6 +108,7 @@ var NativeBridge = class {
 				this.set({
 					link: "ready",
 					version: m.version,
+					desktopCap: m.caps.desktop,
 					hotkey: m.hotkey,
 					error: null
 				});
@@ -106,6 +117,7 @@ var NativeBridge = class {
 			case "config":
 				this.set({ config: {
 					paused: m.paused,
+					desktop: m.desktop,
 					programs: m.programs
 				} });
 				break;
@@ -150,7 +162,7 @@ var NativeBridge = class {
 			error: msg || (wasReady ? "The helper stopped." : "The helper did not answer."),
 			status: null
 		});
-		if ((this.wantMode || this.wantPage) && this.retries < RETRY_MS.length) this.retryTimer = setTimeout(() => void this.reconcile(), RETRY_MS[this.retries++]);
+		if ((this.wantMode || this.pages) && this.retries < RETRY_MS.length) this.retryTimer = setTimeout(() => void this.reconcile(), RETRY_MS[this.retries++]);
 	}
 	drop(link) {
 		clearTimeout(this.retryTimer);
@@ -395,6 +407,7 @@ async function handle(msg, sender) {
 		case "pc-allow":
 		case "pc-scope":
 		case "pc-forget":
+		case "pc-desktop":
 		case "pc-pause":
 		case "pc-resume":
 		case "pc-stats": return native.handle(msg);
@@ -467,6 +480,17 @@ chrome.runtime.onMessage.addListener((raw, sender, respond) => {
 	return true;
 });
 chrome.runtime.onConnect.addListener((port) => {
+	if (port.name === "obpal-link/pc-page") {
+		const s = port.sender;
+		if (senderKind({
+			id: s?.id,
+			url: s?.url,
+			tabId: s?.tab?.id
+		}, SELF) !== "extension") return port.disconnect();
+		native.pageOpened();
+		port.onDisconnect.addListener(() => native.pageClosed());
+		return;
+	}
 	if (port.name !== "obpal-link/native") return;
 	const s = port.sender;
 	if (senderKind({
