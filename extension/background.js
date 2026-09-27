@@ -1,4 +1,4 @@
-import { R as DEFAULT_MODE, W as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom } from "./assets/messages-B_-Maqev.js";
+import { G as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom, z as DEFAULT_MODE } from "./assets/messages-C4kzpYnI.js";
 import { d as parseNativeFrame, g as toHelperRequest, i as NATIVE_HOST, n as EMPTY_PC, u as parseHelperMessage } from "./assets/native-CYWtXzmG.js";
 //#region src/native.ts
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
@@ -397,6 +397,7 @@ async function handle(msg, sender) {
 		case "ensure":
 			await ensureOffscreen();
 			return { ok: true };
+		case "version": return { version: chrome.runtime.getManifest().version };
 		case "enable": return msg.on ? enableTab(msg.tabId) : disableTab(msg.tabId);
 		case "mode":
 			await chrome.storage.local.set({ mode: msg.mode });

@@ -1,6 +1,6 @@
 import { n as renderSVG } from "./dist-lkpp0okm.js";
 import { i as family, n as ICONS, r as logo, t as LINK_ICONS } from "./icons-Cfu-Uw6O.js";
-import { R as DEFAULT_MODE, U as TARGET_MODES, W as isTargetMode, a as parseLink } from "./messages-B_-Maqev.js";
+import { G as isTargetMode, W as TARGET_MODES, a as parseLink, c as workerStale, z as DEFAULT_MODE } from "./messages-C4kzpYnI.js";
 import { h as scopeLabel, m as pcView, n as EMPTY_PC, p as parsePcState, t as DESKTOP_URL } from "./native-CYWtXzmG.js";
 //#region src/popup/popup.ts
 /**
@@ -56,7 +56,8 @@ var state = {
 	frames: null,
 	code: "auto",
 	pc: { ...EMPTY_PC },
-	pcPermission: false
+	pcPermission: false,
+	stale: false
 };
 var parseFrames = (x) => {
 	const f = x;
@@ -187,7 +188,7 @@ function render() {
 	allBtn.setAttribute("aria-checked", String(state.allSites));
 	renderPc();
 	const note = $("note");
-	const notice = state.notice ?? offlineHint() ?? (state.mode === "pc" ? null : framesHint());
+	const notice = staleHint() ?? state.notice ?? offlineHint() ?? (state.mode === "pc" ? null : framesHint());
 	note.hidden = !notice;
 	note.replaceChildren();
 	if (notice) {
@@ -253,6 +254,16 @@ function offlineHint() {
 * The controlled page shows a frame from another site (a hosted game, most often) and "All sites" is off: the
 * extension can't reach inside it, so the phone's input would go nowhere. Offer the fix in one click.
 */
+/** New files, old worker: one click restarts the extension from its folder (as the reload button does). */
+function staleHint() {
+	return state.stale ? {
+		text: "ob.Pal Link was updated. Restart it to finish.",
+		action: {
+			label: "Restart",
+			run: () => chrome.runtime.reload()
+		}
+	} : null;
+}
 function framesHint() {
 	const f = state.frames;
 	const here = state.current?.id;
@@ -601,6 +612,11 @@ async function init() {
 		to: "bg",
 		type: "pc-connect"
 	});
+	state.stale = workerStale(await send({
+		to: "bg",
+		type: "version"
+	}), chrome.runtime.getManifest().version);
+	if (state.stale) render();
 }
 init();
 //#endregion

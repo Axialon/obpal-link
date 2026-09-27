@@ -485,6 +485,7 @@ function parseBgRequest(x) {
 	if (typeof x.type === "string" && x.type.startsWith("pc-")) return parsePcRequest(x);
 	switch (x.type) {
 		case "ensure":
+		case "version":
 		case "unpair":
 		case "offscreen-ready":
 		case "hello":
@@ -563,6 +564,7 @@ function senderKind(s, self) {
 /** Which senders may make each request. Pages can only ask about their own tab; only extension UI changes state. */
 var ALLOWED_SENDERS = {
 	ensure: ["extension"],
+	version: ["extension"],
 	enable: ["extension"],
 	mode: ["extension", "offscreen"],
 	unpair: ["extension"],
@@ -584,5 +586,13 @@ var ALLOWED_SENDERS = {
 	"pc-stats": ["extension"]
 };
 var allowedFrom = (type, kind) => ALLOWED_SENDERS[type].includes(kind);
+/**
+* Is the running service worker older than the extension's files? An unpacked copy whose folder was replaced
+* without a reload runs the old worker (and link document) under new pages: the popup then asks for a restart.
+* `reply` is the worker's answer to 'version' (an old worker doesn't answer it).
+*/
+function workerStale(reply, mine) {
+	return (isObj(reply) && typeof reply.version === "string" ? reply.version : null) !== mine;
+}
 //#endregion
-export { lanContext as A, PAGE_MODES as B, candidatesOf as C, equalBytes as D, encodePairing as E, roomIdFor as F, SERVICE as H, sdpFingerprint as I, APP_NAME as L, newSecret as M, randomBytes as N, fromB64url as O, readLocalIce as P, DEFAULT_MODE as R, bindMac as S, encodeLanPairing as T, TARGET_MODES as U, PORT_NAME as V, isTargetMode as W, forgetPair as _, parseLink as a, putPair as b, Accum as c, hysteresis as d, stickCurve as f, packetType as g, decodePad as h, parseFromPage as i, lanIceCredentials as j, lanAnswerSdp as k, buttonValue as l, PadFlag as m, parseBgRequest as n, parseOffscreenRequest as o, PadButton as p, parseConfig as r, senderKind as s, allowedFrom as t, clamp as u, listPairs as v, certFingerprint as w, b64url as x, loadCertificate as y, MIN_VIEW_AREA as z };
+export { lanAnswerSdp as A, MIN_VIEW_AREA as B, bindMac as C, encodePairing as D, encodeLanPairing as E, readLocalIce as F, isTargetMode as G, PORT_NAME as H, roomIdFor as I, sdpFingerprint as L, lanIceCredentials as M, newSecret as N, equalBytes as O, randomBytes as P, APP_NAME as R, b64url as S, certFingerprint as T, SERVICE as U, PAGE_MODES as V, TARGET_MODES as W, packetType as _, parseLink as a, loadCertificate as b, workerStale as c, clamp as d, hysteresis as f, decodePad as g, PadFlag as h, parseFromPage as i, lanContext as j, fromB64url as k, Accum as l, PadButton as m, parseBgRequest as n, parseOffscreenRequest as o, stickCurve as p, parseConfig as r, senderKind as s, allowedFrom as t, buttonValue as u, forgetPair as v, candidatesOf as w, putPair as x, listPairs as y, DEFAULT_MODE as z };
