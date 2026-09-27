@@ -4,29 +4,6 @@
 	var PORT_NAME = "obpal-link/page";
 	/** window.postMessage channel id shared by the isolated-world bridge and the MAIN-world page script. */
 	var CHANNEL = "obpal-link/v1";
-	new TextEncoder();
-	//#endregion
-	//#region ../packages/core/src/catalogue.ts
-	var Utility = {
-		pad: "pad",
-		aim: "motion.aim",
-		steer: "motion.steer",
-		point: "motion.point",
-		trackpad: "touch.trackpad",
-		hold: "motion.hold",
-		tilt: "motion.tilt"
-	};
-	Utility.aim, Utility.steer, Utility.point;
-	var u = (route, over = {}) => ({
-		route,
-		gain: 1,
-		curve: 1,
-		deadzone: .2,
-		invertY: false,
-		edgeTurn: false,
-		...over
-	});
-	u("stick.right"), u("stick.wheel"), u("pointer"), u("stick.right"), u("stick.fly"), u("pointer"), u("stick.right"), u("stick.wheel"), u("pointer"), u("mouse"), u("stick.wheel"), u("pointer", { edgeTurn: true }), u("stick.right"), u("stick.wheel"), u("pointer");
 	//#endregion
 	//#region src/shared/math.ts
 	/** Small numeric helpers shared by the key and 3D mappers. Pure. */

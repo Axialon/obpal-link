@@ -1,5 +1,5 @@
-import { G as isTargetMode, a as parseLink, n as parseBgRequest, s as senderKind, t as allowedFrom, z as DEFAULT_MODE } from "./assets/messages-Cj9v-zYH.js";
-import { d as parseNativeFrame, g as toHelperRequest, i as NATIVE_HOST, n as EMPTY_PC, u as parseHelperMessage } from "./assets/native-CYWtXzmG.js";
+import { E as isTargetMode, b as DEFAULT_MODE, c as senderKind, n as linkConfig, o as parseLink, r as parseBgRequest, t as allowedFrom } from "./assets/messages-By7t0qaI.js";
+import { b as typingField, d as isTypingRefusal, f as parseHelperMessage, g as parsePcState, i as NATIVE_HOST, m as parseNativeText, n as EMPTY_PC, p as parseNativeFrame, y as toHelperRequest } from "./assets/native-CHu3H134.js";
 //#region src/native.ts
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
 var RETRY_MS = [
@@ -12,17 +12,46 @@ var NativeBridge = class {
 	port = null;
 	state = { ...EMPTY_PC };
 	ready = false;
+	/** This connection's first config is through: handled, and passed on to the offscreen link if it changed whole PC. */
+	configured = false;
 	armed = false;
 	wantMode = false;
 	/** Extension pages holding a PC_PAGE_PORT_NAME port. */
 	pages = 0;
 	retries = 0;
 	retryTimer;
-	/** Called when whole-PC control turns on or off. */
+	/** The helper types (0.3 and later). */
+	textCap = false;
+	field = null;
+	/**
+	* The helper's config as this worker's previous run mirrored it (storage.session "pc"), picked back up when the
+	* worker starts again. Everything that reads whole PC or changes the state waits for it.
+	*/
+	restored = chrome.storage.session.get("pc").then((r) => {
+		const config = parsePcState(r.pc)?.config;
+		if (config) this.state = {
+			...this.state,
+			config
+		};
+	}, () => {});
+	/** Called when whole-PC control turns on or off; the helper is armed once what it returns has settled. */
 	onDesktop = null;
+	/** Called when the field that would take typing changes (null: none). */
+	onTextField = null;
+	/** Called when typing from the phone didn't get through. */
+	onTyping = null;
 	/** ob.Pal Desktop controls the whole PC (not one program). */
 	get desktop() {
 		return !!this.state.config?.desktop;
+	}
+	/** Whether ob.Pal Desktop controls the whole PC, as it last said (before this worker started, if not since). */
+	async wholePc() {
+		await this.restored;
+		return this.desktop;
+	}
+	/** A text or password field in front would take typing now (see typingField). */
+	get textField() {
+		return this.field;
 	}
 	/** Reconcile with the target mode: connect and arm for PC, disarm (and let go) otherwise. */
 	async sync(mode) {
@@ -47,6 +76,12 @@ var NativeBridge = class {
 	frame(f) {
 		if (this.ready && this.armed) this.send(f);
 	}
+	/** Typing from the phone, through the offscreen link: to a helper that is up, armed and types; otherwise the phone hears why not. */
+	text(t) {
+		if (!this.ready || !this.armed) this.onTyping?.("offline");
+		else if (!this.textCap) this.onTyping?.("no-text");
+		else this.send(t);
+	}
 	/** Popup and options page requests. */
 	async handle(req) {
 		if (req.type === "pc-connect") {
@@ -64,13 +99,14 @@ var NativeBridge = class {
 		};
 	}
 	async reconcile() {
+		await this.restored;
 		if (!this.wantMode && !this.pages) return this.drop("off");
 		if (!await chrome.permissions.contains(NATIVE_PERMISSION)) return this.drop("permission");
 		if (!this.port) this.connect();
 		this.arm(this.wantMode);
 	}
 	arm(on) {
-		if (!this.ready || this.armed === on) return;
+		if (!this.ready || !this.configured || this.armed === on) return;
 		this.armed = on;
 		this.send({
 			t: "enable",
@@ -80,6 +116,7 @@ var NativeBridge = class {
 	connect() {
 		clearTimeout(this.retryTimer);
 		this.retryTimer = void 0;
+		this.configured = false;
 		this.set({
 			link: "connecting",
 			error: null
@@ -111,6 +148,7 @@ var NativeBridge = class {
 			case "hello":
 				this.ready = true;
 				this.retries = 0;
+				this.textCap = m.caps.text;
 				this.set({
 					link: "ready",
 					version: m.version,
@@ -118,7 +156,6 @@ var NativeBridge = class {
 					hotkey: m.hotkey,
 					error: null
 				});
-				this.arm(this.wantMode);
 				break;
 			case "config": {
 				const was = this.desktop;
@@ -127,7 +164,13 @@ var NativeBridge = class {
 					desktop: m.desktop,
 					programs: m.programs
 				} });
-				if (this.desktop !== was) this.onDesktop?.(this.desktop);
+				const passed = this.desktop !== was ? this.onDesktop?.(this.desktop) : void 0;
+				const through = () => {
+					if (port !== this.port) return;
+					this.configured = true;
+					this.arm(this.wantMode);
+				};
+				Promise.resolve(passed).then(through, through);
 				break;
 			}
 			case "status":
@@ -136,11 +179,13 @@ var NativeBridge = class {
 					panic: m.panic,
 					held: m.held,
 					front: m.front,
-					program: m.program
+					program: m.program,
+					text: m.text
 				} });
 				break;
 			case "error":
 				console.warn(`[ob.Pal Link] helper: ${m.code}: ${m.msg}`);
+				if (isTypingRefusal(m.code)) this.onTyping?.(m.code);
 				break;
 			case "stats": this.set({ stats: {
 				frames: m.frames,
@@ -155,7 +200,9 @@ var NativeBridge = class {
 		const wasReady = this.ready;
 		this.port = null;
 		this.ready = false;
+		this.configured = false;
 		this.armed = false;
+		this.textCap = false;
 		if (/not found/i.test(msg)) return this.set({
 			link: "missing",
 			error: null,
@@ -179,7 +226,9 @@ var NativeBridge = class {
 		const p = this.port;
 		this.port = null;
 		this.ready = false;
+		this.configured = false;
 		this.armed = false;
+		this.textCap = false;
 		try {
 			p?.disconnect();
 		} catch {}
@@ -195,6 +244,11 @@ var NativeBridge = class {
 			...patch
 		};
 		chrome.storage.session.set({ pc: this.state }).catch(() => void 0);
+		const field = typingField(this.state);
+		if (field !== this.field) {
+			this.field = field;
+			this.onTextField?.(field);
+		}
 	}
 	send(m) {
 		const p = this.port;
@@ -228,7 +282,17 @@ var SELF = {
 };
 /** The PC target: the native messaging port to ob.Pal Desktop, connected while the target is PC. */
 var native = new NativeBridge();
-native.onDesktop = () => void pushConfig();
+native.onDesktop = () => pushConfig();
+native.onTextField = (field) => void toOffscreen({
+	to: "offscreen",
+	type: "text-field",
+	field
+});
+native.onTyping = (refused) => void toOffscreen({
+	to: "offscreen",
+	type: "typing",
+	refused
+});
 async function controlledTab() {
 	const { tab } = await chrome.storage.session.get("tab");
 	return typeof tab === "number" ? tab : null;
@@ -272,14 +336,24 @@ async function ensureOffscreen() {
 	await creating;
 }
 var toOffscreen = (m) => chrome.runtime.sendMessage(m).catch(() => void 0);
+/**
+* What the link document runs with: the controlled tab, the target, and whether the PC target is the whole PC (as
+* ob.Pal Desktop last said, from before this worker started if it hasn't said since). Pushed on every change, and the
+* answer to a link document that has just started, so a new one never falls back to the game keys on a whole PC.
+*/
+async function currentConfig() {
+	const [tabId, mode, wholePc] = await Promise.all([
+		controlledTab(),
+		targetMode(),
+		native.wholePc()
+	]);
+	return linkConfig(tabId, mode, wholePc);
+}
 async function pushConfig() {
-	const [tabId, mode] = await Promise.all([controlledTab(), targetMode()]);
 	await toOffscreen({
 		to: "offscreen",
 		type: "config",
-		tabId,
-		mode,
-		desktop: mode === "pc" && native.desktop
+		...await currentConfig()
 	});
 }
 /** The bridge goes into every frame we may access: the tab's own origin via activeTab, all frames with "All sites". */
@@ -447,15 +521,17 @@ async function handle(msg, sender) {
 			await refreshBadge();
 			return { ok: true };
 		case "offscreen-ready": {
-			const [tabId, mode] = await Promise.all([controlledTab(), targetMode()]);
-			if (tabId !== null) tellTab(tabId, {
+			const config = await currentConfig();
+			if (config.tabId !== null) tellTab(config.tabId, {
 				to: "bridge",
 				type: "reconnect"
 			});
-			return {
-				tabId,
-				mode
-			};
+			if (native.textField) toOffscreen({
+				to: "offscreen",
+				type: "text-field",
+				field: native.textField
+			});
+			return config;
 		}
 		case "hello": return bridgeHello(sender);
 		case "frames": {
@@ -516,7 +592,9 @@ chrome.runtime.onConnect.addListener((port) => {
 	targetMode().then((mode) => native.sync(mode));
 	port.onMessage.addListener((raw) => {
 		const f = parseNativeFrame(raw);
-		if (f) native.frame(f);
+		if (f) return native.frame(f);
+		const t = parseNativeText(raw);
+		if (t) native.text(t);
 	});
 });
 chrome.tabs.onRemoved.addListener((tabId) => {

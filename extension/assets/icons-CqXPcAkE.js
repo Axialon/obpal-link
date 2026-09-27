@@ -675,9 +675,38 @@ var ICONS = {
 	stick: s$1("<circle cx=\"12\" cy=\"7.8\" r=\"3.8\"/><path d=\"M12 11.6v4.6M5.5 19.5h13M8.2 16.2h7.6\"/>"),
 	stickL: s$1("<circle cx=\"12\" cy=\"7.8\" r=\"3.8\"/><path d=\"M12 11.6v4.6M5.5 19.5h13M8.2 16.2h7.6\"/><path d=\"M3.5 4.5v6h3.6\" stroke-width=\"2\"/>"),
 	stickR: s$1("<circle cx=\"12\" cy=\"7.8\" r=\"3.8\"/><path d=\"M12 11.6v4.6M5.5 19.5h13M8.2 16.2h7.6\"/><path d=\"M17.2 10.5v-6h2.2a1.6 1.6 0 0 1 0 3.2h-2.2l2.8 2.8\" stroke-width=\"2\"/>"),
-	fly: s$1("<path d=\"M4 15.5c2.2-1.6 5-2.5 8-2.5s5.8.9 8 2.5\"/><path d=\"M12 13V7.5M9.5 9.2 12 6.5l2.5 2.7\"/><path d=\"M4.5 19h15\"/>")
+	fly: s$1("<path d=\"M4 15.5c2.2-1.6 5-2.5 8-2.5s5.8.9 8 2.5\"/><path d=\"M12 13V7.5M9.5 9.2 12 6.5l2.5 2.7\"/><path d=\"M4.5 19h15\"/>"),
+	keyboard: s$1("<rect x=\"2.6\" y=\"5.6\" width=\"18.8\" height=\"12.8\" rx=\"2.8\"/><path d=\"M6.2 9.4h.01M9.1 9.4h.01M12 9.4h.01M14.9 9.4h.01M17.8 9.4h.01M7.65 12.2h.01M10.55 12.2h.01M13.45 12.2h.01M16.35 12.2h.01\" stroke-width=\"2.2\"/><path d=\"M8.4 15.2h7.2\"/>"),
+	"kb-hide": s$1("<rect x=\"3\" y=\"3.2\" width=\"18\" height=\"11.4\" rx=\"2.6\"/><path d=\"M7 6.9h.01M10.3 6.9h.01M13.7 6.9h.01M17 6.9h.01\" stroke-width=\"2.2\"/><path d=\"M8.6 10.7h6.8\"/><path d=\"M8.6 17.9 12 21l3.4-3.1\"/>"),
+	backspace: s$1("<path d=\"M9.3 5.8h9.5a2 2 0 0 1 2 2v8.4a2 2 0 0 1-2 2H9.3L3.4 12Z\"/><path d=\"M11.8 9.7l4.6 4.6M16.4 9.7l-4.6 4.6\"/>"),
+	enter: s$1("<path d=\"M19.4 5.2v6a2.6 2.6 0 0 1-2.6 2.6H5.4\"/><path d=\"M9.4 9.8 5.4 13.8l4 4\"/>"),
+	"arrow-left": s$1("<path d=\"M19 12H5.4M11 6.4 5.4 12l5.6 5.6\"/>"),
+	"arrow-right": s$1("<path d=\"M5 12h13.6M13 6.4l5.6 5.6-5.6 5.6\"/>"),
+	"arrow-up": s$1("<path d=\"M12 19V5.4M6.4 11 12 5.4l5.6 5.6\"/>"),
+	"arrow-down": s$1("<path d=\"M12 5v13.6M6.4 13l5.6 5.6 5.6-5.6\"/>")
 };
 var markSeq = 0;
+/**
+* The ob.Pal mark: the Blackboxes family cube (obsidian facets, hairline seams) whose lower faces and front
+* edges catch the accent light, wrapped in ob.Pal's orbit with a satellite, the "." of ob.Pal. Everything lit
+* takes the theme accent; a scan line sweeps the box on hover. Static twin: public/favicon.svg (scripts/brand-icons.mjs).
+*/
+/**
+* Let the logo's satellite finish `orbits` orbits (7.5 s each), then hold still. Its motion redraws the mark (and its
+* blurred glow) every frame, which a page that stays open for long, like the phone controller, shouldn't pay for.
+*/
+function calmMarks(root, orbits = 1) {
+	const marks = [...root.querySelectorAll("svg.mark")];
+	const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+	setTimeout(() => {
+		for (const m of marks) m.pauseAnimations?.();
+	}, still ? 0 : orbits * 7500);
+}
+/** Fill each `[data-mark]` slot with the inline logo mark (crisp at any size); a phone lets it settle after two orbits. */
+function mountMarks(root = document) {
+	for (const slot of root.querySelectorAll("[data-mark]")) slot.innerHTML = logoMark();
+	if (matchMedia("(pointer: coarse)").matches) calmMarks(root, 2);
+}
 function logoMark() {
 	const id = `obm${++markSeq}`;
 	const A = "var(--accent, #C6FF34)";
@@ -715,13 +744,340 @@ function logoMark() {
   <g clip-path="url(#${id}-front)">${sat(true)}</g>
 </svg>`;
 }
+/** Pause the logo's SVG animations for people who prefer reduced motion (satellite rests in front). */
+function settleMotion(root = document) {
+	if (!matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+	root.querySelectorAll("svg.mark").forEach((svg) => {
+		svg.pauseAnimations();
+		svg.setCurrentTime(1.4);
+	});
+}
 /** Lockup: the mark with the ob.Pal wordmark (quiet "ob", accent full stop, bold "Pal"). */
 var LOGO_WORD = "<span class=\"word\"><span class=\"ob\">ob</span><span class=\"pt\">.</span><b>Pal</b></span>";
-var logo = () => `${logoMark()}${LOGO_WORD}`;
+//#endregion
+//#region ../src/ui/themes.ts
+/**
+* ob.Pal themes are the Blackboxes family surfaces (src/family). The theme only picks what the UI sits on;
+* ob.Pal's identity accent stays lime on every surface. UI colours come from the family CSS tokens, while
+* the 3D stage colours (backdrop gradient and ground grid) live here because three.js needs them as values.
+*/
+var ACCENT = "#C6FF34";
+var STAGE = {
+	carbon: {
+		scene: [
+			"#262626",
+			"#121212",
+			"#050505"
+		],
+		grid: "#8fb04a"
+	},
+	navy: {
+		scene: [
+			"#17283f",
+			"#0a1424",
+			"#03070e"
+		],
+		grid: "#6f8fbf"
+	},
+	violet: {
+		scene: [
+			"#2b1f4b",
+			"#140d27",
+			"#07040e"
+		],
+		grid: "#8b7bc9"
+	},
+	wine: {
+		scene: [
+			"#3a2e35",
+			"#1b1418",
+			"#090607"
+		],
+		grid: "#b09aa6"
+	},
+	onyx: {
+		scene: [
+			"#151c22",
+			"#08090b",
+			"#020202"
+		],
+		grid: "#7a99aa"
+	},
+	light: {
+		scene: [
+			"#ffffff",
+			"#edf1f6",
+			"#dce3ec"
+		],
+		grid: "#8a9ab0"
+	}
+};
+var THEMES = family.THEMES.map((t) => ({
+	id: t.id,
+	name: t.name,
+	base: t.page,
+	surface: t.surface,
+	accent: ACCENT,
+	light: t.light,
+	...STAGE[t.id]
+}));
+family.DEFAULT_THEME;
+/** Earlier ob.Pal themes paired an accent with a surface; map them onto the nearest family surface. */
+var LEGACY = {
+	lime: "carbon",
+	lavender: "violet",
+	turquoise: "wine",
+	candy: "onyx"
+};
+var themeById = (id) => {
+	const key = id && LEGACY[id] || id;
+	return THEMES.find((t) => t.id === key) ?? THEMES.find((t) => t.id === family.getTheme()) ?? THEMES[0];
+};
+/** The surface to start with: the ecosystem-wide choice, else a pre-family ob.Pal choice, else the default. */
+function initialTheme() {
+	let chosen = /(?:^|;\s*)bb_theme=/.test(document.cookie);
+	try {
+		chosen ||= !!localStorage.getItem("bb_theme");
+	} catch {}
+	if (chosen) return themeById(family.getTheme());
+	let legacy = null;
+	try {
+		legacy = localStorage.getItem("obpal.theme2");
+	} catch {}
+	const accent = legacy && LEGACY_ACCENT[legacy];
+	if (accent && family.getAccent() === "product") family.setAccent(accent);
+	return themeById(legacy);
+}
+var LEGACY_ACCENT = {
+	lavender: "lavender",
+	turquoise: "turquoise",
+	candy: "candy"
+};
+/**
+* Apply a surface: family tokens switch through data-bb-theme. Only a visitor's own pick (`remember`) is saved,
+* across *.blackboxes.net; a default just shows, so opening ob.Pal never picks a surface for the other sites.
+*/
+function applyTheme(t, remember = false) {
+	family.setProduct("obpal");
+	if (remember) family.setTheme(t.id);
+	else family.applyTheme(t.id);
+	document.documentElement.dataset.theme = t.id;
+	if (document.documentElement.classList.contains("site")) document.querySelector("meta[name=\"theme-color\"]")?.setAttribute("content", SITE_PAGE);
+}
+var SITE_PAGE = "#0a0718";
+//#endregion
+//#region src/ui/lookcache.ts
+/**
+* Where the look (the surface and the accent, ./look.ts) is kept. chrome.storage.local "look" is the truth: it
+* survives what clearing browsing data takes from a page's own storage. The family's own keys in the page's
+* localStorage (and its cookie), which the family reads synchronously, are its cache: a page can wear the last look
+* before it first paints (./first-paint.ts), long before chrome.storage could answer. Every change updates both.
+* Nothing here touches the family itself, so the first-paint script stays a few hundred bytes.
+*/
+/** chrome.storage.local key of the look. */
+var LOOK_KEY = "look";
+var ID = /^[a-z]{1,16}$/;
+var isId = (x) => typeof x === "string" && ID.test(x);
+/** A stored look, or null. Ids are checked for shape only: the family falls back to its defaults for one it doesn't know. */
+function parseLook(x) {
+	if (typeof x !== "object" || x === null) return null;
+	const { theme, accent } = x;
+	return isId(theme) && isId(accent) ? {
+		theme,
+		accent
+	} : null;
+}
+//#endregion
+//#region src/ui/radios.ts
+/**
+* Keyboard access for the pages' radio groups (the targets, the codes, the surfaces and the colours), after the
+* WAI-ARIA radio group pattern: a group is one stop in the tab order, its checked radio (a roving tabindex); the
+* arrow keys move to the next or the previous radio and choose it, wrapping around, and Home and End move to the
+* first and the last. Choosing is a click on the radio, so it does whatever a click does there.
+*/
+/** Where a key moves the focus from radio `i` of `n`, or null for a key the group leaves alone. */
+function radioStep(key, i, n) {
+	switch (key) {
+		case "ArrowRight":
+		case "ArrowDown": return (i + 1) % n;
+		case "ArrowLeft":
+		case "ArrowUp": return (i - 1 + n) % n;
+		case "Home": return 0;
+		case "End": return n - 1;
+		default: return null;
+	}
+}
+/** Make the radios in `group` ([role=radio], checked by aria-checked) one tab stop that the arrow keys move through. */
+function radioGroup(group) {
+	const radios = () => [...group.querySelectorAll("[role=radio]")];
+	const usable = () => radios().filter((r) => !r.hidden && !r.disabled);
+	const stopAt = (stop) => {
+		for (const r of radios()) r.tabIndex = r === stop ? 0 : -1;
+	};
+	const rove = () => {
+		const list = usable();
+		stopAt(list.find((r) => r.getAttribute("aria-checked") === "true") ?? list[0]);
+	};
+	group.addEventListener("keydown", (e) => {
+		if (e.altKey || e.ctrlKey || e.metaKey) return;
+		const list = usable();
+		const i = list.indexOf(e.target);
+		const to = i < 0 ? null : radioStep(e.key, i, list.length);
+		if (to === null) return;
+		e.preventDefault();
+		e.stopPropagation();
+		const radio = list[to];
+		stopAt(radio);
+		radio.focus();
+		if (radio.getAttribute("aria-checked") !== "true") radio.click();
+	});
+	new MutationObserver(rove).observe(group, {
+		subtree: true,
+		attributeFilter: ["aria-checked"]
+	});
+	rove();
+}
+//#endregion
+//#region src/ui/look.ts
+/**
+* The look of ob.Pal Link's pages (the popup and the options page).
+*
+* The surface and the accent are the Blackboxes family's (src/family), offered as the phone's settings sheet offers
+* them. A pick applies at once and is kept in chrome.storage (the Link's choice, apart from the websites'), with the
+* family's own keys as its cache for the first paint (./lookcache.ts); the other Link page, if it is open, follows it
+* through that cache. Also here: the animated logo, the light that follows the mouse across the cards, the radio
+* groups' keys (./radios.ts), and the switch that lets state changes animate only once a page has shown its first
+* real state.
+*/
+var LIME = "#c6ff34";
+/** A pick, here or in the other page, has been applied: it is newer than the stored look, should that arrive after it. */
+var picked = false;
+/**
+* Apply the remembered surface and accent: the cached look at once (before the page first renders, as its
+* first-paint script did), then the stored one. A pick in the other page reaches this one through the cache: the
+* storage event fires in every page but the one that wrote it.
+*/
+function startLook() {
+	applyTheme(initialTheme());
+	chrome.storage.local.get(LOOK_KEY).then((r) => {
+		if (!picked) wear(parseLook(r[LOOK_KEY]));
+	}, () => {});
+	addEventListener("storage", (e) => {
+		if (e.key !== null && e.key !== "bb_theme" && e.key !== "bb_accent") return;
+		picked = true;
+		applyTheme(themeById(family.getTheme()));
+		family.applyAccent();
+		syncLook(document);
+	});
+}
+/**
+* Wear the stored look, and cache it (the family keeps what it applies in its own keys). Nothing stored yet (no pick
+* since 1.5): the cached look, if any, stays.
+*/
+function wear(look) {
+	if (!look) return;
+	applyTheme(themeById(look.theme), true);
+	family.setAccent(look.accent);
+	syncLook(document);
+}
+/** Store the look in effect (a pick: the family has cached it already). */
+function saveLook() {
+	picked = true;
+	const look = {
+		theme: document.documentElement.dataset.theme ?? family.getTheme(),
+		accent: family.getAccent()
+	};
+	chrome.storage.local.set({ [LOOK_KEY]: look }).catch(() => {});
+}
+/**
+* The popup is sized by its content, which Chrome measures (up to 800 × 600), so its layout has a set width. Opened
+* in a tab instead (a test, or someone opening popup.html), it flows with the window: `in-tab` on <html>.
+*/
+function markContext() {
+	let popup = false;
+	try {
+		popup = chrome.extension.getViews({ type: "popup" }).includes(window);
+	} catch {}
+	document.documentElement.classList.toggle("in-tab", !popup && innerWidth > 200);
+}
+/**
+* State changes animate (a switch sliding, a card appearing) only after the page has shown its first real state, so
+* opening it shows that state at once rather than animating into it.
+*/
+function settle() {
+	requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.add("settled")));
+}
+/** The surfaces, each a small window of itself with the accent lit in it, and the accents, as the phone offers them. */
+function lookMarkup() {
+	const theme = document.documentElement.dataset.theme;
+	const accent = family.getAccent();
+	const accents = family.ACCENTS.filter((a) => a.id !== "lime" || accent === "lime");
+	return `
+    <p class="look-k">Surface</p>
+    <div class="looks" role="radiogroup" aria-label="Surface">${THEMES.map((t) => `<button class="look" type="button" role="radio" data-theme="${t.id}" aria-checked="${t.id === theme}" style="--pv-page:${t.base};--pv-surface:${t.surface}"><i aria-hidden="true"></i><span>${t.name}</span></button>`).join("")}</div>
+    <p class="look-k">Colour</p>
+    <div class="accents" role="radiogroup" aria-label="Colour">${accents.map((a) => {
+		const name = a.id === "product" ? "ob.Pal lime (default)" : a.name;
+		return `<button class="bb-accent${a.id === "product" ? " product" : ""}" type="button" role="radio" data-accent="${a.id}" aria-checked="${a.id === accent}" aria-label="${name}" title="${name}" style="--sw:${a.color ?? LIME}">${family.icons.check}</button>`;
+	}).join("")}</div>`;
+}
+/** Fill `root` with the look choices (radio groups the arrow keys move through) and apply a pick at once. */
+function mountLook(root, onPick) {
+	root.innerHTML = lookMarkup();
+	for (const group of root.querySelectorAll("[role=radiogroup]")) radioGroup(group);
+	root.addEventListener("click", (e) => {
+		const target = e.target;
+		const surface = target.closest(".look[data-theme]");
+		const accent = target.closest(".accents [data-accent]");
+		if (surface && root.contains(surface)) applyTheme(themeById(surface.dataset.theme), true);
+		else if (accent && root.contains(accent)) family.setAccent(accent.dataset.accent);
+		else return;
+		syncLook(document);
+		saveLook();
+		onPick?.();
+	});
+}
+/** Mark the surface and accent in effect in every look picker under `root`. */
+function syncLook(root) {
+	const theme = document.documentElement.dataset.theme;
+	const accent = family.getAccent();
+	for (const b of root.querySelectorAll(".look[data-theme]")) b.setAttribute("aria-checked", String(b.dataset.theme === theme));
+	for (const b of root.querySelectorAll(".accents [data-accent]")) b.setAttribute("aria-checked", String(b.dataset.accent === accent));
+}
+/**
+* The logo mark in each `[data-mark]` slot, its satellite orbiting (still for people who prefer less motion).
+* `orbits`: let it settle after that many, for a page that may stay open for long.
+*/
+function mountLogo(root = document, orbits) {
+	mountMarks(root);
+	settleMotion(root);
+	if (orbits !== void 0) calmMarks(root, orbits);
+}
+/** A light follows the mouse across the cards, and their edges catch it (a mouse only, as on the home page). */
+function lightCards(selector = ".card") {
+	if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+	let raf = 0;
+	let at = null;
+	document.addEventListener("pointermove", (e) => {
+		if (e.pointerType !== "mouse") return;
+		at = e;
+		if (raf) return;
+		raf = requestAnimationFrame(() => {
+			raf = 0;
+			const card = (at?.target)?.closest?.(selector);
+			if (!card || !at) return;
+			const r = card.getBoundingClientRect();
+			card.style.setProperty("--mx", `${(at.clientX - r.left).toFixed(0)}px`);
+			card.style.setProperty("--my", `${(at.clientY - r.top).toFixed(0)}px`);
+		});
+	}, { passive: true });
+}
 //#endregion
 //#region src/popup/icons.ts
 /** Popup-only glyphs in the same 24px stroke style as src/ui/icons.ts (which supplies the rest). */
 var s = (d) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+/** A fingertip on the trackpad: the gesture pictograms draw it as a filled dot. */
+var tip = (x, y, r = 3.1) => `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor" stroke="none"/>`;
 var LINK_ICONS = {
 	gamepad: s("<path d=\"M7.2 7.2h9.6a4.2 4.2 0 0 1 4.1 3.4l.9 4.6a2.5 2.5 0 0 1-4.3 2.2l-2.1-2.3H8.6l-2.1 2.3a2.5 2.5 0 0 1-4.3-2.2l.9-4.6a4.2 4.2 0 0 1 4.1-3.4Z\"/><path d=\"M7.8 9.9v3.2M6.2 11.5h3.2\"/><path d=\"M15.4 10.4h.01M17.4 12.4h.01\" stroke-width=\"2.6\"/>"),
 	keys: s("<rect x=\"2.8\" y=\"6\" width=\"18.4\" height=\"12\" rx=\"2.6\"/><path d=\"M6.6 9.6h.01M9.8 9.6h.01M13 9.6h.01M16.2 9.6h.01M6.6 12.4h.01M17.4 12.4h.01\" stroke-width=\"2.4\"/><path d=\"M9 14.9h6\"/>"),
@@ -729,6 +1085,8 @@ var LINK_ICONS = {
 	tab: s("<rect x=\"3.2\" y=\"4.6\" width=\"17.6\" height=\"14.8\" rx=\"2.6\"/><path d=\"M3.2 9h17.6\"/><path d=\"M6.4 6.8h.01M8.9 6.8h.01\" stroke-width=\"2.3\"/>"),
 	/** Through the room service. */
 	cloud: s("<path d=\"M7.2 18.5a4.2 4.2 0 0 1-.6-8.35A5.6 5.6 0 0 1 17.4 9.2a3.9 3.9 0 0 1-.6 7.75Z\"/><path d=\"M12 12.8v6M9.6 15.2 12 12.8l2.4 2.4\"/>"),
+	/** The room service out of reach. */
+	cloudOff: s("<path d=\"M7.2 18.5a4.2 4.2 0 0 1-.6-8.35A5.6 5.6 0 0 1 17.4 9.2a3.9 3.9 0 0 1-.6 7.75Z\"/><path d=\"M4 4l16 16\"/>"),
 	/** Direct over the local network: two devices, one link. */
 	lan: s("<rect x=\"3\" y=\"14\" width=\"7\" height=\"6\" rx=\"1.8\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"6\" rx=\"1.8\"/><path d=\"M6.5 14v-2.4a1.6 1.6 0 0 1 1.6-1.6h7.8a1.6 1.6 0 0 1 1.6 1.6V14M12 10V6.5\"/><path d=\"M9.2 5.2a4 4 0 0 1 5.6 0M7.2 3.2a6.8 6.8 0 0 1 9.6 0\"/>"),
 	/** A monitor: the PC target. */
@@ -736,7 +1094,16 @@ var LINK_ICONS = {
 	mouse: s("<rect x=\"7.5\" y=\"3.5\" width=\"9\" height=\"17\" rx=\"4.5\"/><path d=\"M12 3.5v5.5M7.5 9h9\"/>"),
 	pause: s("<rect x=\"6\" y=\"5\" width=\"4\" height=\"14\" rx=\"1.4\"/><rect x=\"14\" y=\"5\" width=\"4\" height=\"14\" rx=\"1.4\"/>"),
 	shield: s("<path d=\"M12 3.2 19 6v5.4c0 4.4-3 8-7 9.4-4-1.4-7-5-7-9.4V6Z\"/><path d=\"M9.2 12.1l1.9 1.9 3.8-3.9\"/>"),
-	play: s("<path d=\"M8 5.5v13l10-6.5Z\"/>")
+	play: s("<path d=\"M8 5.5v13l10-6.5Z\"/>"),
+	/** Something to know (the popup's notes). */
+	info: s("<circle cx=\"12\" cy=\"12\" r=\"8.6\"/><path d=\"M12 11v5.2\"/><path d=\"M12 7.8h.01\" stroke-width=\"2.4\"/>"),
+	tap: s(`${tip(12, 12)}<circle cx="12" cy="12" r="7.6" opacity=".45"/>`),
+	hold: s(`${tip(12, 12)}<path d="M12 4.4a7.6 7.6 0 1 1-7.6 7.6"/><path d="M4.4 12A7.6 7.6 0 0 1 12 4.4" opacity=".3"/>`),
+	drag: s(`${tip(7.4, 12)}<path d="M12.4 12h8.2M17.6 9l3 3-3 3"/>`),
+	scroll: s(`${tip(8.7, 12, 2.6)}${tip(15.3, 12, 2.6)}<path d="M12 2.8v3.4M9.9 4.7 12 2.6l2.1 2.1M12 21.2v-3.4M9.9 19.3l2.1 2.1 2.1-2.1"/>`),
+	pinch: s(`${tip(9.4, 14.6, 2.6)}${tip(14.6, 9.4, 2.6)}<path d="M5.4 18.6 3.2 20.8M3.2 17v3.8H7M18.6 5.4l2.2-2.2M17 3.2h3.8V7"/>`),
+	/** Typing: the phone's own keyboard (its tray button's glyph), a fingertip on its keys. */
+	type: s(`<rect x="2.6" y="5.6" width="18.8" height="12.8" rx="2.8"/><path d="M6.2 9.4h.01M9.1 9.4h.01M12 9.4h.01M7.65 12.2h.01M10.55 12.2h.01" stroke-width="2.2"/><path d="M8.4 15.2h4.4"/>${tip(16.3, 11.3, 2.6)}`)
 };
 //#endregion
-export { family as i, ICONS as n, logo as r, LINK_ICONS as t };
+export { mountLook as a, syncLook as c, LOGO_WORD as d, family as f, mountLogo as i, radioGroup as l, lightCards as n, settle as o, markContext as r, startLook as s, LINK_ICONS as t, ICONS as u };

@@ -1,5 +1,5 @@
-import { A as lanAnswerSdp, C as bindMac, D as encodePairing, E as encodeLanPairing, F as readLocalIce, G as isTargetMode, I as roomIdFor, L as sdpFingerprint, M as lanIceCredentials, N as newSecret, O as equalBytes, P as randomBytes, R as APP_NAME, S as b64url, T as certFingerprint, U as SERVICE, V as PAGE_MODES, _ as packetType, b as loadCertificate, d as clamp$1, f as hysteresis, g as decodePad, h as PadFlag, i as parseFromPage, j as lanContext, k as fromB64url, l as Accum, m as PadButton, o as parseOffscreenRequest, p as stickCurve, r as parseConfig, u as buttonValue, v as forgetPair, w as candidatesOf, x as putPair, y as listPairs, z as DEFAULT_MODE } from "./messages-Cj9v-zYH.js";
-import { a as NATIVE_PORT_NAME, c as heldSignature, l as isIdleFrame, r as HeldState, s as buildNativeFrame } from "./native-CYWtXzmG.js";
+import { E as isTargetMode, S as PAGE_MODES, _ as decodePad, a as parseFromPage, b as DEFAULT_MODE, d as buttonValue, f as clamp$1, g as PadFlag, h as PadButton, i as parseConfig, m as stickCurve, p as hysteresis, s as parseOffscreenRequest, u as Accum, v as packetType, w as SERVICE, y as APP_NAME } from "./messages-By7t0qaI.js";
+import { a as NATIVE_PORT_NAME, c as heldSignature, l as isIdleFrame, m as parseNativeText, r as HeldState, s as buildNativeFrame, x as typingToast } from "./native-CHu3H134.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -146,6 +146,178 @@ function accumDelta(a, b) {
 		twist: d16(a.raw.twist, b.raw.twist) / 100
 	};
 }
+//#endregion
+//#region ../packages/core/src/pairing.ts
+var enc = new TextEncoder();
+function b64url(bytes) {
+	let s = "";
+	for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+	return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function fromB64url(s) {
+	let t = s.replace(/-/g, "+").replace(/_/g, "/");
+	while (t.length % 4) t += "=";
+	const bin = atob(t);
+	const out = new Uint8Array(bin.length);
+	for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+	return out;
+}
+function concat(...parts) {
+	const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+	let o = 0;
+	for (const p of parts) {
+		out.set(p, o);
+		o += p.length;
+	}
+	return out;
+}
+function equalBytes(a, b) {
+	if (a.length !== b.length) return false;
+	let d = 0;
+	for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+	return d === 0;
+}
+var newSecret = () => crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(16));
+var randomBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
+function encodePairing(p) {
+	return `1.${b64url(p.secret)}.${b64url(p.fp)}`;
+}
+/** Public room id: a hash of the secret, so the room service never learns the secret. */
+async function roomIdFor(secret) {
+	const d = await crypto.subtle.digest("SHA-256", concat(enc.encode("obpal-room-v1"), secret));
+	return b64url(new Uint8Array(d)).slice(0, 22);
+}
+/** SHA-256 DTLS fingerprint from an SDP blob. */
+function sdpFingerprint(sdp) {
+	const m = /a=fingerprint:sha-256 ([0-9A-Fa-f:]+)/i.exec(sdp ?? "");
+	if (!m) return null;
+	const hex = m[1].split(":");
+	return hex.length === 32 ? Uint8Array.from(hex.map((h) => parseInt(h, 16))) : null;
+}
+/** Fingerprint as SDP writes it: upper-case hex pairs joined by colons. */
+var fingerprintHex = (fp) => Array.from(fp, (b) => b.toString(16).padStart(2, "0").toUpperCase()).join(":");
+/** Fingerprint of a certificate, via getFingerprints() or a throwaway offer where unsupported. */
+async function certFingerprint(cert) {
+	const f = (cert.getFingerprints?.())?.find((x) => x.algorithm?.toLowerCase() === "sha-256");
+	if (f?.value) return Uint8Array.from(f.value.split(":").map((h) => parseInt(h, 16)));
+	const pc = new RTCPeerConnection({ certificates: [cert] });
+	pc.createDataChannel("fp");
+	const offer = await pc.createOffer();
+	pc.close();
+	const fp = sdpFingerprint(offer.sdp);
+	if (!fp) throw new Error("Could not read the DTLS fingerprint");
+	return fp;
+}
+async function hkdf(key, salt, info, bytes) {
+	const base = await crypto.subtle.importKey("raw", key, "HKDF", false, ["deriveBits"]);
+	const bits = await crypto.subtle.deriveBits({
+		name: "HKDF",
+		hash: "SHA-256",
+		salt,
+		info: enc.encode(info)
+	}, base, bytes * 8);
+	return new Uint8Array(bits);
+}
+/**
+* Channel binding: proves the device holds the pairing key and binds it to both DTLS identities and to the
+* context of this attempt (the room id online, "lan:<nonce>" for a direct LAN connection).
+* mac = HMAC-SHA256(HKDF(key, salt=context, info="obpal bind v1"), fpDevice || fpHost || context)
+*/
+async function bindMac(key, fpDevice, fpHost, context) {
+	const base = await crypto.subtle.importKey("raw", key, "HKDF", false, ["deriveKey"]);
+	const mac = await crypto.subtle.deriveKey({
+		name: "HKDF",
+		hash: "SHA-256",
+		salt: enc.encode(context),
+		info: enc.encode("obpal bind v1")
+	}, base, {
+		name: "HMAC",
+		hash: "SHA-256",
+		length: 256
+	}, false, ["sign"]);
+	const sig = await crypto.subtle.sign("HMAC", mac, concat(fpDevice, fpHost, enc.encode(context)));
+	return b64url(new Uint8Array(sig));
+}
+/** The direct code's binding context (also the salt of the derived ICE credentials). */
+var lanContext = (nonce) => `lan:${b64url(nonce)}`;
+var UUID = /^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})$/i;
+var IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+var IPV6 = /^[0-9a-f:]+(%[A-Za-z0-9._-]{1,16})?$/i;
+var HOSTNAME = /^[A-Za-z0-9]([A-Za-z0-9-]{0,62}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,62}[A-Za-z0-9])?)*$/;
+var isLanHost = (h) => h.length <= 253 && (IPV4.test(h) || h.includes(":") && IPV6.test(h) || HOSTNAME.test(h));
+var uuidBytes = (name) => {
+	const m = UUID.exec(name);
+	if (!m) return null;
+	const hex = m.slice(1).join("");
+	return Uint8Array.from({ length: 16 }, (_, i) => parseInt(hex.slice(i * 2, i * 2 + 2), 16));
+};
+/** mDNS names (36-char UUIDs) shrink to 22 characters; everything else travels as written. */
+function encodeCandidate(c) {
+	const u = c.host.endsWith(".local") ? uuidBytes(c.host.slice(0, -6)) : null;
+	return `${u ? `m${b64url(u)}` : `a${c.host}`}~${c.port}`;
+}
+/** The direct code: `2.<id>.<nonce>.<ufrag>.<pwd>.<candidates>`, in the same URL fragment position as the online code. */
+function encodeLanPairing(p) {
+	return `2.${b64url(p.id)}.${b64url(p.nonce)}.${p.ufrag}.${p.pwd}.${p.cands.slice(0, 4).map(encodeCandidate).join(",")}`;
+}
+/**
+* The phone's ICE credentials for a direct code, known to both sides without any exchange:
+* HKDF-SHA256(key, salt = nonce, info = "obpal lan ice v1") -> 24 bytes -> base64 (the ice-char alphabet):
+* 8 characters of ufrag and 24 of password.
+*/
+async function lanIceCredentials(key, nonce) {
+	const bytes = await hkdf(key, nonce, "obpal lan ice v1", 24);
+	const s = btoa(String.fromCharCode(...bytes));
+	return {
+		ufrag: s.slice(0, 8),
+		pwd: s.slice(8, 32)
+	};
+}
+/** Read the ICE credentials and UDP host candidates of a gathered local description. */
+function readLocalIce(sdp) {
+	const ufrag = /^a=ice-ufrag:(\S+)/m.exec(sdp ?? "")?.[1];
+	const pwd = /^a=ice-pwd:(\S+)/m.exec(sdp ?? "")?.[1];
+	if (!ufrag || !pwd) return null;
+	return {
+		ufrag,
+		pwd,
+		cands: candidatesOf(sdp ?? "")
+	};
+}
+/** UDP host candidates from candidate lines (SDP a= lines or RTCIceCandidate.candidate strings), deduplicated. */
+function candidatesOf(text) {
+	const out = [];
+	for (const m of text.matchAll(/candidate:\S+ 1 udp \d+ (\S+) (\d+) typ host/gi)) {
+		const c = {
+			host: m[1],
+			port: Number(m[2])
+		};
+		if (isLanHost(c.host) && c.port > 0 && !out.some((o) => o.host === c.host && o.port === c.port)) out.push(c);
+	}
+	return out.slice(0, 4);
+}
+var sdpHead = (ufrag, pwd, fp, setup) => [
+	"v=0",
+	"o=- 0 0 IN IP4 127.0.0.1",
+	"s=-",
+	"t=0 0",
+	"a=group:BUNDLE 0",
+	"a=msid-semantic: WMS",
+	"m=application 9 UDP/DTLS/SCTP webrtc-datachannel",
+	"c=IN IP4 0.0.0.0",
+	`a=ice-ufrag:${ufrag}`,
+	`a=ice-pwd:${pwd}`,
+	"a=ice-options:trickle",
+	`a=fingerprint:sha-256 ${fingerprintHex(fp)}`,
+	`a=setup:${setup}`,
+	"a=mid:0",
+	"a=sctp-port:5000",
+	"a=max-message-size:262144"
+];
+/** The phone's answer as the host reconstructs it: derived credentials, the remembered phone fingerprint, no candidates. */
+function lanAnswerSdp(p) {
+	return [...sdpHead(p.ufrag, p.pwd, p.fp, "active"), ""].join("\r\n");
+}
 /** How long a connect attempt may take before the service counts as unreachable (the offline fallback's budget). */
 var REACH_TIMEOUT_MS = 1500;
 function roomSocketUrl(service, roomId, role) {
@@ -240,6 +412,97 @@ async function fetchIceServers(service, roomId, timeoutMs = REACH_TIMEOUT_MS) {
 		}
 	} catch {}
 	return STUN;
+}
+//#endregion
+//#region ../packages/core/src/store.ts
+/**
+* What a device or host keeps between sessions, in IndexedDB: its own DTLS certificate (so its fingerprint is
+* stable and the other side can pin it) and the pairings it remembers. Everything degrades to "this session
+* only" where storage is unavailable (private mode, storage denied, a browser that can't store certificates).
+*/
+var DB = "obpal";
+var VERSION = 1;
+var CERT_TTL = 31536e6;
+/** Renew a certificate this close to its expiry, so a pairing never breaks mid-week. */
+var CERT_RENEW = 6048e5;
+var memory = {
+	certs: /* @__PURE__ */ new Map(),
+	pairs: /* @__PURE__ */ new Map()
+};
+var dbPromise = null;
+function open() {
+	dbPromise ??= new Promise((resolve) => {
+		try {
+			const req = indexedDB.open(DB, VERSION);
+			req.onupgradeneeded = () => {
+				const db = req.result;
+				if (!db.objectStoreNames.contains("certs")) db.createObjectStore("certs");
+				if (!db.objectStoreNames.contains("pairs")) db.createObjectStore("pairs", { keyPath: "id" });
+			};
+			req.onsuccess = () => resolve(req.result);
+			req.onerror = () => resolve(null);
+			req.onblocked = () => resolve(null);
+		} catch {
+			resolve(null);
+		}
+	});
+	return dbPromise;
+}
+function tx(store, mode, run) {
+	return open().then((db) => {
+		if (!db) return void 0;
+		return new Promise((resolve) => {
+			try {
+				const t = db.transaction(store, mode);
+				const req = run(t.objectStore(store));
+				req.onsuccess = () => resolve(req.result);
+				req.onerror = () => resolve(void 0);
+				t.onabort = () => resolve(void 0);
+			} catch {
+				resolve(void 0);
+			}
+		});
+	});
+}
+/** This side's persistent certificate (generated on first use, renewed a week before it expires) and its fingerprint. */
+async function loadCertificate(role) {
+	const stored = memory.certs.get(role) ?? await tx("certs", "readonly", (s) => s.get(role));
+	if (stored && typeof stored.expires === "number" && stored.expires - Date.now() > CERT_RENEW) try {
+		const fp = await certFingerprint(stored);
+		memory.certs.set(role, stored);
+		return {
+			cert: stored,
+			fp,
+			fresh: false
+		};
+	} catch {}
+	const cert = await RTCPeerConnection.generateCertificate({
+		name: "ECDSA",
+		namedCurve: "P-256",
+		expires: CERT_TTL
+	});
+	memory.certs.set(role, cert);
+	await tx("certs", "readwrite", (s) => s.put(cert, role));
+	return {
+		cert,
+		fp: await certFingerprint(cert),
+		fresh: true
+	};
+}
+async function listPairs() {
+	return (await tx("pairs", "readonly", (s) => s.getAll()) ?? [...memory.pairs.values()]).filter(isPair).sort((a, b) => b.at - a.at);
+}
+async function putPair(p) {
+	memory.pairs.set(p.id, p);
+	await tx("pairs", "readwrite", (s) => s.put(p));
+}
+async function forgetPair(id) {
+	memory.pairs.delete(id);
+	await tx("pairs", "readwrite", (s) => s.delete(id));
+}
+function isPair(x) {
+	const p = x;
+	return !!p && typeof p === "object" && typeof p.id === "string" && p.key instanceof Uint8Array && p.key.length === 32 && p.peerFp instanceof Uint8Array && p.peerFp.length === 32 && typeof p.peerName === "string" && typeof p.at === "number";
 }
 var PointerFlag = {
 	/** The device has an orientation; without it the angles are meaningless. */
@@ -344,6 +607,182 @@ function mixStick(thumb, motions) {
 	}
 	if (!live) return [thumb[0], thumb[1]];
 	return jumpDeadzone(addStick(thumb, sum), d);
+}
+//#endregion
+//#region ../packages/core/src/catalogue.ts
+var Utility = {
+	pad: "pad",
+	aim: "motion.aim",
+	steer: "motion.steer",
+	point: "motion.point",
+	track: "motion.track",
+	trackpad: "touch.trackpad",
+	hold: "motion.hold",
+	tilt: "motion.tilt"
+};
+Utility.aim, Utility.steer, Utility.point;
+var u = (route, over = {}) => ({
+	route,
+	gain: 1,
+	curve: 1,
+	deadzone: .2,
+	invertY: false,
+	edgeTurn: false,
+	...over
+});
+u("stick.right"), u("stick.wheel"), u("pointer"), u("stick.right"), u("stick.fly"), u("pointer"), u("stick.right"), u("stick.wheel"), u("pointer"), u("mouse"), u("stick.wheel"), u("pointer", { edgeTurn: true }), u("stick.right"), u("stick.wheel"), u("pointer");
+/** The ranges resolveProfile() keeps settings in, and the id a new profile may take. */
+var PROFILE_LIMITS = {
+	gain: [.25, 4],
+	curve: [.5, 3],
+	deadzone: [0, .5],
+	id: /^[a-z][a-z0-9-]{1,31}$/,
+	name: 40,
+	for: 120
+};
+/**
+* The controllers a person picks from on the device (CATALOGUE §9.1): faces drawn on its screen, each built from
+* utilities. A host names the ones it suggests in `layout.controllers`, the first to open; a device says which one it
+* uses in `mode{c}`. The ids are stable, so pages (the embed's `modes`) and profiles can name them.
+*/
+var Controller = {
+	gamepad: "face.gamepad",
+	wheel: "face.wheel",
+	wii: "face.wii",
+	mouse: "face.mouse",
+	trackpad: "face.trackpad",
+	hand: "face.hand",
+	keyboard: "face.keyboard"
+};
+/** The controllers, in the picker's order: Controller, Pointer, Touch, 3D, Keys (CATALOGUE §9.1). */
+var CONTROLLERS = {
+	"face.gamepad": {
+		id: "face.gamepad",
+		name: "Gamepad",
+		category: "Controller",
+		for: "Sticks, D-pad, face buttons and triggers, with gyro aim, tilt steering and pointing",
+		utilities: [
+			Utility.pad,
+			Utility.aim,
+			Utility.steer,
+			Utility.point
+		],
+		modes: [Mode.gamepad]
+	},
+	"face.wheel": {
+		id: "face.wheel",
+		name: "Steering wheel",
+		category: "Controller",
+		for: "Tilt to steer, the triggers as pedals: the gamepad with the Driving profile",
+		utilities: [Utility.pad, Utility.steer],
+		modes: [Mode.gamepad]
+	},
+	"face.wii": {
+		id: "face.wii",
+		name: "Wii remote",
+		category: "Pointer",
+		for: "Point at the screen: A selects, hold B to grab, − and + zoom",
+		utilities: [Utility.point],
+		modes: [Mode.point]
+	},
+	"face.mouse": {
+		id: "face.mouse",
+		name: "Air mouse",
+		category: "Pointer",
+		for: "Point at the screen: Left and Right click, and a wheel scrolls",
+		utilities: [Utility.point],
+		modes: [Mode.point]
+	},
+	"face.trackpad": {
+		id: "face.trackpad",
+		name: "Trackpad",
+		category: "Touch",
+		for: "Drag, pan, pinch and twist; with the gyro on, turn things 1:1 or tilt them",
+		utilities: [
+			Utility.trackpad,
+			Utility.hold,
+			Utility.tilt
+		],
+		modes: [Mode.tilt, Mode.hold]
+	},
+	"face.hand": {
+		id: "face.hand",
+		name: "3D hand",
+		category: "3D",
+		for: "Hold the pad and move the phone: what you hold follows your hand",
+		utilities: [Utility.track],
+		modes: [Mode.track]
+	},
+	"face.keyboard": {
+		id: "face.keyboard",
+		name: "Keyboard",
+		category: "Keys",
+		for: "The phone’s own keyboard types on the screen, with Esc, Tab, the arrows and Enter",
+		utilities: [],
+		modes: []
+	}
+};
+Object.keys(CONTROLLERS);
+var isControllerId = (x) => typeof x === "string" && Object.prototype.hasOwnProperty.call(CONTROLLERS, x);
+/**
+* The shape of any controller id on the wire: a kind, a dot and a name (`face.wii`, `bridge.gamepad`). Devices and hosts
+* pass on well-formed ids they don't know, since a newer one may name a controller this version hasn't met.
+*/
+var CONTROLLER_ID = /^[a-z]{2,12}\.[a-z0-9-]{1,32}$/;
+/** The tray control that opens the device's keyboard: `face.keyboard` for devices that predate controllers. */
+var KEYBOARD_CONTROL = {
+	id: "keyboard",
+	label: "Keyboard",
+	type: "keyboard",
+	icon: "keyboard"
+};
+/** Whether controller `a` is listed, and ahead of `b` if both are. */
+var ahead = (ids, a, b) => {
+	const i = ids.indexOf(a);
+	const j = ids.indexOf(b);
+	return i >= 0 && (j < 0 || i < j);
+};
+/**
+* A layout as every device reads it (CATALOGUE §9.2): what its `controllers` mean in the fields devices knew before
+* them. Absent `modes` become the modes of the controllers, in order; `face.mouse` ahead of `face.wii` makes the Point
+* face a mouse; `face.keyboard` adds the keyboard to the tray; `face.wheel` ahead of `face.gamepad` suggests the
+* Driving profile. Whatever the layout sets itself is kept, and a layout that names no controllers comes back as it is.
+*/
+function withControllers(layout) {
+	const ids = Array.isArray(layout.controllers) ? layout.controllers.filter(isControllerId) : [];
+	if (!ids.length) return layout;
+	const out = { ...layout };
+	if (!out.modes) out.modes = [...new Set(ids.flatMap((c) => CONTROLLERS[c].modes))];
+	if (!out.point && ahead(ids, Controller.mouse, Controller.wii)) out.point = "mouse";
+	if (!out.profile && ahead(ids, Controller.wheel, Controller.gamepad)) out.profile = "driving";
+	if (ids.includes(Controller.keyboard) && !out.tray.some((c) => c.type === "keyboard")) out.tray = [...out.tray, KEYBOARD_CONTROL];
+	return out;
+}
+/** The controller a mode stands for on a host with this layout: what a device that says only `mode{m}` (no `c`) uses. */
+function controllerOf(m, layout = {}) {
+	switch (m) {
+		case Mode.gamepad: return Controller.gamepad;
+		case Mode.point: return layout.point === "mouse" ? Controller.mouse : Controller.wii;
+		case Mode.track: return Controller.hand;
+		case Mode.hold:
+		case Mode.tilt:
+		case Mode.orbit:
+		case Mode.pad: return Controller.trackpad;
+		default: return null;
+	}
+}
+/**
+* What a device's `mode{m, c?, p?}` says it uses (CATALOGUE §9.4): its controller (`c`, else the one its mode stands for
+* on this host) and its profile (`p`). Each is kept only when well formed; a well-formed id this version doesn't know
+* passes, since a newer device may name a controller or a community profile.
+*/
+function readMode(msg, layout = {}) {
+	const controller = (typeof msg.c === "string" && CONTROLLER_ID.test(msg.c) ? msg.c : void 0) ?? (typeof msg.m === "number" ? controllerOf(msg.m, layout) ?? void 0 : void 0);
+	const profile = typeof msg.p === "string" && PROFILE_LIMITS.id.test(msg.p) ? msg.p : void 0;
+	return {
+		...controller ? { controller } : {},
+		...profile ? { profile } : {}
+	};
 }
 //#endregion
 //#region ../packages/host/src/stream.ts
@@ -716,7 +1155,7 @@ var Remote = class Remote {
 		};
 		this.cards = [];
 		this.service = (opts.service ?? (isObpalOrigin() ? location.origin : "https://obpal.blackboxes.net")).replace(/\/$/, "");
-		this.layout = opts.layout ?? DEFAULT_LAYOUT;
+		this.layout = withControllers(opts.layout ?? DEFAULT_LAYOUT);
 	}
 	static async create(opts) {
 		const r = new Remote(opts);
@@ -965,8 +1404,12 @@ var Remote = class Remote {
 			caps: null,
 			lost: null,
 			nodesSent: -1,
+			says: false,
 			stream: new Stream({
-				mode: (m) => this.emit("mode", m, this.participant(peer)),
+				mode: (m) => {
+					if (!(peer.says && peer.controller && isControllerId(peer.controller) ? CONTROLLERS[peer.controller] : null)?.modes.includes(m)) peer.controller = controllerOf(m, this.layout) ?? void 0;
+					this.emit("mode", m, this.participant(peer));
+				},
 				pad: (on) => this.emit("pad", on, this.participant(peer)),
 				input: () => {
 					if (!this.firstInputAt) this.firstInputAt = Date.now();
@@ -1148,9 +1591,14 @@ var Remote = class Remote {
 					add: m.add === true
 				}, who);
 				break;
-			case "mode":
-				this.emit("mode", m.m, who);
+			case "mode": {
+				const said = readMode(m, this.layout);
+				if (said.controller === m.c) peer.says = true;
+				peer.controller = said.controller;
+				peer.profile = said.profile;
+				this.emit("mode", m.m, this.participant(peer));
 				break;
+			}
 			case "recenter":
 				this.emit("recenter", who);
 				break;
@@ -1184,7 +1632,9 @@ var Remote = class Remote {
 			color: p.color,
 			lead: p === this.active,
 			since: p.since,
-			caps: p.caps
+			caps: p.caps,
+			...p.controller ? { controller: p.controller } : {},
+			...p.profile ? { profile: p.profile } : {}
 		};
 	}
 	/** Everyone controlling the scene, oldest (the lead) first. */
@@ -1238,12 +1688,13 @@ var Remote = class Remote {
 			ms
 		});
 	}
-	/** The tray and modes: for `who`, else for everyone. */
+	/** The tray and modes (or controllers, filled in as withControllers does): for `who`, else for everyone. */
 	setLayout(layout, who) {
-		if (!who) this.layout = layout;
+		const full = withControllers(layout);
+		if (!who) this.layout = full;
 		for (const p of this.targets(who)) this.send(p, {
 			t: "layout",
-			layout
+			layout: full
 		});
 	}
 	/** Sync toggle/label state shown on devices: for `who`, else for everyone. */
@@ -1554,6 +2005,8 @@ var DESKTOP_KEYS = {
 	},
 	tiltMoves: false
 };
+/** The PC target's mapping: the desktop controller for the whole PC, the game keys for one program at a time. */
+var pcKeys = (desktop) => desktop ? DESKTOP_KEYS : DEFAULT_KEYS;
 var MOD_OF = {
 	ShiftLeft: "shift",
 	ControlLeft: "ctrl",
@@ -1700,6 +2153,71 @@ var KeyMapper = class {
 		});
 	}
 };
+//#endregion
+//#region src/shared/pcgestures.ts
+/**
+* PC target: the phone as this PC's pointer, the way a laptop touchpad and a Wii remote work. Pure: fed the phone's
+* button events and, every tick, its touch state and this tick's pointer motion, it says which mouse buttons to hold,
+* whether to hold Ctrl (zooming is Ctrl + wheel), how far to turn the wheel, and how far to move the pointer. The
+* offscreen link merges that into the frame for ob.Pal Desktop, which only ever sees held state and motion.
+*
+*   Trackpad  tap: click · tap again: double-click · hold: right-click · hold, then move: drag
+*             two fingers: scroll, the page following them, with a flick carrying on · pinch: zoom
+*   Point     A: click where A went down (the pointer holds still while A is down) · keep holding A: right-click
+*             · press A and aim away: drag · hold B and aim: scroll, the page following the pointer · + / −: zoom
+*   Mouse     (the Point face a PC gets) Left and Right: a press held still where it went down, a click when let go,
+*             a drag when aimed away, held as it is when kept down · the wheel: turned by a finger (mouse-wheel
+*             values), tapped for a middle click, held to scroll by aiming (B) · + / −: zoom
+*   Keyboard  the key row (btn key-<code> taps): Esc, Tab, the arrows, Backspace and Enter, each a tap of that key ·
+*             typing (text{s, del}) in order with them: never ahead of a key tapped before it
+*
+* A click is a press held for CLICK_MS then a release held for CLICK_MS, so it spans frames the helper can diff,
+* and a double-click stays inside Windows' double-click time. A key tap is timed the same way.
+*
+* Typing goes out right after the tick's frame, and only after a frame that holds no modifier and no key from the
+* row: ob.Pal Desktop refuses text while a modifier is down, and doesn't retry. It is paced (TEXT_RATE) under the
+* helper's 40 a second, and what waits merges into one request wherever that types the same.
+*/
+/** The keys the keyboard's key row taps (btn key-<code>), by KeyboardEvent.code. Nothing else is ever pressed from there. */
+var KEY_TAPS = [
+	"Escape",
+	"Tab",
+	"ArrowLeft",
+	"ArrowUp",
+	"ArrowDown",
+	"ArrowRight",
+	"Backspace",
+	"Enter"
+];
+var MODIFIERS = /* @__PURE__ */ new Set([
+	"ShiftLeft",
+	"ShiftRight",
+	"ControlLeft",
+	"ControlRight",
+	"AltLeft",
+	"AltRight",
+	"MetaLeft",
+	"MetaRight"
+]);
+/** A held key (KeyboardEvent.code) that is a modifier: while one is down, the helper refuses typing. */
+var isModifier = (code) => MODIFIERS.has(code);
+/**
+* Two typings as one request, where that types the same: A's text less what B deletes of it, then B's (B deleting
+* past A's text deletes that much more first). It may come to nothing (typing deleted again). Never when B deletes
+* into a newline or tab A typed, which Backspace can't take back (Enter may have sent a message, Tab moved the
+* focus), and never past MAX_TEXT. Null: keep them apart.
+*/
+function mergeText(a, b) {
+	if (b.del && /[\n\t]/.test(a.s)) return null;
+	const typed = Array.from(a.s);
+	const s = typed.slice(0, Math.max(0, typed.length - b.del)).join("") + b.s;
+	const del = a.del + Math.max(0, b.del - typed.length);
+	return del <= 256 && s.length <= 256 ? {
+		t: "text",
+		s,
+		del
+	} : null;
+}
 /** A 'tap' this soon after A's own press ended is that press, not another click (ms). */
 var TAP_ECHO_MS = 600;
 /** Which two-finger gesture it is: this much pan (px) or pinch (log2) first. */
@@ -1741,8 +2259,19 @@ var PcGestures = class {
 	/** Sub-unit wheel left over from earlier ticks. */
 	carry = [0, 0];
 	last = 0;
-	/** A button event from the phone (Remote 'button'): the trackpad's taps and the Point face's A, B, + and −. */
+	/** The key row's taps and the typing, in the order they came. */
+	typing = [];
+	/** The key tap under way: down for CLICK_MS, then up for CLICK_MS. */
+	key = null;
+	/** Text requests that may go now (refilled at TEXT_RATE a second, up to TEXT_BURST). */
+	textTokens = 5;
+	/** A button event from the phone (Remote 'button'): the trackpad's taps, the Point face's A, B, + and −, and the key row. */
 	button(id, ev, now) {
+		if (id.startsWith("key-")) {
+			const code = id.slice(4);
+			if (ev === "tap" && KEY_TAPS.includes(code)) this.typing.push({ key: code });
+			return;
+		}
 		this.fling = null;
 		switch (id) {
 			case "pad":
@@ -1800,6 +2329,19 @@ var PcGestures = class {
 				return;
 		}
 	}
+	/** Typing from the phone's keyboard (validated already): it goes out after any key tap that came before it. */
+	text(s, del) {
+		const t = {
+			t: "text",
+			s,
+			del
+		};
+		const last = this.typing[this.typing.length - 1];
+		const merged = last && !("key" in last) ? mergeText(last, t) : null;
+		if (!merged) this.typing.push(t);
+		else if (merged.s || merged.del) this.typing[this.typing.length - 1] = merged;
+		else this.typing.pop();
+	}
 	/** The mouse face's wheel turned: wheel units, 120 a notch, + scrolls down. */
 	wheel(units) {
 		if (!Number.isFinite(units)) return;
@@ -1814,7 +2356,9 @@ var PcGestures = class {
 			ctrl: false,
 			move: [t.move[0], t.move[1]],
 			wheel: [0, 0],
-			buzz: false
+			buzz: false,
+			keys: [],
+			text: []
 		};
 		if (!t.connected) {
 			this.reset();
@@ -1957,11 +2501,40 @@ var PcGestures = class {
 			this.carry[i] = v - out.wheel[i];
 		}
 		out.buttons = [...held].sort();
+		this.textTokens = Math.min(5, this.textTokens + dt * 20 / 1e3);
+		for (;;) {
+			const k = this.key;
+			if (k) {
+				if (!k.upAt && t.now - k.downAt >= 30) k.upAt = t.now;
+				if (!k.upAt) {
+					out.keys.push(k.code);
+					break;
+				}
+				if (t.now - k.upAt < 30) break;
+				this.key = null;
+			}
+			const next = this.typing[0];
+			if (!next) break;
+			if ("key" in next) {
+				if (out.text.length) break;
+				this.typing.shift();
+				this.key = {
+					code: next.key,
+					downAt: t.now,
+					upAt: 0
+				};
+				continue;
+			}
+			if (out.ctrl || t.mods || this.textTokens < 1) break;
+			this.textTokens -= 1;
+			this.typing.shift();
+			out.text.push(next);
+		}
 		return out;
 	}
-	/** Something is going on that needs frames even without phone input: a click, a drag, a flick, a zoom step. */
+	/** Something is going on that needs frames even without phone input: a click, a drag, a flick, a zoom step, a key tap. */
 	get busy() {
-		return !!(this.click || this.queue.length || this.a?.drag || this.hold?.drag || this.grab || this.fling || this.steps || this.a || this.press[0] || this.press[2] || this.turn);
+		return !!(this.click || this.queue.length || this.a?.drag || this.hold?.drag || this.grab || this.fling || this.steps || this.a || this.press[0] || this.press[2] || this.turn || this.key || this.typing.length);
 	}
 	/** Let go of everything: the phone went away, or the PC target was left. */
 	reset() {
@@ -1978,6 +2551,9 @@ var PcGestures = class {
 		this.vel = [0, 0];
 		this.fling = null;
 		this.carry = [0, 0];
+		this.typing = [];
+		this.key = null;
+		this.textTokens = 5;
 	}
 };
 //#endregion
@@ -2154,74 +2730,110 @@ function suggestForFrames(hosts, table = SITE_PROFILES) {
 * About 60 times a second, and immediately when a packet arrives, it samples the phone (remote.pad and
 * remote.consume()) and streams compact input frames to the page bridges of the controlled tab over runtime
 * ports: the controller to every frame, keys to the focused frame, 3D drags to the frame with the largest canvas.
+* For the PC target the frames (and the phone's typing, in order with them) go to the service worker instead.
 */
 var TICK_MS = 1e3 / 60;
 /** A clock tick this soon after a packet-driven one is skipped: packets set the pace while input flows. */
 var TICK_MIN_GAP_MS = 6;
 var HEARTBEAT_MS = 250;
 var RUMBLE_GAP_MS = 50;
-/** What the phone offers: gamepad, tilt and point modes, plus a tray picker for what it drives in the browser. */
-var layout = {
-	v: 1,
-	modes: [
-		Mode.gamepad,
-		Mode.tilt,
-		Mode.point
-	],
-	tray: [{
-		id: "target",
-		label: "Target",
-		type: "select",
-		icon: "settings",
-		options: [
-			{
-				value: "gamepad",
-				label: "Controller",
-				glyph: "✚",
-				detail: "Gamepad API games"
-			},
-			{
-				value: "viewer",
-				label: "3D",
-				glyph: "◆",
-				detail: "Rotate, pan and zoom 3D views"
-			},
-			{
-				value: "keys",
-				label: "Keys",
-				glyph: "⌨",
-				detail: "Keyboard and mouse games"
-			},
-			{
-				value: "pc",
-				label: "PC",
-				glyph: "▭",
-				detail: "Keyboard and mouse for programs you allow"
-			}
-		]
-	}]
+/**
+* The PC option's line in the target picker: the whole PC while the config says so. That flag counts only while the
+* PC is the target, so from another target the line has to hold whichever way the whole PC is set.
+*/
+var PC_WHOLE = "Your whole PC: mouse, keyboard and typing";
+var PC_OTHERWISE = "Mouse and keyboard for programs you allow, or your whole PC";
+/** The tray picker for what the phone drives. */
+var targetPicker = (wholePc) => ({
+	id: "target",
+	label: "Target",
+	type: "select",
+	icon: "settings",
+	options: [
+		{
+			value: "gamepad",
+			label: "Controller",
+			glyph: "✚",
+			detail: "Gamepad API games"
+		},
+		{
+			value: "viewer",
+			label: "3D",
+			glyph: "◆",
+			detail: "Rotate, pan and zoom 3D views"
+		},
+		{
+			value: "keys",
+			label: "Keys",
+			glyph: "⌨",
+			detail: "Keyboard and mouse games"
+		},
+		{
+			value: "pc",
+			label: "PC",
+			glyph: "▭",
+			detail: wholePc ? PC_WHOLE : PC_OTHERWISE
+		}
+	]
+});
+/** The phone's own keyboard, for the PC: typing arrives as text, its key row (Esc, Tab, arrows, ⌫, ↵) as key-<code> taps. */
+var KEYBOARD = {
+	id: "keyboard",
+	label: "Keyboard",
+	type: "keyboard",
+	icon: "keyboard"
 };
 /**
-* The layout with the site's suggested catalogue profile (CATALOGUE §3), when the table has one. The PC target gets
-* the mouse face in Point (Left, Right and a wheel instead of A and B) and a scroll wheel on the trackpad.
+* What the phone offers: gamepad, tilt and point modes, the target picker, and the site's suggested catalogue profile
+* (CATALOGUE §3) when the table has one. The PC target gets the mouse face in Point (Left, Right and a wheel instead
+* of A and B), a scroll wheel on the trackpad, and the keyboard.
 */
-var layoutFor = (profile) => ({
-	...layout,
-	...profile ? { profile } : {},
-	...config.mode === "pc" ? {
-		point: "mouse",
-		wheel: true
-	} : {}
-});
+var layoutFor = (profile) => {
+	const onPc = config.mode === "pc";
+	const picker = targetPicker(config.desktop);
+	return {
+		v: 1,
+		modes: [
+			Mode.gamepad,
+			Mode.tilt,
+			Mode.point
+		],
+		tray: onPc ? [picker, KEYBOARD] : [picker],
+		...profile ? { profile } : {},
+		...onPc ? {
+			point: "mouse",
+			wheel: true
+		} : {}
+	};
+};
 var remote = null;
 var config = {
 	tabId: null,
-	mode: DEFAULT_MODE
+	mode: DEFAULT_MODE,
+	desktop: false
 };
 var configured = false;
 var links = /* @__PURE__ */ new Set();
 var lastTargets = /* @__PURE__ */ new Set();
 var suggested = null;
+/** A text or password field on the PC would take typing (the service worker says so, from ob.Pal Desktop). */
+var textField = null;
+var fieldShown = null;
+/** The phone's `textField` value: the field while the PC is the target, else false. Sent when it changes, and to every phone that connects. */
+function publishField(always = false) {
+	const v = config.mode === "pc" && textField ? textField : false;
+	if (v === fieldShown && !always) return;
+	fieldShown = v;
+	remote?.setValues({ textField: v });
+}
+var TYPING_TOAST_MS = 2500;
+var typingToastAt = -Infinity;
+function typingRefused(toast) {
+	const now = performance.now();
+	if (now - typingToastAt < TYPING_TOAST_MS) return;
+	typingToastAt = now;
+	remote?.feedback({ toast });
+}
 var hostOf = (url) => {
 	try {
 		return url ? new URL(url).hostname : "";
@@ -2246,7 +2858,8 @@ chrome.runtime.onMessage.addListener((raw, sender, respond) => {
 	if (!req) return;
 	switch (req.type) {
 		case "config":
-			applyConfig(req.tabId, req.mode, req.desktop === true);
+			applyConfig(req);
+			respond(true);
 			break;
 		case "unpair":
 			remote?.disconnect();
@@ -2260,6 +2873,11 @@ chrome.runtime.onMessage.addListener((raw, sender, respond) => {
 		case "diag":
 			respond(remote?.diag() ?? null);
 			return true;
+		case "text-field":
+			textField = req.field;
+			publishField();
+			break;
+		case "typing": if (config.mode === "pc") typingRefused(typingToast(req.refused));
 	}
 });
 chrome.runtime.onConnect.addListener((port) => {
@@ -2287,14 +2905,16 @@ chrome.runtime.onConnect.addListener((port) => {
 	port.onDisconnect.addListener(() => forget(link));
 	syncSuggestion();
 });
-function applyConfig(tabId, mode, desktop = false) {
+function applyConfig({ tabId, mode, desktop }) {
 	const modeChanged = mode !== config.mode;
+	const wholeChanged = desktop !== config.desktop;
 	config = {
 		tabId,
-		mode
+		mode,
+		desktop
 	};
 	configured = true;
-	const keys = desktop ? DESKTOP_KEYS : DEFAULT_KEYS;
+	const keys = pcKeys(desktop);
 	if (pc.mapper.cfg !== keys) {
 		pc.held.apply(pc.mapper.releaseAll());
 		pc.mapper.cfg = keys;
@@ -2311,7 +2931,8 @@ function applyConfig(tabId, mode, desktop = false) {
 		if (mode !== "pc") pcLetGo();
 		remote?.setValues({ target: mode });
 		remote?.setLayout(layoutFor(suggested));
-	}
+		publishField();
+	} else if (wholeChanged) remote?.setLayout(layoutFor(suggested));
 	syncSuggestion();
 }
 var pc = {
@@ -2378,27 +2999,33 @@ function pcTick(f, pad, ptr, now) {
 		dtMs: dt
 	});
 	pc.held.apply(out);
+	const mods = [...pc.held.keys].some(isModifier);
 	const g = pc.gestures.tick({
 		now,
 		connected: f.connected,
 		touching: f.touching,
 		move: out.move,
 		pan: f.pad2,
-		pinch: f.zoom
+		pinch: f.zoom,
+		mods
 	});
 	if (g.buzz) remote?.rumble(BUZZ.strong, BUZZ.weak, BUZZ.ms);
 	const frame = buildNativeFrame(pc.held, g.move, [g.wheel[0] + out.wheel[0], g.wheel[1] + out.wheel[1]], {
 		buttons: g.buttons,
-		keys: g.ctrl ? CTRL : []
+		keys: [...g.ctrl ? CTRL : [], ...g.keys]
 	});
 	const sig = heldSignature(frame);
-	if (isIdleFrame(frame) && sig === pc.lastSig && now - pc.lastSent < 250) return;
+	const repeat = isIdleFrame(frame) && sig === pc.lastSig && now - pc.lastSent < 250;
+	if (repeat && !g.text.length) return;
 	const port = pcPort();
 	if (!port) return;
 	try {
-		port.postMessage(frame);
-		pc.lastSent = now;
-		pc.lastSig = sig;
+		if (!repeat) {
+			port.postMessage(frame);
+			pc.lastSent = now;
+			pc.lastSig = sig;
+		}
+		for (const t of g.text) port.postMessage(t);
 	} catch {
 		pc.port = null;
 	}
@@ -2577,6 +3204,7 @@ async function boot() {
 	r.on("connect", () => {
 		report();
 		r.setValues({ target: config.mode });
+		publishField(true);
 	});
 	r.on("disconnect", () => {
 		pc.gestures.reset();
@@ -2585,6 +3213,17 @@ async function boot() {
 	r.on("button", ({ id, ev }) => {
 		if (config.mode !== "pc") return;
 		pc.gestures.button(id, ev, performance.now());
+		tick();
+	});
+	r.on("text", ({ s, del }) => {
+		if (config.mode !== "pc") return;
+		const t = parseNativeText({
+			t: "text",
+			s,
+			del
+		});
+		if (!t) return typingRefused(typingToast("bad-text"));
+		pc.gestures.text(t.s, t.del);
 		tick();
 	});
 	r.on("input", tick);
@@ -2604,7 +3243,7 @@ async function boot() {
 		to: "bg",
 		type: "offscreen-ready"
 	}));
-	if (cfg && !configured) applyConfig(cfg.tabId, cfg.mode);
+	if (cfg && !configured) applyConfig(cfg);
 	startClock();
 }
 boot().catch((e) => {

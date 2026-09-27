@@ -1,6 +1,4 @@
 (function() {
-	new TextEncoder();
-	//#endregion
 	//#region ../packages/core/src/pad.ts
 	/** Standard-mapping button indices (https://w3c.github.io/gamepad/#remapping). */
 	var PadButton = {
@@ -31,28 +29,6 @@
 		const m = Math.hypot(x, y);
 		return m > 1 ? [x / m, y / m] : [x, y];
 	}
-	//#endregion
-	//#region ../packages/core/src/catalogue.ts
-	var Utility = {
-		pad: "pad",
-		aim: "motion.aim",
-		steer: "motion.steer",
-		point: "motion.point",
-		trackpad: "touch.trackpad",
-		hold: "motion.hold",
-		tilt: "motion.tilt"
-	};
-	Utility.aim, Utility.steer, Utility.point;
-	var u = (route, over = {}) => ({
-		route,
-		gain: 1,
-		curve: 1,
-		deadzone: .2,
-		invertY: false,
-		edgeTurn: false,
-		...over
-	});
-	u("stick.right"), u("stick.wheel"), u("pointer"), u("stick.right"), u("stick.fly"), u("pointer"), u("stick.right"), u("stick.wheel"), u("pointer"), u("mouse"), u("stick.wheel"), u("pointer", { edgeTurn: true }), u("stick.right"), u("stick.wheel"), u("pointer");
 	//#endregion
 	//#region ../packages/host/src/gamepad.ts
 	var GAMEPAD_ID = "ob.Pal Controller (STANDARD GAMEPAD Vendor: 0b0a Product: 0001)";

@@ -5,7 +5,7 @@ Your phone as a controller for any website. ob.Pal Link is a browser extension (
 - **Controller**: a standard gamepad for any game that uses the Gamepad API, cloud gaming included.
 - **3D**: drag to rotate, two fingers to pan and pinch to zoom, on any 3D viewer in the page.
 - **Keys**: keyboard and mouse input for keyboard games.
-- **PC** (Windows): your phone as this computer's mouse and keyboard, in every window or only the programs you allow, through the ob.Pal Desktop helper.
+- **PC** (Windows): your phone as this computer's mouse and keyboard, in every window or only the programs you allow, through the ob.Pal Desktop helper, with the phone's own keyboard for typing.
 
 A phone you've paired once also connects directly over your Wi-Fi when the internet is down.
 
@@ -49,6 +49,9 @@ Keep the folder where it is, and don't load it from inside the zip or a folder t
 **How long the pairing lasts**
 - The pairing stays up until the browser closes, or until you press × in the popup.
 - To reconnect after that, scan the code again.
+
+**The look**
+- The popup and the options page come in the surfaces and colours the phone's settings offer. Pick one with the palette button in the popup, or under **Look** in the options (right-click the toolbar icon, then **Options**). Both pages follow at once.
 
 ## Modes
 
@@ -107,12 +110,18 @@ The target is the largest visible canvas or `<model-viewer>` in the page.
 | Point (a mouse, held like a remote): aim · Left · Right | move the pointer · click where it went down · right-click |
 | press Left and aim away · turn the wheel · tap it · hold it and aim | drag · scroll (turned fast, it spins free) · middle-click · scroll |
 | zoom out · centre · zoom in | zoom · re-aim at the centre · zoom |
-| Gamepad, whole PC | left stick: pointer · right stick: scroll · A / RT: click · X / LT: right-click · B: Esc · Y: Enter · D-pad: arrows · LB / RB: back / forward · Menu: Start |
+| Gamepad, whole PC | left stick: pointer · right stick: scroll · A / RT: click · X / LT: right-click · left stick press: middle-click · B: Esc · Y: Enter · D-pad: arrows · LB / RB: back / forward · Menu: Start · View: last app |
 | Gamepad, one program | the Keys mapping above |
+| **Keyboard** in the tray, or **Type** | type into the field that has the focus, with the phone's own keyboard (autocorrect, predictions, swipe typing) |
+| its key row: esc · tab · ← ↑ ↓ → · ⌫ · ↵ | Esc · Tab · arrow keys · Backspace · Enter |
+
+In Point, the phone's volume keys work too where its browser allows: up is Left, down holds the wheel.
+
+**Typing.** When a text field on the PC has the keyboard focus, the phone shows **Type**: one tap opens the phone's own keyboard. In a password field, the phone types into a password field of its own, so nothing is suggested, learned or kept. **Keyboard** in the phone's tray opens it at any time. **Type** shows only where typing goes through: the whole PC or an allowed program, with keys allowed and not paused. If typing can't get through, the phone says why. Typing needs ob.Pal Desktop 0.3 or later.
 
 - Nothing reaches the PC until you pick **PC** and turn on the whole PC or allow a program. Manage both in the extension's options, where **Pause all** stops everything.
 - `Ctrl`+`Alt`+`Backspace` stops everything at once. Windows keeps programs running as administrator out of reach.
-- **Updating the helper:** switch ob.Pal Link away from **PC** (or close the browser), then unzip the new version over the old folder.
+- **Updating the helper:** switch ob.Pal Link away from **PC** and close its options page if it's open (or close the browser), then unzip the new version over the old folder.
 - **Removing it:** double-click `uninstall.cmd` in its folder. It removes the helper, its settings and its files, with the browser still open.
 
 The helper isn't code-signed yet, so Windows may warn about it. Its source is in [`desktop/`](https://github.com/Axialon/obpal/tree/main/desktop).
@@ -123,12 +132,12 @@ After one online pairing, the extension and the phone remember each other. When 
 
 ## Privacy and permissions
 
-There are no accounts and no analytics, and the extension loads no remote code. Its only network use is the ob.Pal service (pairing and relay credentials) and the direct, encrypted WebRTC connection to your phone. It doesn't read page content, browsing history or what you type. Full policy: [obpal.blackboxes.net/privacy](https://obpal.blackboxes.net/privacy/)
+There are no accounts and no analytics, and the extension loads no remote code. Its only network use is the ob.Pal service (pairing and relay credentials) and the direct, encrypted WebRTC connection to your phone. It doesn't read page content, browsing history or what you type on the computer. What you type on the phone's keyboard goes over that connection to the extension and on to ob.Pal Desktop, which types it; neither keeps it. Full policy: [obpal.blackboxes.net/privacy](https://obpal.blackboxes.net/privacy/)
 
 | Permission | Why |
 |---|---|
 | `offscreen` | An MV3 service worker can't hold a WebRTC connection, so an offscreen document keeps the link to the phone. |
-| `storage` | Remembers the chosen mode. Until the browser closes, session storage also holds the controlled tab and the link status. |
+| `storage` | Remembers the chosen mode and the look. Until the browser closes, session storage also holds the controlled tab and the link status. |
 | `activeTab` | Clicking the toolbar icon grants access to the current tab only. |
 | `scripting` | Injects the input bridge into the tab you turned on. |
 | `https://obpal.blackboxes.net/*` | Pairing (signaling) and relay (TURN) credentials. |
@@ -153,4 +162,4 @@ The files in [`extension/`](extension) are the complete extension, unminified, e
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). The fonts the extension bundles, Inter and Plus Jakarta Sans, are under the SIL Open Font License 1.1 ([Inter](extension/assets/OFL-Inter.txt), [Plus Jakarta Sans](extension/assets/OFL-PlusJakartaSans.txt)).

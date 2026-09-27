@@ -1,6 +1,6 @@
 # ob.Pal Desktop
 
-The small Windows helper that makes your phone this computer's mouse and keyboard, through ob.Pal Link: in every window, or only the programs you allow.
+The small Windows helper that makes your phone this computer's mouse and keyboard, through ob.Pal Link: in every window, or only the programs you allow. The phone's own keyboard types into the PC too.
 
 ## Install
 
@@ -8,7 +8,11 @@ The small Windows helper that makes your phone this computer's mouse and keyboar
 2. In ob.Pal Link's popup, pick **PC**, and allow the permission it asks for.
 3. Click **Control the whole PC**. Or bring one program to the front, come back to the popup and click **Allow**.
 
-To update, switch ob.Pal Link away from **PC** (or close the browser), then unzip the new version over the old folder. Version 0.2 adds the whole PC and clicks; ob.Pal Link 1.3 or later uses them.
+To update, switch ob.Pal Link away from **PC** and close its options page if it's open (or close the browser), then unzip the new version over the old folder. There's no need to run `install.cmd` again unless you moved the folder. Version 0.3 adds typing from the phone's keyboard, which ob.Pal Link 1.5 or later uses; 0.2 added the whole PC and clicks (ob.Pal Link 1.3 or later).
+
+## Typing
+
+**Keyboard** in the phone's tray opens the phone's own keyboard, with Esc, Tab, the arrows, Backspace and Enter on a key row. What you type goes into whatever has the focus on the PC, and characters arrive as they are, emoji included, whatever the PC's keyboard layout. While a text field has the focus, the phone offers **Type** by itself. In a password field, the phone types into a password field of its own, so nothing is suggested, learned or kept.
 
 ## Uninstall
 
@@ -28,7 +32,15 @@ The helper isn't code-signed yet, so Windows SmartScreen may warn about it. Choo
 
 - Nothing reaches the PC until you turn on the whole PC or allow a program, and only the kinds you chose (keyboard, mouse).
 - One program at a time: input reaches it only while it's in front, and switching windows releases every held key.
+- Typing goes only where keys may go, at a limited rate, and never while the phone holds Shift, Ctrl or Alt, so typed text can't turn into shortcuts.
 - `Ctrl`+`Alt`+`Backspace` stops everything. Windows keeps programs running as administrator out of reach.
+
+## Privacy
+
+- The helper has no network access. The browser starts it, and only ob.Pal Link can talk to it.
+- So the phone can offer its keyboard, the helper checks about four times a second whether the control with the keyboard focus is a text or password field, and only while ob.Pal Link uses it. It reads only what kind of control it is, never what's in it, and nothing at all of a program running as administrator.
+- That check makes Chrome and other Chromium-based programs build their accessibility tree, which costs them memory and some CPU.
+- It keeps your allowed programs, the whole PC and pause settings, and a short log of when it starts and stops: never your input, and never what you type.
 
 ## Source
 

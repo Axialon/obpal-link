@@ -1,4 +1,18 @@
 //#region src/shared/native.ts
+/**
+* PC target: what the extension exchanges with ob.Pal Desktop, the native helper (desktop/), over Chrome
+* Native Messaging, and the state the popup and options page render from it. Pure: unit-tested in node.
+*
+*   offscreen (KeyMapper → desired held state) ──port──▶ service worker ──connectNative──▶ obpal-desktop.exe
+*                                                          │ storage.session.pc ◀── status / config / hello
+*                                                          ▼
+*                                                   popup, options page
+*
+* Frames carry the whole desired state (which keys and buttons are held) plus this frame's motion, never
+* edges: the helper diffs against what it holds, so a lost frame can never leave a key stuck. Typing from the
+* phone's keyboard goes beside them, in order on the same port, as text requests.
+* See spec/PROTOCOL.md § Native messaging frames.
+*/
 /** Native messaging host name (desktop/src/win/install.rs HOST_NAME). */
 var NATIVE_HOST = "net.blackboxes.obpal";
 /** runtime.connect() port the offscreen link opens to the service worker for PC frames. */
@@ -69,6 +83,40 @@ function parseNativeFrame(x) {
 	}
 	return f;
 }
+/** Control characters other than tab and newline, and halves of a character: nothing that isn't typing. */
+var NOT_TYPING = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+/** Validate a text request (from the phone, through the offscreen link) before it goes to the helper: at most MAX_TEXT typed and deleted. */
+function parseNativeText(x) {
+	if (!isObj(x) || x.t !== "text" || typeof x.s !== "string" || x.s.length > 256 || NOT_TYPING.test(x.s)) return null;
+	const del = x.del === void 0 ? 0 : x.del;
+	if (typeof del !== "number" || !Number.isInteger(del) || del < 0 || del > 256 || !x.s && !del) return null;
+	return {
+		t: "text",
+		s: x.s,
+		del
+	};
+}
+var isTextField = (x) => x === "text" || x === "secret";
+var TYPING_REFUSALS = [
+	"not-typed",
+	"keys-held",
+	"text-rate",
+	"bad-text",
+	"no-text",
+	"offline"
+];
+var isTypingRefusal = (x) => typeof x === "string" && TYPING_REFUSALS.includes(x);
+/** The word the phone shows for a refusal. */
+function typingToast(r) {
+	switch (r) {
+		case "not-typed": return "Not typed: keys are off for this window";
+		case "keys-held": return "Not typed: let go of the keys first";
+		case "text-rate": return "Typing faster than the PC takes it";
+		case "bad-text": return "That can’t be typed";
+		case "no-text": return "Update ob.Pal Desktop to type from the phone";
+		case "offline": return "Not typed: ob.Pal Desktop isn’t connected";
+	}
+}
 var MAX_PATH = 1024;
 var MAX_PROGRAMS = 200;
 function parseScope(x) {
@@ -118,12 +166,14 @@ function parsePcStatus(x) {
 	const front = x.front === null ? null : parseProgram(x.front);
 	const program = x.program === null ? null : parseProgram(x.program);
 	if (front === null && x.front !== null || program === null && x.program !== null) return null;
+	if (x.text !== void 0 && x.text !== null && !isTextField(x.text)) return null;
 	return {
 		enabled: x.enabled,
 		panic: x.panic,
 		held: x.held,
 		front,
-		program
+		program,
+		text: isTextField(x.text) ? x.text : null
 	};
 }
 function parseHelperMessage(x) {
@@ -133,7 +183,7 @@ function parseHelperMessage(x) {
 			if (!Number.isInteger(x.v) || !str(x.version, 32) || !str(x.os, 16) || !isObj(x.caps)) return null;
 			if (x.hotkey !== null && !str(x.hotkey, 40)) return null;
 			const c = x.caps;
-			if (!bool(c.keyboard) || !bool(c.mouse) || !bool(c.gamepad) || c.desktop !== void 0 && !bool(c.desktop)) return null;
+			if (!bool(c.keyboard) || !bool(c.mouse) || !bool(c.gamepad) || c.desktop !== void 0 && !bool(c.desktop) || c.text !== void 0 && !bool(c.text)) return null;
 			return {
 				t: "hello",
 				v: x.v,
@@ -144,7 +194,8 @@ function parseHelperMessage(x) {
 					keyboard: c.keyboard,
 					mouse: c.mouse,
 					gamepad: c.gamepad,
-					desktop: c.desktop === true
+					desktop: c.desktop === true,
+					text: c.text === true
 				}
 			};
 		}
@@ -270,6 +321,20 @@ function pcView(s) {
 		desktop
 	};
 }
+/**
+* The field the phone offers its keyboard for (the host value `textField`): the helper's status.text, only while
+* typing there would go through. The helper is armed, not paused or stopped, and the window in front takes keys:
+* with the whole PC on, when its scope has the keyboard; one program at a time, when that program is allowed keys.
+* An elevated window never takes them (Windows drops the helper's input to it).
+*/
+function typingField(s) {
+	const st = s.status;
+	if (s.link !== "ready" || !st?.text || !st.enabled || st.panic || s.config?.paused) return null;
+	const front = st.front;
+	if (!front || front.elevated) return null;
+	const whole = s.config?.desktop;
+	return (whole && (whole.keyboard || whole.mouse) ? whole.keyboard : front.allowed?.keyboard === true) ? st.text : null;
+}
 /** "keyboard + mouse", "keyboard", "mouse", or "nothing". */
 function scopeLabel(s) {
 	const parts = [s.keyboard && "keyboard", s.mouse && "mouse"].filter((x) => !!x);
@@ -347,4 +412,4 @@ function toHelperRequest(r) {
 	}
 }
 //#endregion
-export { NATIVE_PORT_NAME as a, heldSignature as c, parseNativeFrame as d, parsePcRequest as f, toHelperRequest as g, scopeLabel as h, NATIVE_HOST as i, isIdleFrame as l, pcView as m, EMPTY_PC as n, PC_PAGE_PORT_NAME as o, parsePcState as p, HeldState as r, buildNativeFrame as s, DESKTOP_URL as t, parseHelperMessage as u };
+export { pcView as _, NATIVE_PORT_NAME as a, typingField as b, heldSignature as c, isTypingRefusal as d, parseHelperMessage as f, parsePcState as g, parsePcRequest as h, NATIVE_HOST as i, isIdleFrame as l, parseNativeText as m, EMPTY_PC as n, PC_PAGE_PORT_NAME as o, parseNativeFrame as p, HeldState as r, buildNativeFrame as s, DESKTOP_URL as t, isTextField as u, scopeLabel as v, typingToast as x, toHelperRequest as y };
