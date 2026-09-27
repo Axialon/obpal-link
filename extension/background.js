@@ -1,5 +1,4 @@
-import { E as isTargetMode, b as DEFAULT_MODE, c as senderKind, n as linkConfig, o as parseLink, r as parseBgRequest, t as allowedFrom } from "./assets/messages-By7t0qaI.js";
-import { b as typingField, d as isTypingRefusal, f as parseHelperMessage, g as parsePcState, i as NATIVE_HOST, m as parseNativeText, n as EMPTY_PC, p as parseNativeFrame, y as toHelperRequest } from "./assets/native-CHu3H134.js";
+import { B as DEFAULT_MODE, C as parseNativeText, D as toHelperRequest, J as askFor, K as isTargetMode, O as typingField, Q as parsePhone, S as parseNativeFrame, Z as parseAnswers, b as isTypingRefusal, et as withAnswer, f as EMPTY_PC, l as senderKind, m as NATIVE_HOST, n as linkConfig, q as accessOf, r as parseBgRequest, s as parseLink, t as allowedFrom, tt as withoutAnswer, w as parsePcState, x as parseHelperMessage } from "./assets/messages-c7VGwEsP.js";
 //#region src/native.ts
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
 var RETRY_MS = [
@@ -16,6 +15,8 @@ var NativeBridge = class {
 	configured = false;
 	armed = false;
 	wantMode = false;
+	/** The phone connected now may control this PC: the person at the PC said so (shared/access.ts). */
+	allowed = false;
 	/** Extension pages holding a PC_PAGE_PORT_NAME port. */
 	pages = 0;
 	retries = 0;
@@ -53,9 +54,13 @@ var NativeBridge = class {
 	get textField() {
 		return this.field;
 	}
-	/** Reconcile with the target mode: connect and arm for PC, disarm (and let go) otherwise. */
-	async sync(mode) {
+	/**
+	* Reconcile with the target mode and the phone: connect for PC, and arm only while a phone the person at the PC
+	* allowed is connected; disarm (and let go) otherwise.
+	*/
+	async sync(mode, allowed) {
 		this.wantMode = mode === "pc";
+		this.allowed = allowed;
 		await this.reconcile();
 	}
 	/** Connect now if the helper is wanted (a Retry, or a page that just opened). */
@@ -103,7 +108,7 @@ var NativeBridge = class {
 		if (!this.wantMode && !this.pages) return this.drop("off");
 		if (!await chrome.permissions.contains(NATIVE_PERMISSION)) return this.drop("permission");
 		if (!this.port) this.connect();
-		this.arm(this.wantMode);
+		this.arm(this.wantMode && this.allowed);
 	}
 	arm(on) {
 		if (!this.ready || !this.configured || this.armed === on) return;
@@ -168,7 +173,7 @@ var NativeBridge = class {
 				const through = () => {
 					if (port !== this.port) return;
 					this.configured = true;
-					this.arm(this.wantMode);
+					this.arm(this.wantMode && this.allowed);
 				};
 				Promise.resolve(passed).then(through, through);
 				break;
@@ -270,6 +275,9 @@ var NativeBridge = class {
 *    and gets the MAIN-world page script injected into its frame. Only one tab is controlled at a time.
 *  - With the optional "All sites" permission it also registers the bridge for new frames and navigations.
 *  - State: target mode in storage.local; controlled tab and link status in storage.session (the popup reads both).
+*  - Which phones may control the PC (shared/access.ts): the answers in storage.local, the phone connected now in
+*    storage.session. ob.Pal Desktop is armed only for a phone the person at the PC allowed; a phone nobody has
+*    answered for yet gets the popup's prompt, a badge, and a notification when those are allowed.
 */
 var OFFSCREEN_PATH = "offscreen.html";
 var BRIDGE_JS = "bridge.js";
@@ -304,6 +312,131 @@ async function targetMode() {
 async function linkState() {
 	const { link } = await chrome.storage.session.get("link");
 	return parseLink(link);
+}
+var NOTIFY = { permissions: ["notifications"] };
+/** The one notification: a phone asks for the PC. Its buttons answer, and a click on it opens the options page's prompt. */
+var ASK_NOTE = "obpal-ask";
+/** The phone connected now, as the link says (null: none). */
+async function currentPhone() {
+	const { phone } = await chrome.storage.session.get("phone");
+	return parsePhone(phone);
+}
+/** The person at the PC's answers, per phone. */
+async function answers() {
+	const { answers: a } = await chrome.storage.local.get("answers");
+	return parseAnswers(a);
+}
+/** The phone the badge and the notification ask about now (its key), or null. */
+async function asking() {
+	const { asking: key } = await chrome.storage.session.get("asking");
+	return typeof key === "string" ? key : null;
+}
+var reviewed = Promise.resolve();
+/**
+* Bring the helper and the question in line with who is connected and what they may do: ob.Pal Desktop is armed only
+* for the PC target and a phone the person at the PC allowed, and a phone nobody has answered for yet is asked about.
+* One review at a time, each reading the state after the one before: so the last to run, after the last change, has
+* the last word (an older read never arms the helper for a phone that has gone meanwhile).
+*/
+function reviewAccess() {
+	const review = async () => {
+		const [mode, phone, list, pcReady] = await Promise.all([
+			targetMode(),
+			currentPhone(),
+			answers(),
+			chrome.permissions.contains(NATIVE_PERMISSION)
+		]);
+		await native.sync(mode, !!phone && accessOf(list, phone.key) === "allow");
+		await showAsk(askFor(mode, phone, list, pcReady));
+	};
+	reviewed = reviewed.then(review).catch((e) => console.warn("[ob.Pal Link] could not review PC access", e));
+	return reviewed;
+}
+/**
+* The question on show: '!' on the toolbar icon while a phone waits (the popup has the prompt), and a notification with
+* Allow and Deny while notifications are allowed (options page). Nothing changes while it stays the same question.
+*/
+async function showAsk(ask) {
+	if ((ask?.key ?? null) === await asking()) return;
+	await chrome.storage.session.set({ asking: ask?.key ?? null });
+	await refreshBadge();
+	const notes = chrome.notifications;
+	if (!notes?.create) return;
+	if (!ask) return void notes.clear(ASK_NOTE).catch(() => {});
+	if (!await chrome.permissions.contains(NOTIFY)) return;
+	listenToNotes();
+	await notes.create(ASK_NOTE, {
+		type: "basic",
+		iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
+		title: `${ask.name} wants to control this PC`,
+		message: "Mouse, keyboard and typing, through ob.Pal Desktop",
+		buttons: [{ title: "Allow" }, { title: "Deny" }],
+		requireInteraction: true,
+		priority: 2
+	}).catch(() => {});
+}
+/**
+* The person at the PC answers for a phone: the popup's prompt or its PC card, the options page, or the notification.
+* Saying no to a phone that had just switched to the PC itself takes it back to the target it had, so it keeps working.
+*/
+async function answerFor(key, allow) {
+	const [phone, list, mode, { phoneSwitch }] = await Promise.all([
+		currentPhone(),
+		answers(),
+		targetMode(),
+		chrome.storage.session.get("phoneSwitch")
+	]);
+	const name = phone?.key === key ? phone.name : list[key]?.name;
+	if (!name) return { ok: false };
+	await chrome.storage.local.set({ answers: withAnswer(list, {
+		key,
+		name
+	}, allow, Date.now()) });
+	if (!allow && phone?.key === key && mode === "pc" && isTargetMode(phoneSwitch) && phoneSwitch !== "pc") await setMode(phoneSwitch, false);
+	await reviewAccess();
+	if (phone?.key === key) toOffscreen({
+		to: "offscreen",
+		type: "access",
+		key,
+		access: allow ? "allow" : "deny"
+	});
+	return { ok: true };
+}
+var notesHeard = false;
+/** The notification's Allow and Deny, and a click on it. Registered once notifications are allowed. */
+function listenToNotes() {
+	const notes = chrome.notifications;
+	if (notesHeard || !notes?.onButtonClicked) return;
+	notesHeard = true;
+	notes.onButtonClicked.addListener((id, button) => {
+		if (id !== ASK_NOTE) return;
+		(async () => {
+			const key = await asking();
+			if (key) await answerFor(key, button === 0);
+		})();
+	});
+	notes.onClicked.addListener((id) => {
+		if (id === ASK_NOTE) chrome.runtime.openOptionsPage().catch(() => {});
+	});
+}
+/**
+* A new target. From the phone's tray, the PC is refused for a phone this PC said no to (the target stays), and a
+* switch to it is remembered as the phone's own: if the person at the PC says no, the phone goes back to what it had.
+*/
+async function setMode(mode, fromPhone) {
+	const prev = await targetMode();
+	if (fromPhone && mode === "pc") {
+		const [phone, list] = await Promise.all([currentPhone(), answers()]);
+		if (phone && accessOf(list, phone.key) === "deny") return {
+			ok: false,
+			refused: "deny"
+		};
+		if (prev !== "pc") await chrome.storage.session.set({ phoneSwitch: prev });
+	} else if (mode !== prev) await chrome.storage.session.remove("phoneSwitch");
+	await chrome.storage.local.set({ mode });
+	await pushConfig();
+	await reviewAccess();
+	return { ok: true };
 }
 var creating = null;
 async function hasOffscreen() {
@@ -452,6 +585,11 @@ async function disableTab(tabId) {
 	}
 	return { ok: true };
 }
+var ASK_BADGE = {
+	text: "!",
+	color: "#FCD34D",
+	ink: "#2A1D02"
+};
 async function clearBadge(tabId) {
 	await chrome.action.setBadgeText({
 		tabId,
@@ -459,21 +597,30 @@ async function clearBadge(tabId) {
 	}).catch(() => {});
 }
 async function refreshBadge() {
-	const tabId = await controlledTab();
+	const [tabId, link, ask] = await Promise.all([
+		controlledTab(),
+		linkState(),
+		asking()
+	]);
+	await Promise.all([
+		chrome.action.setBadgeBackgroundColor({ color: ASK_BADGE.color }),
+		chrome.action.setBadgeTextColor({ color: ASK_BADGE.ink }),
+		chrome.action.setBadgeText({ text: ask ? ASK_BADGE.text : "" })
+	]).catch(() => {});
 	if (tabId === null) return;
-	const live = (await linkState())?.status === "connected";
+	const live = link?.status === "connected";
 	await Promise.all([
 		chrome.action.setBadgeBackgroundColor({
 			tabId,
-			color: live ? "#C6FF34" : "#5C5C5C"
+			color: ask ? ASK_BADGE.color : live ? "#C6FF34" : "#5C5C5C"
 		}),
 		chrome.action.setBadgeTextColor({
 			tabId,
-			color: live ? "#172100" : "#F4F4F4"
+			color: ask ? ASK_BADGE.ink : live ? "#172100" : "#F4F4F4"
 		}),
 		chrome.action.setBadgeText({
 			tabId,
-			text: "●"
+			text: ask ? ASK_BADGE.text : "●"
 		})
 	]).catch(() => {});
 }
@@ -484,11 +631,11 @@ async function handle(msg, sender) {
 			return { ok: true };
 		case "version": return { version: chrome.runtime.getManifest().version };
 		case "enable": return msg.on ? enableTab(msg.tabId) : disableTab(msg.tabId);
-		case "mode":
-			await chrome.storage.local.set({ mode: msg.mode });
-			await pushConfig();
-			await native.sync(msg.mode);
-			return { ok: true };
+		case "mode": return setMode(msg.mode, senderKind({
+			id: sender.id,
+			url: sender.url,
+			tabId: sender.tab?.id
+		}, SELF) === "offscreen");
 		case "pc-connect":
 		case "pc-allow":
 		case "pc-scope":
@@ -504,14 +651,32 @@ async function handle(msg, sender) {
 			});
 			return { ok: true };
 		case "forget":
+			await chrome.storage.local.set({ answers: withoutAnswer(await answers(), msg.id) });
+			await reviewAccess();
+			await ensureOffscreen();
+			await toOffscreen({
+				to: "offscreen",
+				type: "forget",
+				id: msg.id
+			});
+			return { ok: true };
 		case "lan":
 			await ensureOffscreen();
 			await toOffscreen({
 				to: "offscreen",
-				type: msg.type,
+				type: "lan",
 				id: msg.id
 			});
 			return { ok: true };
+		case "phone":
+			await chrome.storage.session.set({ phone: msg.phone });
+			await reviewAccess();
+			return { access: msg.phone ? accessOf(await answers(), msg.phone.key) : null };
+		case "answer": return answerFor(msg.key, msg.allow);
+		case "facts": return await toOffscreen({
+			to: "offscreen",
+			type: "facts"
+		}) ?? null;
 		case "diag": return await toOffscreen({
 			to: "offscreen",
 			type: "diag"
@@ -521,6 +686,8 @@ async function handle(msg, sender) {
 			await refreshBadge();
 			return { ok: true };
 		case "offscreen-ready": {
+			await chrome.storage.session.set({ phone: null });
+			await reviewAccess();
 			const config = await currentConfig();
 			if (config.tabId !== null) tellTab(config.tabId, {
 				to: "bridge",
@@ -589,7 +756,7 @@ chrome.runtime.onConnect.addListener((port) => {
 		port.disconnect();
 		return;
 	}
-	targetMode().then((mode) => native.sync(mode));
+	reviewAccess();
 	port.onMessage.addListener((raw) => {
 		const f = parseNativeFrame(raw);
 		if (f) return native.frame(f);
@@ -624,12 +791,14 @@ chrome.permissions.onAdded.addListener(() => {
 		await syncRegistration();
 		const tabId = await controlledTab();
 		if (tabId !== null) await injectBridge(tabId).catch(() => {});
-		await native.sync(await targetMode());
+		listenToNotes();
+		await reviewAccess();
 	})();
 });
-chrome.permissions.onRemoved.addListener(() => void Promise.all([syncRegistration(), targetMode().then((m) => native.sync(m))]));
+chrome.permissions.onRemoved.addListener(() => void Promise.all([syncRegistration(), reviewAccess()]));
 var warm = () => void Promise.all([syncRegistration(), ensureOffscreen().catch(() => {})]);
 chrome.runtime.onStartup.addListener(warm);
 chrome.runtime.onInstalled.addListener(warm);
-targetMode().then((mode) => native.sync(mode));
+listenToNotes();
+reviewAccess();
 //#endregion

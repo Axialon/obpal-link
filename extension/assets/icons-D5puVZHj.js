@@ -482,19 +482,103 @@
 			});
 		});
 	}
+	/** The filled share (0 to 1) of a slider at `value` between `min` and `max`: clamped, and empty for an empty range. */
+	function rangeShare(value, min, max) {
+		if (!(max > min) || value !== value) return 0;
+		return value <= min ? 0 : value >= max ? 1 : (value - min) / (max - min);
+	}
+	/** A range input's bound: its attribute as a number, else the HTML default (min 0, max 100). */
+	function bound(attr, fallback) {
+		var n = parseFloat(attr);
+		return isFinite(n) ? n : fallback;
+	}
 	/** Keep a .bb-range's accent fill in step with its value. */
 	function rangeFill(el) {
-		var min = parseFloat(el.min || "0"), max = parseFloat(el.max || "100"), v = parseFloat(el.value);
-		var p = max > min ? (v - min) / (max - min) * 100 : 0;
-		el.style.setProperty("--fill", Math.max(0, Math.min(100, p)).toFixed(2) + "%");
+		el.style.setProperty("--fill", (rangeShare(parseFloat(el.value), bound(el.min, 0), bound(el.max, 100)) * 100).toFixed(2) + "%");
+		watchRange(el);
 	}
 	function syncRanges(root) {
 		(root || doc).querySelectorAll(".bb-range").forEach(rangeFill);
+	}
+	var inputProto = global.HTMLInputElement && global.HTMLInputElement.prototype;
+	var valueDesc = inputProto && Object.getOwnPropertyDescriptor(inputProto, "value");
+	var numberDesc = inputProto && Object.getOwnPropertyDescriptor(inputProto, "valueAsNumber");
+	function watchRange(el) {
+		if (el._bbRange || !valueDesc || el.type !== "range") return;
+		el._bbRange = true;
+		var refill = function(desc) {
+			return {
+				configurable: true,
+				enumerable: true,
+				get: desc.get,
+				set: function(v) {
+					desc.set.call(this, v);
+					rangeFill(this);
+				}
+			};
+		};
+		Object.defineProperty(el, "value", refill(valueDesc));
+		if (numberDesc) Object.defineProperty(el, "valueAsNumber", refill(numberDesc));
+		["stepUp", "stepDown"].forEach(function(m) {
+			var step = inputProto[m];
+			if (step) el[m] = function() {
+				step.apply(this, arguments);
+				rangeFill(this);
+			};
+		});
+		if (el.classList.contains("vertical")) checkVertical();
+	}
+	/** Browsers whose form controls can't stand up (before Chrome 124, Safari 17.4, Firefox 120) turn vertical sliders. */
+	var vertical = null;
+	function checkVertical() {
+		var root = doc.documentElement;
+		if (vertical !== null || !root) return;
+		var probe = doc.createElement("input");
+		probe.type = "range";
+		probe.style.cssText = "position:absolute;visibility:hidden;writing-mode:vertical-lr";
+		root.appendChild(probe);
+		vertical = probe.offsetHeight > probe.offsetWidth;
+		root.removeChild(probe);
+		if (!vertical) root.setAttribute("data-bb-vranges", "rotate");
 	}
 	doc.addEventListener("input", function(e) {
 		var t = e.target;
 		if (t && t.classList && t.classList.contains("bb-range")) rangeFill(t);
 	}, true);
+	doc.addEventListener("reset", function(e) {
+		var form = e.target;
+		setTimeout(function() {
+			if (form.querySelectorAll) syncRanges(form);
+		}, 0);
+	}, true);
+	if (global.MutationObserver && doc.documentElement) {
+		new global.MutationObserver(function(records) {
+			for (var i = 0; i < records.length; i++) {
+				var r = records[i];
+				if (r.type === "attributes") {
+					if (r.target.classList.contains("bb-range")) rangeFill(r.target);
+					continue;
+				}
+				for (var j = 0; j < r.addedNodes.length; j++) {
+					var n = r.addedNodes[j];
+					if (n.nodeType !== 1) continue;
+					if (n.classList.contains("bb-range")) rangeFill(n);
+					else if (n.firstElementChild) syncRanges(n);
+				}
+			}
+		}).observe(doc.documentElement, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: [
+				"min",
+				"max",
+				"step",
+				"value"
+			]
+		});
+		syncRanges(doc);
+	}
 	var tipEl = null;
 	function initTips() {
 		if (tipEl || !global.matchMedia || !global.matchMedia("(hover: hover)").matches) return;
@@ -601,6 +685,7 @@
 		hint,
 		dismissHint,
 		icons: ICON,
+		rangeShare,
 		rangeFill,
 		syncRanges
 	};
@@ -754,6 +839,63 @@ function settleMotion(root = document) {
 }
 /** Lockup: the mark with the ob.Pal wordmark (quiet "ob", accent full stop, bold "Pal"). */
 var LOGO_WORD = "<span class=\"word\"><span class=\"ob\">ob</span><span class=\"pt\">.</span><b>Pal</b></span>";
+//#endregion
+//#region src/ui/ask.ts
+/**
+* The question Link's pages put to the person at the PC when a phone wants PC control (spec/SECURITY.md §8, L1):
+* "<phone> wants to control this PC", with Allow and Deny. One prompt, answered once per phone: the service worker
+* keeps the answer (shared/access.ts). As it appears it takes the keyboard's focus itself, not a button's, so a screen
+* reader reads the question and a stray Enter answers nothing; Tab goes on to Allow, then Deny.
+*/
+/** The prompt's card, hidden until there's a question. `answer` is called with the phone's key and the answer. */
+function askCard(answer) {
+	const el = document.createElement("section");
+	el.className = "card ask";
+	el.id = "ask";
+	el.tabIndex = -1;
+	el.hidden = true;
+	el.setAttribute("aria-labelledby", "ask-t");
+	el.setAttribute("aria-describedby", "ask-d");
+	el.innerHTML = `
+    <span class="ask-ic" aria-hidden="true">${ICONS.phone}</span>
+    <div class="ask-text">
+      <h2 id="ask-t"><b></b> wants to control this PC</h2>
+      <p id="ask-d">Mouse, keyboard and typing, through ob.Pal Desktop</p>
+    </div>
+    <div class="ask-actions">
+      <button class="btn primary" type="button" data-allow="true">Allow</button>
+      <button class="btn" type="button" data-allow="false">Deny</button>
+    </div>`;
+	el.addEventListener("click", (e) => {
+		const b = e.target.closest("button[data-allow]");
+		const key = el.dataset.key;
+		if (!b || !key || el.getAttribute("aria-busy") === "true") return;
+		el.setAttribute("aria-busy", "true");
+		answer(key, b.dataset.allow === "true");
+	});
+	return el;
+}
+/**
+* Show the question about `ask`, or none. A new question takes the focus (the popup opened for it, or it came while
+* the page was open); the page hands the focus on (`away`) once the question is gone, if the prompt still had it.
+*/
+function showAsk(el, ask, away) {
+	const was = el.dataset.key ?? "";
+	const had = el.contains(document.activeElement);
+	el.dataset.key = ask?.key ?? "";
+	el.hidden = !ask;
+	if (!ask) {
+		el.removeAttribute("aria-busy");
+		if (was && had) away?.();
+		return;
+	}
+	el.querySelector("#ask-t b").textContent = ask.name;
+	if (ask.key === was) return;
+	el.removeAttribute("aria-busy");
+	requestAnimationFrame(() => {
+		if (!el.hidden) el.focus();
+	});
+}
 //#endregion
 //#region ../src/ui/themes.ts
 /**
@@ -1097,6 +1239,8 @@ var LINK_ICONS = {
 	play: s("<path d=\"M8 5.5v13l10-6.5Z\"/>"),
 	/** Something to know (the popup's notes). */
 	info: s("<circle cx=\"12\" cy=\"12\" r=\"8.6\"/><path d=\"M12 11v5.2\"/><path d=\"M12 7.8h.01\" stroke-width=\"2.4\"/>"),
+	/** A notification: a phone's question for the PC can come as one. */
+	bell: s("<path d=\"M6.3 16.4V11a5.7 5.7 0 0 1 11.4 0v5.4l1.7 1.9H4.6Z\"/><path d=\"M10 20.4a2.1 2.1 0 0 0 4 0\"/>"),
 	tap: s(`${tip(12, 12)}<circle cx="12" cy="12" r="7.6" opacity=".45"/>`),
 	hold: s(`${tip(12, 12)}<path d="M12 4.4a7.6 7.6 0 1 1-7.6 7.6"/><path d="M4.4 12A7.6 7.6 0 0 1 12 4.4" opacity=".3"/>`),
 	drag: s(`${tip(7.4, 12)}<path d="M12.4 12h8.2M17.6 9l3 3-3 3"/>`),
@@ -1106,4 +1250,4 @@ var LINK_ICONS = {
 	type: s(`<rect x="2.6" y="5.6" width="18.8" height="12.8" rx="2.8"/><path d="M6.2 9.4h.01M9.1 9.4h.01M12 9.4h.01M7.65 12.2h.01M10.55 12.2h.01" stroke-width="2.2"/><path d="M8.4 15.2h4.4"/>${tip(16.3, 11.3, 2.6)}`)
 };
 //#endregion
-export { mountLook as a, syncLook as c, LOGO_WORD as d, family as f, mountLogo as i, radioGroup as l, lightCards as n, settle as o, markContext as r, startLook as s, LINK_ICONS as t, ICONS as u };
+export { mountLook as a, syncLook as c, showAsk as d, ICONS as f, mountLogo as i, radioGroup as l, family as m, lightCards as n, settle as o, LOGO_WORD as p, markContext as r, startLook as s, LINK_ICONS as t, askCard as u };

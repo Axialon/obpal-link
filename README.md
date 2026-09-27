@@ -13,6 +13,15 @@ It works in Chrome, Edge, Brave, Opera, Vivaldi and Arc (Chromium 120 or later).
 
 Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Source: [github.com/Axialon/obpal](https://github.com/Axialon/obpal) (this repository carries the releases)
 
+## What's new in 1.6
+
+- **The PC asks first.** The first time a phone would control your PC, ob.Pal Link asks you once: **Allow** or **Deny**. Until you answer, the phone shows "Waiting for approval on the PC". Allowed phones never ask again, and you can change any answer in the options, under **Phones**.
+- **A fresh QR code after every pairing.** An old code can't pair a new phone; the phone says "This code was used". Phones you've paired still reconnect.
+- **The connection at a glance.** The popup shows the lock, whether the link is **Direct** or **Relayed**, and the round trip.
+- **Keys that can't be copied out.** The pairing keys are kept non-extractable by the browser, on the phone and in the extension.
+
+**Updating from 1.5:** replace the folder and reload, as below. Remembered phones carry over. Going back to 1.5 would forget them, and you'd pair again.
+
 ## Install
 
 The Chrome Web Store listing is on its way. Until then, install it from this repository:
@@ -99,7 +108,7 @@ The target is the largest visible canvas or `<model-viewer>` in the page.
 ### PC (Windows)
 
 1. Download **[obpal-desktop-windows-x64.zip](https://github.com/Axialon/obpal-link/releases/latest/download/obpal-desktop-windows-x64.zip)**, unzip it into a folder you'll keep, and double-click `install.cmd`. It registers the helper for Chrome, Chromium, Edge, Brave and Vivaldi, for your Windows user only.
-2. In the popup, pick **PC** and allow the permission it asks for.
+2. In the popup, pick **PC** and allow the permission it asks for. The first time each phone would control the PC, the popup asks you once, with **!** on the toolbar icon: **Allow** or **Deny**. Turn on **Notify me** under **Phones** in the options to get the question as a Windows notification too.
 3. Click **Control the whole PC**: the phone is the mouse and keyboard of every window, the browser included. Or, one program at a time: bring the program to the front, come back to the popup and click **Allow**.
 
 | Phone | PC |
@@ -137,12 +146,13 @@ There are no accounts and no analytics, and the extension loads no remote code. 
 | Permission | Why |
 |---|---|
 | `offscreen` | An MV3 service worker can't hold a WebRTC connection, so an offscreen document keeps the link to the phone. |
-| `storage` | Remembers the chosen mode and the look. Until the browser closes, session storage also holds the controlled tab and the link status. |
+| `storage` | Remembers the chosen mode, the look, and your Allow or Deny for each phone. Until the browser closes, session storage also holds the controlled tab and the link status. |
 | `activeTab` | Clicking the toolbar icon grants access to the current tab only. |
 | `scripting` | Injects the input bridge into the tab you turned on. |
 | `https://obpal.blackboxes.net/*` | Pairing (signaling) and relay (TURN) credentials. |
 | `<all_urls>` (optional, off by default) | Only when you turn on **All sites**: reaches game frames served from other domains, and keeps control across navigation. |
 | `nativeMessaging` (optional, off by default) | Only when you pick **PC**: talks to ob.Pal Desktop on your computer. |
+| `notifications` (optional, off by default) | Only when you turn on **Notify me** in the options: a phone's first request to control the PC comes as a notification with **Allow** and **Deny**. |
 
 The files in [`extension/`](extension) are the complete extension, unminified, exactly as it runs.
 

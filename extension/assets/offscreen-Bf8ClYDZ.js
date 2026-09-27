@@ -1,5 +1,4 @@
-import { E as isTargetMode, S as PAGE_MODES, _ as decodePad, a as parseFromPage, b as DEFAULT_MODE, d as buttonValue, f as clamp$1, g as PadFlag, h as PadButton, i as parseConfig, m as stickCurve, p as hysteresis, s as parseOffscreenRequest, u as Accum, v as packetType, w as SERVICE, y as APP_NAME } from "./messages-By7t0qaI.js";
-import { a as NATIVE_PORT_NAME, c as heldSignature, l as isIdleFrame, m as parseNativeText, r as HeldState, s as buildNativeFrame, x as typingToast } from "./native-CHu3H134.js";
+import { $ as phoneKeyOf, A as Accum, B as DEFAULT_MODE, C as parseNativeText, F as PadButton, H as PAGE_MODES, I as PadFlag, K as isTargetMode, L as decodePad, M as clamp$1, N as hysteresis, P as stickCurve, R as packetType, W as SERVICE, X as noticeFor, Y as isPcAccess, _ as buildNativeFrame, c as parseOffscreenRequest, h as NATIVE_PORT_NAME, i as parseConfig, j as buttonValue, k as typingToast, o as parseFromPage, p as HeldState, v as heldSignature, y as isIdleFrame, z as APP_NAME } from "./messages-c7VGwEsP.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -148,7 +147,7 @@ function accumDelta(a, b) {
 }
 //#endregion
 //#region ../packages/core/src/pairing.ts
-var enc = new TextEncoder();
+var enc$2 = new TextEncoder();
 function b64url(bytes) {
 	let s = "";
 	for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
@@ -184,15 +183,30 @@ function encodePairing(p) {
 }
 /** Public room id: a hash of the secret, so the room service never learns the secret. */
 async function roomIdFor(secret) {
-	const d = await crypto.subtle.digest("SHA-256", concat(enc.encode("obpal-room-v1"), secret));
+	const d = await crypto.subtle.digest("SHA-256", concat(enc$2.encode("obpal-room-v1"), secret));
 	return b64url(new Uint8Array(d)).slice(0, 22);
 }
-/** SHA-256 DTLS fingerprint from an SDP blob. */
+/**
+* The SHA-256 DTLS fingerprint an SDP blob commits to, read strictly: the description must have exactly one media
+* section and exactly one `a=fingerprint` line (at session level or in that section, so it is the one DTLS checks),
+* and it must be a well-formed sha-256 fingerprint. Anything else is null. A description that says more (a second
+* fingerprint anywhere, one hidden in another line's text, a second media section) could show one fingerprint to
+* this parser and another to DTLS, which is how someone relaying between two DTLS sessions would pass a check.
+*/
 function sdpFingerprint(sdp) {
-	const m = /a=fingerprint:sha-256 ([0-9A-Fa-f:]+)/i.exec(sdp ?? "");
-	if (!m) return null;
-	const hex = m[1].split(":");
-	return hex.length === 32 ? Uint8Array.from(hex.map((h) => parseInt(h, 16))) : null;
+	const lines = (sdp ?? "").split(/\r?\n/);
+	if (lines.filter((l) => l.startsWith("m=")).length !== 1) return null;
+	const fps = lines.filter((l) => l.startsWith("a=fingerprint:"));
+	if (fps.length !== 1) return null;
+	const m = /^a=fingerprint:sha-256 ((?:[0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2})$/i.exec(fps[0].trimEnd());
+	return m ? Uint8Array.from(m[1].split(":").map((h) => parseInt(h, 16))) : null;
+}
+/**
+* The session an SDP blob belongs to: its o= line's session id, which stays the same through every offer one peer
+* connection makes (RFC 8829 §5.2.2), so a later offer with it renegotiates that connection. Null without one.
+*/
+function sdpSession(sdp) {
+	return /^o=\S+ (\d{1,20}) \d+ IN /m.exec(sdp ?? "")?.[1] ?? null;
 }
 /** Fingerprint as SDP writes it: upper-case hex pairs joined by colons. */
 var fingerprintHex = (fp) => Array.from(fp, (b) => b.toString(16).padStart(2, "0").toUpperCase()).join(":");
@@ -208,13 +222,23 @@ async function certFingerprint(cert) {
 	if (!fp) throw new Error("Could not read the DTLS fingerprint");
 	return fp;
 }
+/**
+* A remembered pairing's key as both ends keep it: a non-extractable HKDF key, good for the binding's MAC (deriveKey)
+* and the direct code's ICE credentials (deriveBits). Script can use it, but no script, the page's own included, can
+* read it back.
+*/
+function importPairKey(raw) {
+	return crypto.subtle.importKey("raw", raw, "HKDF", false, ["deriveBits", "deriveKey"]);
+}
+/** HKDF's input key: bytes are imported for this one use, and a kept key is used as it is. */
+var hkdfKey = (key, usage) => key instanceof Uint8Array ? crypto.subtle.importKey("raw", key, "HKDF", false, [usage]) : Promise.resolve(key);
 async function hkdf(key, salt, info, bytes) {
-	const base = await crypto.subtle.importKey("raw", key, "HKDF", false, ["deriveBits"]);
+	const base = await hkdfKey(key, "deriveBits");
 	const bits = await crypto.subtle.deriveBits({
 		name: "HKDF",
 		hash: "SHA-256",
 		salt,
-		info: enc.encode(info)
+		info: enc$2.encode(info)
 	}, base, bytes * 8);
 	return new Uint8Array(bits);
 }
@@ -224,18 +248,18 @@ async function hkdf(key, salt, info, bytes) {
 * mac = HMAC-SHA256(HKDF(key, salt=context, info="obpal bind v1"), fpDevice || fpHost || context)
 */
 async function bindMac(key, fpDevice, fpHost, context) {
-	const base = await crypto.subtle.importKey("raw", key, "HKDF", false, ["deriveKey"]);
+	const base = await hkdfKey(key, "deriveKey");
 	const mac = await crypto.subtle.deriveKey({
 		name: "HKDF",
 		hash: "SHA-256",
-		salt: enc.encode(context),
-		info: enc.encode("obpal bind v1")
+		salt: enc$2.encode(context),
+		info: enc$2.encode("obpal bind v1")
 	}, base, {
 		name: "HMAC",
 		hash: "SHA-256",
 		length: 256
 	}, false, ["sign"]);
-	const sig = await crypto.subtle.sign("HMAC", mac, concat(fpDevice, fpHost, enc.encode(context)));
+	const sig = await crypto.subtle.sign("HMAC", mac, concat(fpDevice, fpHost, enc$2.encode(context)));
 	return b64url(new Uint8Array(sig));
 }
 /** The direct code's binding context (also the salt of the derived ICE credentials). */
@@ -399,8 +423,11 @@ var SignalClient = class {
 	}
 };
 var STUN = [{ urls: "stun:stun.cloudflare.com:3478" }];
-/** ICE servers for a room: STUN, plus TURN when the service mints credentials. Falls back to STUN within the timeout. */
-async function fetchIceServers(service, roomId, timeoutMs = REACH_TIMEOUT_MS) {
+/** How long before TURN credentials lapse a host asks for fresh ones (a relay drops an allocation once they have). */
+var ICE_REFRESH_BEFORE_MS = 6e5;
+/** Without TURN (none minted, or the lookup failed), ask again this often: the service may have one later. */
+var ICE_RETRY_MS = 6e5;
+async function fetchIce(service, roomId, timeoutMs = REACH_TIMEOUT_MS) {
 	try {
 		const r = await fetch(`${service}/api/ice?room=${encodeURIComponent(roomId)}`, {
 			cache: "no-store",
@@ -408,11 +435,410 @@ async function fetchIceServers(service, roomId, timeoutMs = REACH_TIMEOUT_MS) {
 		});
 		if (r.ok) {
 			const j = await r.json();
-			if (Array.isArray(j.iceServers) && j.iceServers.length) return j.iceServers;
+			if (Array.isArray(j.iceServers) && j.iceServers.length) {
+				const expires = typeof j.expires === "number" && j.expires > Date.now() ? j.expires : void 0;
+				return {
+					servers: j.iceServers,
+					turn: j.turn === true,
+					...expires ? { expires } : {}
+				};
+			}
 		}
 	} catch {}
-	return STUN;
+	return {
+		servers: STUN,
+		turn: false
+	};
 }
+/**
+* When to ask for a room's ICE servers again: shortly before TURN credentials lapse (credentials that say nothing
+* about it are taken to last a day), else after ICE_RETRY_MS. Never sooner than a minute.
+*/
+function iceRefreshIn(set, now = Date.now()) {
+	const lapses = set.expires ?? (set.turn ? now + 864e5 : 0);
+	return Math.max(6e4, lapses ? Math.min(lapses - now - ICE_REFRESH_BEFORE_MS, 2 ** 31 - 1) : ICE_RETRY_MS);
+}
+var DTLS_VERSIONS = {
+	FEFD: "DTLS 1.2",
+	FEFC: "DTLS 1.3"
+};
+async function linkInfo(pc) {
+	const secure = pc.connectionState === "connected";
+	try {
+		const stats = await pc.getStats();
+		let transport;
+		stats.forEach((s) => {
+			if (s.type === "transport" && (s.selectedCandidatePairId || !transport)) transport = s;
+		});
+		let pair = transport?.selectedCandidatePairId ? stats.get(transport.selectedCandidatePairId) : void 0;
+		if (!pair) stats.forEach((s) => {
+			if (s.type === "candidate-pair" && s.nominated && s.state === "succeeded") pair = s;
+		});
+		const local = pair ? stats.get(pair.localCandidateId) : void 0;
+		const remote = pair ? stats.get(pair.remoteCandidateId) : void 0;
+		const types = [local?.candidateType, remote?.candidateType];
+		const path = !pair ? "unknown" : types.includes("relay") ? "relay" : types[0] === "host" && types[1] === "host" ? "lan" : types.includes("srflx") ? "nat" : "direct";
+		const version = typeof transport?.tlsVersion === "string" ? transport.tlsVersion.toUpperCase() : "";
+		return {
+			path,
+			secure,
+			...path === "relay" && typeof local?.relayProtocol === "string" ? { relayProtocol: local.relayProtocol } : {},
+			...typeof pair?.currentRoundTripTime === "number" ? { rttMs: Math.round(pair.currentRoundTripTime * 1e3) } : {},
+			...DTLS_VERSIONS[version] ? { dtls: DTLS_VERSIONS[version] } : {},
+			...typeof transport?.dtlsCipher === "string" ? { cipher: transport.dtlsCipher } : {}
+		};
+	} catch {
+		return {
+			path: "unknown",
+			secure
+		};
+	}
+}
+//#endregion
+//#region ../packages/core/src/work.ts
+/**
+* Proof of work for the short code's room service (PROTOCOL §2b), Hashcash-style. Under pressure the service hands out
+* a challenge, and a lookup or a new code comes back with a counter `x` for which SHA-256("<challenge>:<x>") starts
+* with `bits` zero bits. It is open (no third party, nothing to sign up for), and the same few lines serve the phone,
+* the screen and the service. SHA-256 is written out here, synchronous, for the tight loop.
+*/
+var K = Uint32Array.from([
+	1116352408,
+	1899447441,
+	3049323471,
+	3921009573,
+	961987163,
+	1508970993,
+	2453635748,
+	2870763221,
+	3624381080,
+	310598401,
+	607225278,
+	1426881987,
+	1925078388,
+	2162078206,
+	2614888103,
+	3248222580,
+	3835390401,
+	4022224774,
+	264347078,
+	604807628,
+	770255983,
+	1249150122,
+	1555081692,
+	1996064986,
+	2554220882,
+	2821834349,
+	2952996808,
+	3210313671,
+	3336571891,
+	3584528711,
+	113926993,
+	338241895,
+	666307205,
+	773529912,
+	1294757372,
+	1396182291,
+	1695183700,
+	1986661051,
+	2177026350,
+	2456956037,
+	2730485921,
+	2820302411,
+	3259730800,
+	3345764771,
+	3516065817,
+	3600352804,
+	4094571909,
+	275423344,
+	430227734,
+	506948616,
+	659060556,
+	883997877,
+	958139571,
+	1322822218,
+	1537002063,
+	1747873779,
+	1955562222,
+	2024104815,
+	2227730452,
+	2361852424,
+	2428436474,
+	2756734187,
+	3204031479,
+	3329325298
+]);
+var W = /* @__PURE__ */ new Uint32Array(64);
+/** SHA-256 of some bytes. */
+function sha256(data) {
+	const n = data.length;
+	const blocks = Math.ceil((n + 9) / 64);
+	const m = new Uint8Array(blocks * 64);
+	m.set(data);
+	m[n] = 128;
+	const bits = n * 8;
+	const view = new DataView(m.buffer);
+	view.setUint32(m.length - 8, Math.floor(bits / 2 ** 32));
+	view.setUint32(m.length - 4, bits >>> 0);
+	let h0 = 1779033703, h1 = 3144134277, h2 = 1013904242, h3 = 2773480762, h4 = 1359893119, h5 = 2600822924, h6 = 528734635, h7 = 1541459225;
+	for (let b = 0; b < blocks; b++) {
+		for (let i = 0; i < 16; i++) W[i] = view.getUint32(b * 64 + i * 4);
+		for (let i = 16; i < 64; i++) {
+			const x = W[i - 15], y = W[i - 2];
+			const s0 = (x >>> 7 | x << 25) ^ (x >>> 18 | x << 14) ^ x >>> 3;
+			const s1 = (y >>> 17 | y << 15) ^ (y >>> 19 | y << 13) ^ y >>> 10;
+			W[i] = W[i - 16] + s0 + W[i - 7] + s1 | 0;
+		}
+		let a = h0, bb = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+		for (let i = 0; i < 64; i++) {
+			const S1 = (e >>> 6 | e << 26) ^ (e >>> 11 | e << 21) ^ (e >>> 25 | e << 7);
+			const t1 = h + S1 + (e & f ^ ~e & g) + K[i] + W[i] | 0;
+			const t2 = ((a >>> 2 | a << 30) ^ (a >>> 13 | a << 19) ^ (a >>> 22 | a << 10)) + (a & bb ^ a & c ^ bb & c) | 0;
+			h = g;
+			g = f;
+			f = e;
+			e = d + t1 | 0;
+			d = c;
+			c = bb;
+			bb = a;
+			a = t1 + t2 | 0;
+		}
+		h0 = h0 + a | 0;
+		h1 = h1 + bb | 0;
+		h2 = h2 + c | 0;
+		h3 = h3 + d | 0;
+		h4 = h4 + e | 0;
+		h5 = h5 + f | 0;
+		h6 = h6 + g | 0;
+		h7 = h7 + h | 0;
+	}
+	const out = /* @__PURE__ */ new Uint8Array(32);
+	const ov = new DataView(out.buffer);
+	[
+		h0,
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6,
+		h7
+	].forEach((v, i) => ov.setUint32(i * 4, v >>> 0));
+	return out;
+}
+var enc$1 = new TextEncoder();
+/** How many zero bits a digest starts with. */
+function leadingZeroBits(d) {
+	let n = 0;
+	for (const byte of d) {
+		if (byte === 0) {
+			n += 8;
+			continue;
+		}
+		return n + Math.clz32(byte) - 24;
+	}
+	return n;
+}
+/** Whether `x` is a solution: SHA-256("<challenge>:<x>") starts with `bits` zero bits. */
+var workDone = (challenge, x, bits) => leadingZeroBits(sha256(enc$1.encode(`${challenge}:${x}`))) >= bits;
+/**
+* Find a solution (a base-36 counter), giving the page a moment every few thousand tries so it stays responsive.
+* Null past `maxTries` (about 2^bits tries are needed on average).
+*/
+async function solveWork(challenge, bits, maxTries = 2 ** 26) {
+	for (let i = 0; i < maxTries; i++) {
+		const x = i.toString(36);
+		if (workDone(challenge, x, bits)) return x;
+		if ((i & 4095) === 4095) await new Promise((r) => setTimeout(r, 0));
+	}
+	return null;
+}
+//#endregion
+//#region ../packages/core/src/code.ts
+/**
+* The short code (PROTOCOL §2b): ten digits to type on a phone instead of scanning the QR code, for a TV, a headset,
+* or a phone across the room. The first five are a handle the room service keeps for a few minutes (handle -> room);
+* the last five are a secret that never leaves the two devices. Once the phone is in the room, the two run a PAKE on
+* the secret over the DTLS channel: CPace's construction on X25519, bound to both DTLS fingerprints. Someone without
+* the secret, the room service included, gets one guess per code, and the host retires a code after its one attempt.
+*
+* Every code is ten digits and starts with 1 to 9, so no code is the start of another (a leading 0 is kept for a longer
+* code, should one ever be needed).
+*/
+var isCodeHandle = (s) => typeof s === "string" && /^[1-9]\d{4}$/.test(s);
+/** Uniformly random decimal digits (rejection sampling, so no digit is likelier than another). */
+function randomDigits(n) {
+	const buf = /* @__PURE__ */ new Uint32Array(1);
+	let out = "";
+	while (out.length < n) {
+		crypto.getRandomValues(buf);
+		if (buf[0] >= 4294967290) continue;
+		out += String(buf[0] % 10);
+	}
+	return out;
+}
+var P = (1n << 255n) - 19n;
+var J = 486662n;
+var A24 = 121665n;
+var mod = (a) => {
+	const r = a % P;
+	return r < 0n ? r + P : r;
+};
+function pow(b, e) {
+	let r = 1n;
+	b = mod(b);
+	while (e > 0n) {
+		if (e & 1n) r = r * b % P;
+		b = b * b % P;
+		e >>= 1n;
+	}
+	return r;
+}
+/** 1/a, and 0 for 0 (inv0). */
+var inv = (a) => pow(a, P - 2n);
+var isSquare = (a) => pow(a, (P - 1n) / 2n) !== P - 1n;
+var toLE = (n) => Uint8Array.from({ length: 32 }, (_, i) => Number(n >> BigInt(8 * i) & 255n));
+function fromLE(b) {
+	let n = 0n;
+	for (let i = b.length - 1; i >= 0; i--) n = n << 8n | BigInt(b[i]);
+	return n;
+}
+/** The Montgomery ladder on curve25519: the u-coordinate of k·(u), for any k below 2^bits (no clamping). */
+function ladder(k, u, bits = 255) {
+	const x1 = mod(u);
+	let x2 = 1n, z2 = 0n, x3 = x1, z3 = 1n, swap = 0n;
+	for (let t = bits - 1; t >= 0; t--) {
+		const kt = k >> BigInt(t) & 1n;
+		if (swap ^ kt) {
+			[x2, x3] = [x3, x2];
+			[z2, z3] = [z3, z2];
+		}
+		swap = kt;
+		const a = mod(x2 + z2), aa = a * a % P, b = mod(x2 - z2), bb = b * b % P, e = mod(aa - bb);
+		const c = mod(x3 + z3), da = mod(x3 - z3) * a % P, cb = c * b % P;
+		const s = mod(da + cb), m = mod(da - cb);
+		x3 = s * s % P;
+		z3 = x1 * (m * m % P) % P;
+		x2 = aa * bb % P;
+		z2 = e * mod(aa + A24 * e) % P;
+	}
+	if (swap) {
+		[x2, x3] = [x3, x2];
+		[z2, z3] = [z3, z2];
+	}
+	return x2 * inv(z2) % P;
+}
+/** X25519(k, u) as RFC 7748 defines it: the scalar clamped, the top bit of u ignored, 32 bytes little-endian. */
+function x25519(scalar, u) {
+	const k = Uint8Array.from(scalar);
+	k[0] &= 248;
+	k[31] = k[31] & 127 | 64;
+	const uu = Uint8Array.from(u);
+	uu[31] &= 127;
+	return toLE(ladder(fromLE(k), fromLE(uu)));
+}
+/** Elligator 2 onto curve25519 (Z = 2), the u-coordinate only: RFC 9380's map_to_curve_elligator2. */
+function elligator2(u) {
+	let t = mod(2n * u * u);
+	if (t === P - 1n) t = 0n;
+	const x1 = mod(-486662n * inv(t + 1n));
+	return isSquare(mod((mod((x1 + J) * x1) + 1n) * x1)) ? x1 : mod(-x1 - J);
+}
+var enc = new TextEncoder();
+var LABEL = "obpal code v1";
+/** Length-prefixed concatenation (one length byte each), so no two different inputs run together the same way. */
+function lv(...parts) {
+	const bytes = parts.map((p) => typeof p === "string" ? enc.encode(p) : p);
+	const out = new Uint8Array(bytes.reduce((n, b) => n + 1 + b.length, 0));
+	let o = 0;
+	for (const b of bytes) {
+		if (b.length > 255) throw new Error("field too long");
+		out[o++] = b.length;
+		out.set(b, o);
+		o += b.length;
+	}
+	return out;
+}
+/** The code's generator: SHA-512 over the label, the secret, the handle and the room, mapped onto the curve. */
+async function generator(secret, handle, room) {
+	const u = new Uint8Array(await crypto.subtle.digest("SHA-512", lv(LABEL, secret, handle, room))).slice(0, 32);
+	u[31] &= 127;
+	return toLE(elligator2(fromLE(u)));
+}
+var allZero = (b) => b.every((x) => x === 0);
+var platformX25519 = null;
+/** Whether WebCrypto here does X25519 (asked once). */
+var hasPlatformX25519 = () => platformX25519 ??= crypto.subtle.generateKey({ name: "X25519" }, false, ["deriveBits"]).then(() => true, () => false);
+async function ephemeral(ladderOnly = false) {
+	if (!ladderOnly && await hasPlatformX25519()) return { platform: (await crypto.subtle.generateKey({ name: "X25519" }, false, ["deriveBits"])).privateKey };
+	return { scalar: crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(32)) };
+}
+/** X25519 of this side's key and `u`, or null for an all-zero result (a low-order `u`, which would fix the key). */
+async function dh(key, u) {
+	if ("scalar" in key) {
+		const k = x25519(key.scalar, u);
+		return allZero(k) ? null : k;
+	}
+	try {
+		const pub = await crypto.subtle.importKey("raw", u, { name: "X25519" }, false, []);
+		const k = new Uint8Array(await crypto.subtle.deriveBits({
+			name: "X25519",
+			public: pub
+		}, key.platform, 256));
+		return allZero(k) ? null : k;
+	} catch {
+		return null;
+	}
+}
+/**
+* One side of the short-code exchange. Each side sends `share`; with the other's share, `confirm` gives the
+* confirmation to send (`mine`) and the one to expect (`theirs`). They match only if both used the same secret,
+* handle and room and see the same two DTLS fingerprints.
+*/
+var CodePake = class CodePake {
+	constructor(role, key, share, handle, room) {
+		this.role = role;
+		this.key = key;
+		this.share = share;
+		this.handle = handle;
+		this.room = room;
+	}
+	/** `ladderOnly`: use the ladder even where the platform has X25519 (tests check the two agree). */
+	static async start(role, p, o = {}) {
+		const g = await generator(p.secret, p.handle, p.room);
+		const key = await ephemeral(o.ladderOnly);
+		const share = await dh(key, g);
+		if (!share) throw new Error("The code’s generator is a low-order point");
+		return new CodePake(role, key, share, p.handle, p.room);
+	}
+	/** Null when the other share is unusable (wrong size, or a low-order point that would fix the key). */
+	async confirm(other, fpDevice, fpHost) {
+		if (other.length !== 32 || allZero(other)) return null;
+		const k = await dh(this.key, other);
+		if (!k) return null;
+		const [shareDevice, shareHost] = this.role === "device" ? [this.share, other] : [other, this.share];
+		const base = await crypto.subtle.importKey("raw", k, "HKDF", false, ["deriveKey"]);
+		const isk = await crypto.subtle.deriveKey({
+			name: "HKDF",
+			hash: "SHA-256",
+			salt: enc.encode(LABEL),
+			info: lv(shareDevice, shareHost, fpDevice, fpHost, this.room, this.handle)
+		}, base, {
+			name: "HMAC",
+			hash: "SHA-256",
+			length: 256
+		}, false, ["sign"]);
+		const mac = async (who) => b64url(new Uint8Array(await crypto.subtle.sign("HMAC", isk, enc.encode(`${LABEL} ${who}`))));
+		const [host, device] = await Promise.all([mac("host"), mac("device")]);
+		return this.role === "device" ? {
+			mine: device,
+			theirs: host
+		} : {
+			mine: host,
+			theirs: device
+		};
+	}
+};
 //#endregion
 //#region ../packages/core/src/store.ts
 /**
@@ -490,7 +916,8 @@ async function loadCertificate(role) {
 	};
 }
 async function listPairs() {
-	return (await tx("pairs", "readonly", (s) => s.getAll()) ?? [...memory.pairs.values()]).filter(isPair).sort((a, b) => b.at - a.at);
+	const rows = await tx("pairs", "readonly", (s) => s.getAll()) ?? [...memory.pairs.values()];
+	return (await Promise.all(rows.map((r) => readPair(r)))).filter((p) => !!p).sort((a, b) => b.at - a.at);
 }
 async function putPair(p) {
 	memory.pairs.set(p.id, p);
@@ -500,9 +927,36 @@ async function forgetPair(id) {
 	memory.pairs.delete(id);
 	await tx("pairs", "readwrite", (s) => s.delete(id));
 }
-function isPair(x) {
+/**
+* A stored row as a pairing, or null for anything that isn't one. A row that still holds its key's bytes is turned
+* into a non-extractable key and written back (`save`: where, putPair unless a test says otherwise), so the bytes
+* don't outlive their first read.
+*/
+async function readPair(row, save = putPair) {
+	if (isPair(row)) return row;
+	if (!hasPairFields(row) || !(row.key instanceof Uint8Array) || row.key.length !== 32) return null;
+	const bytes = row;
+	const p = {
+		id: bytes.id,
+		key: await importPairKey(bytes.key),
+		peerFp: bytes.peerFp,
+		peerName: bytes.peerName,
+		at: bytes.at
+	};
+	bytes.key.fill(0);
+	await save(p);
+	return p;
+}
+/** Everything a pairing has but its key. */
+function hasPairFields(x) {
 	const p = x;
-	return !!p && typeof p === "object" && typeof p.id === "string" && p.key instanceof Uint8Array && p.key.length === 32 && p.peerFp instanceof Uint8Array && p.peerFp.length === 32 && typeof p.peerName === "string" && typeof p.at === "number";
+	return !!p && typeof p === "object" && typeof p.id === "string" && p.peerFp instanceof Uint8Array && p.peerFp.length === 32 && typeof p.peerName === "string" && typeof p.at === "number";
+}
+/** A pairing whose key is kept as it should be: a non-extractable HKDF key. */
+function isPair(x) {
+	if (!hasPairFields(x)) return false;
+	const k = x.key;
+	return typeof CryptoKey !== "undefined" && k instanceof CryptoKey && k.algorithm.name === "HKDF" && !k.extractable;
 }
 var PointerFlag = {
 	/** The device has an orientation; without it the angles are meaningless. */
@@ -609,7 +1063,160 @@ function mixStick(thumb, motions) {
 	return jumpDeadzone(addStick(thumb, sum), d);
 }
 //#endregion
+//#region ../packages/core/src/buttons.ts
+var padButton = (i, standard) => `pad:${standard ? "" : "raw:"}b${i}`;
+/** A media input and Back arrive as one event, with no release: they tap, and can't hold anything. */
+var tapsOnly = (id) => id === "back" || id.startsWith("media:");
+[...Array.from({ length: 17 }, (_, i) => `pad:b${i}`), ...[
+	0,
+	1,
+	2,
+	3
+].flatMap((i) => [`pad:a${i}-`, `pad:a${i}+`])];
+var PAD_CONTROLS = [
+	"a",
+	"b",
+	"x",
+	"y",
+	"lb",
+	"rb",
+	"lt",
+	"rt",
+	"view",
+	"menu",
+	"ls",
+	"rs",
+	"up",
+	"down",
+	"left",
+	"right",
+	"guide"
+];
+/**
+* The controls a physical input may press on each controller (CATALOGUE §9.1: ControllerSpec.controls), keyed by
+* controller id. The gamepad's are PAD's buttons in the standard order. On any controller an input may also press a key
+* on the screen (KEY_TARGETS) where the screen takes typing.
+*/
+var CONTROLS = {
+	"face.gamepad": PAD_CONTROLS,
+	"face.wheel": PAD_CONTROLS,
+	"face.wii": [
+		"a",
+		"b",
+		"minus",
+		"home",
+		"plus"
+	],
+	"face.mouse": [
+		"left",
+		"right",
+		"middle",
+		"wheel",
+		"minus",
+		"plus",
+		"home"
+	],
+	"face.trackpad": ["grab", "level"],
+	"face.hand": ["hold", "recentre"],
+	"face.keyboard": [
+		"key-Escape",
+		"key-Tab",
+		"key-ArrowLeft",
+		"key-ArrowUp",
+		"key-ArrowDown",
+		"key-ArrowRight",
+		"key-Backspace",
+		"key-Enter"
+	]
+};
+/**
+* The inputs that stand for the four hardware actions a host could bind before bindings (Layout.keys): primary is
+* volume up, Enter, Space or one headset press; secondary volume down, Esc or Backspace; next and previous the arrows,
+* Page Up and Down, or two and three headset presses. A pad's A, B and D-pad take the same rows.
+*/
+var ACTION_INPUTS = {
+	primary: [
+		"key:AudioVolumeUp",
+		"key:Enter",
+		"key:NumpadEnter",
+		"key:Space",
+		"key:MediaPlayPause",
+		"media:playpause",
+		"pad:b0"
+	],
+	secondary: [
+		"key:AudioVolumeDown",
+		"key:Escape",
+		"key:Backspace",
+		"pad:b1"
+	],
+	next: [
+		"key:ArrowRight",
+		"key:PageDown",
+		"key:MediaTrackNext",
+		"media:nexttrack",
+		"pad:b15"
+	],
+	prev: [
+		"key:ArrowLeft",
+		"key:PageUp",
+		"key:MediaTrackPrevious",
+		"media:previoustrack",
+		"pad:b14"
+	]
+};
+/** The four actions pressing these targets, as input -> target; tap-only inputs skip a target that must be held. */
+function fromActions(t, heldOnly = []) {
+	const out = {};
+	for (const [action, target] of Object.entries(t)) for (const input of ACTION_INPUTS[action]) if (!(heldOnly.includes(target) && tapsOnly(input))) out[input] = target;
+	return out;
+}
+/** On the gamepad a pad's own buttons pass straight through: the standard mapping is already the controller's layout. */
+var PAD_THROUGH = Object.fromEntries(PAD_CONTROLS.map((c, i) => [padButton(i, true), c]));
+({ ...fromActions({
+	primary: "a",
+	secondary: "b",
+	next: "right",
+	prev: "left"
+}) }), { ...PAD_THROUGH }, fromActions({
+	primary: "a",
+	secondary: "b",
+	next: "plus",
+	prev: "minus"
+}), fromActions({
+	primary: "left",
+	secondary: "wheel",
+	next: "plus",
+	prev: "minus"
+}), fromActions({
+	primary: "grab",
+	secondary: "level"
+}), fromActions({
+	primary: "hold",
+	secondary: "recentre"
+}, ["hold"]);
+var PAD_EXTRAS = {
+	"pad:b9": "app:next",
+	"pad:b8": "app:prev"
+};
+/** Next and previous as the screen's arrow keys, where the screen takes typing: a presentation moves on. */
+var CLICKER_TO_KEYS = {
+	"key:PageDown": "key-ArrowRight",
+	"key:ArrowRight": "key-ArrowRight",
+	"key:ArrowDown": "key-ArrowRight",
+	"key:PageUp": "key-ArrowLeft",
+	"key:ArrowLeft": "key-ArrowLeft",
+	"key:ArrowUp": "key-ArrowLeft",
+	"key:Escape": "key-Escape"
+};
+({ ...CLICKER_TO_KEYS }), { ...CLICKER_TO_KEYS }, { ...CLICKER_TO_KEYS }, { ...CLICKER_TO_KEYS }, { ...PAD_EXTRAS }, { ...PAD_EXTRAS }, { ...PAD_EXTRAS }, { ...PAD_EXTRAS };
+//#endregion
 //#region ../packages/core/src/catalogue.ts
+/**
+* The control catalogue (spec/CATALOGUE.md): utilities, the routes a motion utility can take, the built-in profiles,
+* and the controllers built from them. Data only; the phone offers what a host's layout allows and hosts finish each
+* route.
+*/
 var Utility = {
 	pad: "pad",
 	aim: "motion.aim",
@@ -638,7 +1245,8 @@ var PROFILE_LIMITS = {
 	deadzone: [0, .5],
 	id: /^[a-z][a-z0-9-]{1,31}$/,
 	name: 40,
-	for: 120
+	for: 120,
+	buttons: 32
 };
 /**
 * The controllers a person picks from on the device (CATALOGUE §9.1): faces drawn on its screen, each built from
@@ -667,7 +1275,8 @@ var CONTROLLERS = {
 			Utility.steer,
 			Utility.point
 		],
-		modes: [Mode.gamepad]
+		modes: [Mode.gamepad],
+		controls: CONTROLS["face.gamepad"]
 	},
 	"face.wheel": {
 		id: "face.wheel",
@@ -675,7 +1284,8 @@ var CONTROLLERS = {
 		category: "Controller",
 		for: "Tilt to steer, the triggers as pedals: the gamepad with the Driving profile",
 		utilities: [Utility.pad, Utility.steer],
-		modes: [Mode.gamepad]
+		modes: [Mode.gamepad],
+		controls: CONTROLS["face.wheel"]
 	},
 	"face.wii": {
 		id: "face.wii",
@@ -683,7 +1293,8 @@ var CONTROLLERS = {
 		category: "Pointer",
 		for: "Point at the screen: A selects, hold B to grab, − and + zoom",
 		utilities: [Utility.point],
-		modes: [Mode.point]
+		modes: [Mode.point],
+		controls: CONTROLS["face.wii"]
 	},
 	"face.mouse": {
 		id: "face.mouse",
@@ -691,7 +1302,8 @@ var CONTROLLERS = {
 		category: "Pointer",
 		for: "Point at the screen: Left and Right click, and a wheel scrolls",
 		utilities: [Utility.point],
-		modes: [Mode.point]
+		modes: [Mode.point],
+		controls: CONTROLS["face.mouse"]
 	},
 	"face.trackpad": {
 		id: "face.trackpad",
@@ -703,7 +1315,8 @@ var CONTROLLERS = {
 			Utility.hold,
 			Utility.tilt
 		],
-		modes: [Mode.tilt, Mode.hold]
+		modes: [Mode.tilt, Mode.hold],
+		controls: CONTROLS["face.trackpad"]
 	},
 	"face.hand": {
 		id: "face.hand",
@@ -711,7 +1324,8 @@ var CONTROLLERS = {
 		category: "3D",
 		for: "Hold the pad and move the phone: what you hold follows your hand",
 		utilities: [Utility.track],
-		modes: [Mode.track]
+		modes: [Mode.track],
+		controls: CONTROLS["face.hand"]
 	},
 	"face.keyboard": {
 		id: "face.keyboard",
@@ -719,7 +1333,8 @@ var CONTROLLERS = {
 		category: "Keys",
 		for: "The phone’s own keyboard types on the screen, with Esc, Tab, the arrows and Enter",
 		utilities: [],
-		modes: []
+		modes: [],
+		controls: CONTROLS["face.keyboard"]
 	}
 };
 Object.keys(CONTROLLERS);
@@ -1074,6 +1689,25 @@ var __vitePreload = function preload(baseModule, deps, importerUrl) {
 };
 //#endregion
 //#region ../packages/host/src/remote.ts
+/** At most this many kept rooms: past it, the oldest nobody is connected through goes. */
+var MAX_KEPT_ROOMS = 8;
+/**
+* The room service as an origin: https, or http only on this machine (localhost, 127.0.0.1, [::1]). It becomes the
+* pairing link, the QR code and the chip's link, so anything else (a javascript: or data: URL) is refused.
+*/
+function serviceOrigin(service) {
+	let u = null;
+	try {
+		u = new URL(service);
+	} catch {}
+	const local = !!u && [
+		"localhost",
+		"127.0.0.1",
+		"[::1]"
+	].includes(u.hostname);
+	if (!u || !(u.protocol === "https:" || u.protocol === "http:" && local)) throw new Error(`ob.Pal: the service must be an https URL, not "${service}"`);
+	return u.origin;
+}
 var isObpalOrigin = () => typeof location !== "undefined" && (/(^|\.)blackboxes\.(net|dev)$/.test(location.hostname) || location.hostname === "localhost" || location.hostname === "127.0.0.1");
 var DEFAULT_LAYOUT = {
 	v: 1,
@@ -1117,6 +1751,14 @@ var Remote = class Remote {
 		this.fp = /* @__PURE__ */ new Uint8Array(32);
 		this.roomId = "";
 		this.ice = [];
+		this.iceSet = null;
+		this.iceTimer = null;
+		this.iceLoaded = false;
+		this.iceFirstDone = () => {};
+		this.early = /* @__PURE__ */ new Map();
+		this.destroyed = false;
+		this.kept = [];
+		this.moving = Promise.resolve();
 		this.peers = /* @__PURE__ */ new Map();
 		this.active = null;
 		this.pairs = [];
@@ -1151,11 +1793,25 @@ var Remote = class Remote {
 			pad: [],
 			input: [],
 			claim: [],
-			lan: []
+			lan: [],
+			code: [],
+			invite: []
 		};
 		this.cards = [];
-		this.service = (opts.service ?? (isObpalOrigin() ? location.origin : "https://obpal.blackboxes.net")).replace(/\/$/, "");
+		this.shortCode = null;
+		this.spentCodes = /* @__PURE__ */ new Map();
+		this.recentCodes = /* @__PURE__ */ new Map();
+		this.codeWant = 0;
+		this.codeTimer = null;
+		this.codeWait = null;
+		this.codeBackoff = 0;
+		this.codeSolving = false;
+		this.codeBinds = /* @__PURE__ */ new Map();
+		this.service = serviceOrigin(opts.service ?? (isObpalOrigin() ? location.origin : "https://obpal.blackboxes.net"));
 		this.layout = withControllers(opts.layout ?? DEFAULT_LAYOUT);
+		this.iceFirst = new Promise((r) => {
+			this.iceFirstDone = r;
+		});
 	}
 	static async create(opts) {
 		const r = new Remote(opts);
@@ -1183,11 +1839,16 @@ var Remote = class Remote {
 			this.fp = await certFingerprint(this.cert);
 		}
 		await this.openRoom();
+		this.refreshIce();
 		this.prepareLan();
 	}
 	/** Join the signaling room of the current secret: the invite the pairing code carries. */
 	async openRoom() {
 		this.roomId = await roomIdFor(this.secret);
+		this.joinRoom();
+	}
+	/** The current invite's room (its secret and room id are set): the pairing link, and this host's socket there. */
+	joinRoom() {
 		this.pairingUrl = `${this.service}/p/#${encodePairing({
 			secret: this.secret,
 			fp: this.fp
@@ -1197,13 +1858,32 @@ var Remote = class Remote {
 		this.sig.onstatus = (open) => {
 			if (open && this.status !== "connected") this.setStatus("ready");
 			if (!open && this.status !== "connected") this.setStatus("offline");
+			if (open) this.askCode();
+			else this.setCode(null);
 		};
 		this.sig.connect();
-		const room = this.roomId;
-		setTimeout(async () => {
-			const ice = await fetchIceServers(this.service, room);
-			if (room === this.roomId) this.ice = ice;
-		}, 400);
+	}
+	/**
+	* Fetch ICE servers, and again before their TURN credentials lapse: a relay drops an allocation whose credentials
+	* have run out, and a host can stay open for days (ob.Pal Link's lives as long as the browser). They're asked for
+	* with the current invite's room, since TURN is only minted for rooms with a live host (so the first fetch waits
+	* until this host has joined). The credentials name no room: they serve every room this host is in.
+	*/
+	refreshIce(delay = 400) {
+		if (this.iceTimer) clearTimeout(this.iceTimer);
+		this.iceTimer = setTimeout(async () => {
+			this.iceTimer = null;
+			const set = await fetchIce(this.service, this.roomId);
+			if (this.destroyed) return;
+			const held = this.iceSet?.turn && !set.turn && (this.iceSet.expires ?? 0) - Date.now() > 6e5;
+			if (!held) {
+				this.iceSet = set;
+				this.ice = set.servers;
+			}
+			this.iceLoaded = true;
+			this.iceFirstDone();
+			this.refreshIce(held ? 6e4 : iceRefreshIn(set));
+		}, delay);
 	}
 	/**
 	* A new invite: the old code and link stop working, and everyone connected stays. Devices that joined but haven't
@@ -1215,13 +1895,84 @@ var Remote = class Remote {
 		old.onmessage = () => {};
 		old.onstatus = () => {};
 		old.close();
-		for (const p of [...this.peers.values()]) if (!p.bound && !p.lan) this.dropPeer(p.id);
+		for (const p of [...this.peers.values()]) if (!p.bound && !p.lan && !p.room) this.dropPeer(p.id);
+		this.setCode(null);
+		this.spentCodes.clear();
 		await this.openRoom();
 		for (const c of this.cards) this.renderQr(c);
+		this.emit("invite");
 		this.renderCards();
+	}
+	/**
+	* The invite moves on once a device has paired through it (rotateInvite, spec/SECURITY.md §8, L2). The room it
+	* paired in is kept for it: the phone's page reloads with that room's code, and its ICE restarts come through it,
+	* but the room takes offers from no one else, so a photo of the old code or a replayed link pairs nothing. A device
+	* still on its way in through the old room scans the new code. A new secret makes the new room, link, QR code and
+	* short code. `from` is the socket the device paired through: if the invite has moved on since, there's nothing to do.
+	*/
+	moveInvite(by, from) {
+		this.moving = this.moving.then(async () => {
+			if (by.room || this.sig !== from || this.destroyed) return;
+			const secret = newSecret();
+			const roomId = await roomIdFor(secret);
+			if (by.room || this.sig !== from || this.destroyed) return;
+			const kept = {
+				secret: this.secret,
+				roomId: this.roomId,
+				sig: from,
+				fps: /* @__PURE__ */ new Set()
+			};
+			for (const p of [by, ...this.peers.values()]) {
+				if (p.lan || p.room) continue;
+				if (p.bound || p === by) {
+					p.room = kept;
+					if (p.fp) kept.fps.add(b64url(p.fp));
+				} else this.dropPeer(p.id);
+			}
+			for (const r of this.kept) for (const fp of kept.fps) r.fps.delete(fp);
+			if (this.shortCode) from.send({
+				t: "code",
+				op: "drop"
+			});
+			this.setCode(null);
+			this.spentCodes.clear();
+			from.onmessage = (m) => this.onSignal(m, kept);
+			from.onstatus = () => {};
+			this.kept.push(kept);
+			this.pruneKept();
+			this.secret = secret;
+			this.roomId = roomId;
+			this.joinRoom();
+			for (const c of this.cards) this.renderQr(c);
+			this.emit("invite");
+			this.renderCards();
+		}).catch(() => {});
+	}
+	/**
+	* Close the kept rooms nobody needs: those no device may use any more (each paired again elsewhere, or was
+	* forgotten) with nobody connected through them, and past MAX_KEPT_ROOMS the oldest that nobody is connected through.
+	*/
+	pruneKept() {
+		const used = (r) => [...this.peers.values()].some((p) => p.room === r);
+		const close = (r) => {
+			this.kept = this.kept.filter((k) => k !== r);
+			r.sig.onmessage = () => {};
+			r.sig.close();
+		};
+		for (const r of [...this.kept]) if (!r.fps.size && !used(r)) close(r);
+		for (const r of [...this.kept]) {
+			if (this.kept.length <= MAX_KEPT_ROOMS) break;
+			if (!used(r)) close(r);
+		}
 	}
 	on(ev, fn) {
 		this.handlers[ev].push(fn);
+		return this;
+	}
+	off(ev, fn) {
+		const l = this.handlers[ev];
+		const i = l.indexOf(fn);
+		if (i >= 0) l.splice(i, 1);
 		return this;
 	}
 	emit(ev, ...args) {
@@ -1267,9 +2018,17 @@ var Remote = class Remote {
 		this.lanChoice = id;
 		this.prepareLan();
 	}
-	/** Forget a remembered phone: it can only pair online again. */
+	/**
+	* Forget a remembered phone: it can only pair online again, and only through the invite on the screen now (the room
+	* it paired in, if it was kept for it, takes it no more).
+	*/
 	async forget(id) {
+		const gone = this.pairs.find((p) => p.id === id);
 		this.pairs = this.pairs.filter((p) => p.id !== id);
+		if (gone) {
+			for (const r of this.kept) r.fps.delete(b64url(gone.peerFp));
+			this.pruneKept();
+		}
 		if (this.lanChoice === id) this.lanChoice = null;
 		await forgetPair(id);
 		if (this.lan?.pairId === id) this.discardLan();
@@ -1281,23 +2040,34 @@ var Remote = class Remote {
 		this.lan = null;
 		if (l) this.dropPeer(l.peer.id);
 	}
-	/** After an online pairing: a (new) key for this phone, kept here and handed to it in `welcome`. Stored in the background. */
-	rememberDevice(peer, name) {
-		if (!this.opts.remember || !peer.fp) return null;
-		const existing = this.pairs.find((p) => equalBytes(p.peerFp, peer.fp));
-		const key = randomBytes(32);
+	/**
+	* After an online pairing: a (new) key for this phone, handed to it in `welcome` (the one time its bytes travel) and
+	* kept here only as `minted.key`, the non-extractable key made from them (mintKey). Stored in the background.
+	*/
+	rememberDevice(peer, name, minted) {
+		if (!this.opts.remember || !peer.fp || !minted) return null;
 		const rec = {
-			id: existing?.id ?? b64url(randomBytes(16)),
-			key,
+			id: this.pairs.find((p) => equalBytes(p.peerFp, peer.fp))?.id ?? b64url(randomBytes(16)),
+			key: minted.key,
 			peerFp: peer.fp,
 			peerName: name,
 			at: Date.now()
 		};
 		this.pairs = [rec, ...this.pairs.filter((p) => p.id !== rec.id)];
 		putPair(rec).then(() => this.emit("lan"));
-		return {
+		const grant = {
 			id: rec.id,
-			key: b64url(key)
+			key: b64url(minted.raw)
+		};
+		minted.raw.fill(0);
+		return grant;
+	}
+	/** A pairing key: 32 random bytes for the grant, and the non-extractable key this host keeps (importPairKey). */
+	async mintKey() {
+		const raw = randomBytes(32);
+		return {
+			raw,
+			key: await importPairKey(raw)
 		};
 	}
 	/**
@@ -1310,7 +2080,7 @@ var Remote = class Remote {
 		return this.lanBusy;
 	}
 	async buildLan() {
-		if (!this.opts.remember) return;
+		if (!this.opts.remember || this.destroyed) return;
 		const pair = this.pairs.find((p) => p.id === this.lanChoice) ?? this.pairs[0];
 		if (!pair) {
 			if (this.lan) {
@@ -1373,9 +2143,29 @@ var Remote = class Remote {
 		};
 		this.emit("lan");
 	}
-	onSignal(m) {
-		if (m.t === "peer" && m.ev === "leave") this.dropPeer(m.id);
-		if (m.t === "sig") this.onPayload(m.from, m.d);
+	/** A message from the room service: in the current invite's room, or in a kept one (`room`). */
+	onSignal(m, room) {
+		if (m.t === "peer" && m.ev === "leave") this.peerLeft(m.id, m.clean !== false, room);
+		if (m.t === "sig") this.onPayload(m.from, m.d, room);
+		if (m.t === "code" && !room) this.onCode(m);
+	}
+	/** The socket that talks to a peer: its kept room's, or the current invite's. */
+	sigOf(peer) {
+		return peer.room?.sig ?? this.sig;
+	}
+	/**
+	* A device's signaling socket went. A device that closed it (`clean`: it left or reloaded), or one still connecting,
+	* goes with it. A bound device whose socket was lost stays while its connection lives, since that doesn't run
+	* through the room service (and a phone that changes networks loses its socket first): it goes only if the
+	* connection fails too (scheduleLost). A service that doesn't say which counts as clean.
+	*/
+	peerLeft(sig, clean, room) {
+		if (!room) this.early.delete(sig);
+		const p = this.bySig(sig, room);
+		if (!p) return;
+		const s = p.pc.connectionState;
+		if (clean || !p.bound || s === "closed" || s === "failed") return this.dropPeer(p.id);
+		if (s !== "connected") this.scheduleLost(p);
 	}
 	/** One peer connection with the two pre-negotiated channels, wired into this host. */
 	addPeer(id, pc, fp) {
@@ -1392,6 +2182,9 @@ var Remote = class Remote {
 		st.binaryType = "arraybuffer";
 		const peer = {
 			id,
+			sig: id,
+			session: null,
+			renegotiating: false,
 			pc,
 			ctl,
 			st,
@@ -1446,19 +2239,51 @@ var Remote = class Remote {
 	listening(peer) {
 		return peer.bound && (this.shared || this.active === peer);
 	}
-	async onPayload(id, d) {
+	async onPayload(id, d, room) {
+		const sig = room?.sig ?? this.sig;
 		if ("offer" in d) {
-			this.dropPeer(id);
+			const again = this.sameConnection(d.offer?.sdp, room);
+			if (again) return this.renegotiate(again, id, d.offer);
+			if (d.restart) {
+				sig.send({
+					t: "sig",
+					to: id,
+					d: { gone: true }
+				});
+				return;
+			}
+			const old = this.bySig(id, room);
+			if (old) this.dropPeer(old.id);
+			const fp = sdpFingerprint(d.offer?.sdp);
+			if (!fp) return;
+			if (room && !room.fps.has(b64url(fp))) {
+				sig.send({
+					t: "sig",
+					to: id,
+					d: { spent: true }
+				});
+				return;
+			}
 			if (this.status !== "connected") this.setStatus("connecting");
+			const early = [];
+			if (!this.iceLoaded && !room) {
+				this.early.set(id, early);
+				await Promise.race([this.iceFirst, new Promise((r) => setTimeout(r, REACH_TIMEOUT_MS))]);
+				if (this.early.get(id) !== early) return;
+				this.early.delete(id);
+			}
 			const pc = new RTCPeerConnection({
 				iceServers: this.ice,
 				certificates: [this.cert]
 			});
-			const peer = this.addPeer(id, pc, sdpFingerprint(d.offer.sdp));
+			const peer = this.addPeer(id, pc, fp);
+			peer.room = room;
+			peer.session = sdpSession(d.offer.sdp);
+			peer.cands.push(...early);
 			pc.onicecandidate = (e) => {
-				if (e.candidate) this.sig.send({
+				if (e.candidate) this.sigOf(peer).send({
 					t: "sig",
-					to: id,
+					to: peer.sig,
 					d: { cand: e.candidate.toJSON() }
 				});
 			};
@@ -1466,17 +2291,66 @@ var Remote = class Remote {
 			for (const c of peer.cands.splice(0)) await pc.addIceCandidate(c).catch(() => {});
 			const answer = await pc.createAnswer();
 			await pc.setLocalDescription(answer);
-			this.sig.send({
+			this.sigOf(peer).send({
 				t: "sig",
 				to: id,
 				d: { answer: pc.localDescription.toJSON() }
 			});
 		} else if ("cand" in d) {
-			const peer = this.peers.get(id);
-			if (!peer) return;
-			if (peer.pc.remoteDescription) await peer.pc.addIceCandidate(d.cand).catch(() => {});
+			const peer = this.bySig(id, room);
+			if (!peer) {
+				if (!room) this.early.get(id)?.push(d.cand);
+				return;
+			}
+			if (peer.pc.remoteDescription && !peer.renegotiating) await peer.pc.addIceCandidate(d.cand).catch(() => {});
 			else peer.cands.push(d.cand);
 		}
+	}
+	/** The peer that talks through signaling socket `sig`, in the current invite's room or the kept room `room`. */
+	bySig(sig, room) {
+		for (const p of this.peers.values()) if (p.sig === sig && p.room === room) return p;
+	}
+	/**
+	* The bound peer an offer renegotiates, if it does: the same DTLS fingerprint and the same SDP session (a connection
+	* keeps its session through all its offers; a new one starts another), on a connection that isn't closed, through
+	* the room it talks through. Anyone else's offer, or a phone's new connection, is a new peer.
+	*/
+	sameConnection(sdp, room) {
+		const fp = sdpFingerprint(sdp);
+		const session = sdpSession(sdp);
+		if (!fp || !session) return null;
+		for (const p of this.peers.values()) if (p.bound && !p.lan && p.room === room && p.fp && p.session === session && equalBytes(p.fp, fp) && p.pc.connectionState !== "closed") return p;
+		return null;
+	}
+	/**
+	* A bound phone renegotiates its connection: an ICE restart (RFC 8445 §9), after its network changed or its path went
+	* quiet. The new ICE credentials and candidates go in with fresh ICE servers (a relay then has live credentials),
+	* and the DTLS session, the channels and the binding stay: the phone was proven once, and DTLS still holds both
+	* fingerprints. A phone whose socket was lost and came back talks through its new one from now on.
+	*/
+	async renegotiate(peer, sig, offer) {
+		peer.sig = sig;
+		if (peer.lost) {
+			clearTimeout(peer.lost);
+			peer.lost = null;
+		}
+		peer.renegotiating = true;
+		try {
+			peer.pc.setConfiguration({
+				...peer.pc.getConfiguration(),
+				iceServers: this.ice
+			});
+			await peer.pc.setRemoteDescription(offer);
+			await peer.pc.setLocalDescription(await peer.pc.createAnswer());
+			this.sigOf(peer).send({
+				t: "sig",
+				to: sig,
+				d: { answer: peer.pc.localDescription.toJSON() }
+			});
+		} catch {} finally {
+			peer.renegotiating = false;
+		}
+		for (const c of peer.cands.splice(0)) await peer.pc.addIceCandidate(c).catch(() => {});
 	}
 	async onCtl(peer, data) {
 		if (typeof data !== "string") return;
@@ -1487,16 +2361,32 @@ var Remote = class Remote {
 			return;
 		}
 		if (!peer.bound) {
-			if (m.t !== "hello" || !peer.fp) return;
-			const expected = peer.lan ? await bindMac(peer.lan.pair.key, peer.fp, this.fp, lanContext(peer.lan.nonce)) : await bindMac(this.secret, peer.fp, this.fp, this.roomId);
-			if (peer.lan && m.pair !== peer.lan.pair.id) {
-				this.reject(peer);
-				return;
+			if (m.t === "pake" || m.t === "hello" && "code" in m) {
+				if (peer.room) {
+					this.reject(peer);
+					return;
+				}
+				const hello = await this.codeStep(peer, m);
+				if (!hello) return;
+				m = hello;
+			} else {
+				if (m.t !== "hello" || !peer.fp) return;
+				const room = peer.room ?? {
+					secret: this.secret,
+					roomId: this.roomId
+				};
+				const expected = peer.lan ? await bindMac(peer.lan.pair.key, peer.fp, this.fp, lanContext(peer.lan.nonce)) : await bindMac(room.secret, peer.fp, this.fp, room.roomId);
+				if (peer.lan && m.pair !== peer.lan.pair.id) {
+					this.reject(peer);
+					return;
+				}
+				if (!equalBytes(new TextEncoder().encode(expected), new TextEncoder().encode(m.mac))) {
+					this.reject(peer);
+					return;
+				}
 			}
-			if (!equalBytes(new TextEncoder().encode(expected), new TextEncoder().encode(m.mac))) {
-				this.reject(peer);
-				return;
-			}
+			const minted = !peer.lan && this.opts.remember ? await this.mintKey() : null;
+			if (peer.bound || this.peers.get(peer.id) !== peer) return;
 			if (this.shared && this.bound().length >= this.seats) {
 				this.send(peer, {
 					t: "lock",
@@ -1506,6 +2396,7 @@ var Remote = class Remote {
 				return;
 			}
 			peer.bound = true;
+			peer.via = peer.lan ? "lan" : "code" in m ? "code" : "qr";
 			peer.name = String(m.name || "Phone").slice(0, 40);
 			peer.caps = m.caps ?? null;
 			peer.since = Date.now();
@@ -1537,13 +2428,20 @@ var Remote = class Remote {
 				peer.lan.pair.at = Date.now();
 				peer.lan.pair.peerName = peer.name;
 				putPair(peer.lan.pair);
-			} else pair = this.rememberDevice(peer, peer.name) ?? void 0;
+			} else pair = this.rememberDevice(peer, peer.name, minted) ?? void 0;
+			peer.pair = peer.lan?.pair.id ?? pair?.id;
+			const invite = "code" in m ? encodePairing({
+				secret: this.secret,
+				fp: this.fp
+			}) : void 0;
 			this.send(peer, {
 				t: "welcome",
 				proto: 1,
 				name: this.opts.appName,
 				layout: this.layout,
-				...pair ? { pair } : {}
+				...pair ? { pair } : {},
+				...invite ? { invite } : {},
+				...peer.lan ? {} : { restart: true }
 			});
 			if (this.shared) this.send(peer, {
 				t: "state",
@@ -1552,6 +2450,7 @@ var Remote = class Remote {
 					color: peer.color
 				}
 			});
+			if (this.opts.rotateInvite && !peer.lan && !peer.room) this.moveInvite(peer, this.sig);
 			const first = this.status !== "connected";
 			this.setStatus("connected");
 			if (first || !this.shared) this.emit("connect", {
@@ -1615,11 +2514,208 @@ var Remote = class Remote {
 		}
 	}
 	reject(peer) {
+		this.codeBinds.delete(peer);
 		this.send(peer, {
 			t: "lock",
 			reason: "rejected"
 		});
 		setTimeout(() => this.dropPeer(peer.id), 200);
+	}
+	/** The short code to type on a phone, digits only: '' while there's none (nothing shows one, or the service can't). */
+	get code() {
+		return this.shortCode ? this.shortCode.handle + this.shortCode.secret : "";
+	}
+	/** Where to type it: the controller's start page, without the scheme ("obpal.blackboxes.net/p"). */
+	get codeSite() {
+		return `${this.service.replace(/^https?:\/\//, "")}/p`;
+	}
+	/** Keep a short code live while something shows it. Call the function it returns when nothing does any more. */
+	wantCode() {
+		if (this.opts.shortCode === false) return () => {};
+		this.codeWant++;
+		if (this.codeWant === 1) this.askCode();
+		let done = false;
+		return () => {
+			if (done) return;
+			done = true;
+			if (--this.codeWant > 0) return;
+			if (this.shortCode) this.sig?.send({
+				t: "code",
+				op: "drop"
+			});
+			this.setCode(null);
+		};
+	}
+	/**
+	* Ask the room service for a handle (it replaces this room's last one), with a proof of work when the service asked
+	* for one. A service that doesn't answer (an older one, or a lost message) is asked again later, less often each time.
+	*/
+	askCode(work) {
+		if (!this.codeWant || !this.sig?.open) return;
+		if (this.codeTimer) {
+			clearTimeout(this.codeTimer);
+			this.codeTimer = null;
+		}
+		if (this.codeWait) clearTimeout(this.codeWait);
+		this.sig.send({
+			t: "code",
+			op: "claim",
+			...work ? { work } : {}
+		});
+		this.codeWait = setTimeout(() => {
+			this.codeWait = null;
+			this.retryCode();
+		}, 15e3);
+	}
+	/** Show a handle from the service with a fresh secret (null: no code), and ask again before it lapses. */
+	setCode(c) {
+		if (this.codeTimer) {
+			clearTimeout(this.codeTimer);
+			this.codeTimer = null;
+		}
+		const had = this.code;
+		const now = Date.now();
+		const shown = this.shortCode;
+		if (shown && shown.handle !== c?.code) this.recentCodes.set(shown.handle, {
+			secret: shown.secret,
+			until: now + 6e4
+		});
+		for (const [h, r] of this.recentCodes) if (r.until < now) this.recentCodes.delete(h);
+		this.shortCode = c && this.codeWant ? {
+			handle: c.code,
+			secret: randomDigits(5),
+			exp: c.exp
+		} : null;
+		if (this.shortCode) this.codeTimer = setTimeout(() => this.askCode(), Math.max(5e3, this.shortCode.exp - now - 3e4));
+		if (this.code !== had) this.emit("code");
+	}
+	/** Ask again later: 15 s, doubling to 5 minutes, or what the service asked for if that's longer. */
+	retryCode(seconds) {
+		if (this.codeTimer) clearTimeout(this.codeTimer);
+		this.codeBackoff = Math.min(300, this.codeBackoff ? this.codeBackoff * 2 : 15);
+		this.codeTimer = setTimeout(() => this.askCode(), Math.min(300, Math.max(seconds ?? 0, this.codeBackoff)) * 1e3);
+	}
+	/** The service asked for a proof of work before a new code: find one, then ask again with it. */
+	async solveCode(challenge, bits) {
+		if (this.codeSolving) return;
+		if (!(bits <= 24)) {
+			this.retryCode();
+			return;
+		}
+		this.codeSolving = true;
+		const x = await solveWork(challenge, bits);
+		this.codeSolving = false;
+		if (x === null) this.retryCode();
+		else this.askCode({
+			c: challenge,
+			x
+		});
+	}
+	onCode(m) {
+		const now = Date.now();
+		const work = m.error === "work" && typeof m.challenge === "string" && typeof m.bits === "number";
+		if (m.ev === "used") {
+			const cur = this.shortCode;
+			const secret = cur && cur.handle === m.code ? cur.secret : this.recentCodes.get(String(m.code))?.secret;
+			if (secret && typeof m.code === "string" && typeof m.ticket === "string") this.spentCodes.set(m.code, {
+				secret,
+				ticket: m.ticket,
+				until: now + 6e4
+			});
+			for (const [h, s] of this.spentCodes) if (s.until < now) this.spentCodes.delete(h);
+			if (!cur || cur.handle !== m.code) return;
+			if (m.next) {
+				this.codeBackoff = 0;
+				this.setCode(m.next);
+				return;
+			}
+			this.setCode(null);
+			if (work) this.solveCode(m.challenge, m.bits);
+			else this.retryCode(m.retry);
+			return;
+		}
+		if (this.codeWait) {
+			clearTimeout(this.codeWait);
+			this.codeWait = null;
+		}
+		if (isCodeHandle(m.code) && typeof m.exp === "number") {
+			if (!this.codeWant) {
+				this.sig?.send({
+					t: "code",
+					op: "drop"
+				});
+				return;
+			}
+			this.codeBackoff = 0;
+			this.setCode({
+				code: m.code,
+				exp: m.exp
+			});
+		} else if (work) this.solveCode(m.challenge, m.bits);
+		else if (m.error) {
+			if (this.shortCode) this.sig?.send({
+				t: "code",
+				op: "drop"
+			});
+			this.setCode(null);
+			this.retryCode(m.retry);
+		}
+	}
+	/**
+	* The short-code exchange, host side. hello{code, ticket, pake}: the code must be one a device has just looked up,
+	* shown with that lookup's ticket, and it gets that code's one attempt. pake{mac}: the device's confirmation. Returns
+	* the device's hello once the code is proven.
+	*/
+	async codeStep(peer, m) {
+		if (m.t === "pake") {
+			const b = this.codeBinds.get(peer);
+			if (!b) return null;
+			this.codeBinds.delete(peer);
+			const enc = new TextEncoder();
+			if (typeof m.mac !== "string" || !equalBytes(enc.encode(m.mac), enc.encode(b.theirs))) {
+				this.reject(peer);
+				return null;
+			}
+			return b.hello;
+		}
+		if (m.t !== "hello" || !("code" in m) || !peer.fp || this.codeBinds.has(peer)) return null;
+		for (let i = 0; i < 30 && !this.spentCodes.has(m.code) && this.shortCode?.handle === m.code; i++) await new Promise((r) => setTimeout(r, 100));
+		const spent = this.spentCodes.get(m.code);
+		if (!spent || spent.until < Date.now() || spent.ticket !== m.ticket || typeof m.pake !== "string") {
+			this.reject(peer);
+			return null;
+		}
+		this.spentCodes.delete(m.code);
+		let share;
+		try {
+			share = fromB64url(m.pake);
+		} catch {
+			this.reject(peer);
+			return null;
+		}
+		const pake = await CodePake.start("host", {
+			secret: spent.secret,
+			handle: m.code,
+			room: this.roomId
+		});
+		const macs = await pake.confirm(share, peer.fp, this.fp);
+		if (!macs || !this.peers.has(peer.id)) {
+			this.reject(peer);
+			return null;
+		}
+		this.codeBinds.set(peer, {
+			hello: m,
+			theirs: macs.theirs
+		});
+		this.send(peer, {
+			t: "pake",
+			y: b64url(pake.share),
+			mac: macs.mine
+		});
+		setTimeout(() => {
+			if (this.codeBinds.has(peer)) this.reject(peer);
+		}, 2e4);
+		return null;
 	}
 	/** Bound devices, oldest first. */
 	bound() {
@@ -1634,12 +2730,26 @@ var Remote = class Remote {
 			since: p.since,
 			caps: p.caps,
 			...p.controller ? { controller: p.controller } : {},
-			...p.profile ? { profile: p.profile } : {}
+			...p.profile ? { profile: p.profile } : {},
+			...p.pair ? { pair: p.pair } : {},
+			...p.fp ? { fp: b64url(p.fp) } : {}
 		};
 	}
 	/** Everyone controlling the scene, oldest (the lead) first. */
 	get participants() {
 		return this.bound().map((p) => this.participant(p));
+	}
+	/**
+	* Each connected device's link, oldest first, from the connection's own statistics: its path, ICE's round trip and
+	* DTLS (linkInfo), and how the device proved itself when it bound. For a connection badge that claims only this.
+	*/
+	async links() {
+		return Promise.all(this.bound().map(async (p) => ({
+			id: p.id,
+			name: p.name,
+			verified: p.via ?? "qr",
+			link: await linkInfo(p.pc)
+		})));
 	}
 	freeColor(peer) {
 		const used = /* @__PURE__ */ new Set([this.host.color.toLowerCase(), ...this.bound().filter((p) => p !== peer).map((p) => p.color)]);
@@ -1776,21 +2886,37 @@ var Remote = class Remote {
 		}
 	}
 	destroy() {
+		this.destroyed = true;
+		if (this.iceTimer) {
+			clearTimeout(this.iceTimer);
+			this.iceTimer = null;
+		}
 		this.lan = null;
+		this.codeWant = 0;
+		this.setCode(null);
+		if (this.codeWait) {
+			clearTimeout(this.codeWait);
+			this.codeWait = null;
+		}
 		for (const id of [...this.peers.keys()]) this.dropPeer(id);
 		this.sig?.close();
+		for (const r of this.kept.splice(0)) r.sig.close();
 		for (const c of this.cards) c.el.remove();
 		this.cards = [];
 	}
 	send(peer, m) {
 		if (peer.ctl.readyState === "open") peer.ctl.send(JSON.stringify(m));
 	}
+	/**
+	* A bound peer's connection went quiet or failed: it goes unless it comes back in time. A phone through the room
+	* service gets longer, since it may be finding a new path (an ICE restart) after changing networks.
+	*/
 	scheduleLost(peer) {
 		if (peer.lost) return;
 		peer.lost = setTimeout(() => {
 			peer.lost = null;
 			if (peer.pc.connectionState !== "connected") this.dropPeer(peer.id);
-		}, 4e3);
+		}, peer.lan ? 4e3 : 1e4);
 	}
 	dropPeer(id) {
 		const p = this.peers.get(id);
@@ -1804,6 +2930,7 @@ var Remote = class Remote {
 		try {
 			p.pc.close();
 		} catch {}
+		if (p.room) this.pruneKept();
 		if (!p.bound) return;
 		const who = this.participant(p);
 		p.bound = false;
@@ -2730,7 +3857,10 @@ function suggestForFrames(hosts, table = SITE_PROFILES) {
 * About 60 times a second, and immediately when a packet arrives, it samples the phone (remote.pad and
 * remote.consume()) and streams compact input frames to the page bridges of the controlled tab over runtime
 * ports: the controller to every frame, keys to the focused frame, 3D drags to the frame with the largest canvas.
-* For the PC target the frames (and the phone's typing, in order with them) go to the service worker instead.
+* For the PC target the frames (and the phone's typing, in order with them) go to the service worker instead, and
+* only for a phone the person at the PC allowed (shared/access.ts): the service worker says which, and until it has,
+* nothing goes. The invite moves on each time a phone pairs through it (rotateInvite), so a photo of the popup's QR
+* code pairs nothing later.
 */
 var TICK_MS = 1e3 / 60;
 /** A clock tick this soon after a packet-driven one is skipped: packets set the pace while input flows. */
@@ -2789,7 +3919,7 @@ var KEYBOARD = {
 * of A and B), a scroll wheel on the trackpad, and the keyboard.
 */
 var layoutFor = (profile) => {
-	const onPc = config.mode === "pc";
+	const pcTarget = config.mode === "pc";
 	const picker = targetPicker(config.desktop);
 	return {
 		v: 1,
@@ -2798,9 +3928,9 @@ var layoutFor = (profile) => {
 			Mode.tilt,
 			Mode.point
 		],
-		tray: onPc ? [picker, KEYBOARD] : [picker],
+		tray: pcTarget ? [picker, KEYBOARD] : [picker],
 		...profile ? { profile } : {},
-		...onPc ? {
+		...pcTarget ? {
 			point: "mouse",
 			wheel: true
 		} : {}
@@ -2819,12 +3949,93 @@ var suggested = null;
 /** A text or password field on the PC would take typing (the service worker says so, from ob.Pal Desktop). */
 var textField = null;
 var fieldShown = null;
-/** The phone's `textField` value: the field while the PC is the target, else false. Sent when it changes, and to every phone that connects. */
+/** The phone connected now (null: none), and where it stands on this PC (null: not known yet, so nothing goes). */
+var phone = null;
+var access = null;
+var noticeShown = null;
+/** The PC takes this phone's input: the PC is the target, and the person at the PC allowed the phone. */
+var onPc = () => config.mode === "pc" && access === "allow";
+/** The phone's `textField` value: the field while the PC takes its input, else false. Sent when it changes, and to every phone that connects. */
 function publishField(always = false) {
-	const v = config.mode === "pc" && textField ? textField : false;
+	const v = onPc() && textField ? textField : false;
 	if (v === fieldShown && !always) return;
 	fieldShown = v;
 	remote?.setValues({ textField: v });
+}
+/**
+* The phone's `notice` (PROTOCOL §3), a line it shows until it clears: while the PC is the target and hasn't let the
+* phone in, whether it waits for an answer there or was refused. Phones from before `notice` get it as a toast.
+*/
+function publishNotice(always = false) {
+	const v = phone ? noticeFor(config.mode, access) : false;
+	if (v === noticeShown && !always) return;
+	noticeShown = v;
+	remote?.setValues({ notice: v });
+	if (v) remote?.feedback({ toast: v });
+}
+/**
+* Who is connected now (the device in control), told to the service worker, which answers where it stands on this
+* PC. A new phone gets nothing through to the PC meanwhile: what the last one held is let go. `always`: tell the worker
+* again (a worker that has just started over).
+*/
+async function reportPhone(always = false) {
+	const lead = remote?.participants.find((p) => p.lead);
+	const key = lead ? phoneKeyOf(lead) : null;
+	const next = lead && key ? {
+		key,
+		name: lead.name
+	} : null;
+	if (next?.key === phone?.key && next?.name === phone?.name && !always) return;
+	if (next?.key !== phone?.key) setAccess(null);
+	phone = next;
+	const answered = accessSeq;
+	const r = await toBg({
+		to: "bg",
+		type: "phone",
+		phone: next
+	});
+	if (phone !== next || accessSeq !== answered) return;
+	const a = typeof r === "object" && r !== null ? r.access : null;
+	setAccess(isPcAccess(a) ? a : null);
+}
+/** Counts the answers the service worker pushes (an 'access' request): a reply from before one is stale. */
+var accessSeq = 0;
+/** Where the phone connected now stands on this PC: it gets through only once allowed, and hears how it went. */
+function setAccess(next) {
+	const was = access;
+	access = next;
+	if (next !== "allow") pcLetGo();
+	publishNotice();
+	publishField();
+	if (config.mode === "pc" && was === "ask" && next === "allow") remote?.feedback({ toast: "Allowed on this PC" });
+	if (was === "ask" && next === "deny" && !noticeFor(config.mode, next)) remote?.feedback({ toast: "Not allowed on this PC" });
+}
+/**
+* The connected phone's link, as its own statistics say (Remote.links()), for the popup's badge: read when the popup
+* asks (it does every few seconds while it's open), so nothing runs for it while nobody looks. Null: no phone, or not
+* encrypted yet.
+*/
+async function linkFacts() {
+	const r = remote;
+	const lead = r?.participants.find((p) => p.lead);
+	const l = r && lead ? (await r.links().catch(() => [])).find((x) => x.id === lead.id) : void 0;
+	if (!l?.link.secure) return null;
+	return {
+		verified: l.verified,
+		path: l.link.path,
+		...l.link.relayProtocol ? { relay: l.link.relayProtocol } : {},
+		...l.link.rttMs !== void 0 ? { rttMs: l.link.rttMs } : {},
+		...l.link.dtls ? { dtls: l.link.dtls } : {},
+		...l.link.cipher ? { cipher: l.link.cipher } : {}
+	};
+}
+var heldBackAt = -Infinity;
+function heldBack() {
+	const now = performance.now();
+	const notice = noticeFor(config.mode, access);
+	if (!notice || now - heldBackAt < TYPING_TOAST_MS) return;
+	heldBackAt = now;
+	remote?.feedback({ toast: notice });
 }
 var TYPING_TOAST_MS = 2500;
 var typingToastAt = -Infinity;
@@ -2873,11 +4084,20 @@ chrome.runtime.onMessage.addListener((raw, sender, respond) => {
 		case "diag":
 			respond(remote?.diag() ?? null);
 			return true;
+		case "facts":
+			linkFacts().then(respond, () => respond(null));
+			return true;
 		case "text-field":
 			textField = req.field;
 			publishField();
 			break;
-		case "typing": if (config.mode === "pc") typingRefused(typingToast(req.refused));
+		case "typing":
+			if (onPc()) typingRefused(typingToast(req.refused));
+			break;
+		case "access": if (req.key === phone?.key) {
+			accessSeq++;
+			setAccess(req.access);
+		}
 	}
 });
 chrome.runtime.onConnect.addListener((port) => {
@@ -2932,6 +4152,7 @@ function applyConfig({ tabId, mode, desktop }) {
 		remote?.setValues({ target: mode });
 		remote?.setLayout(layoutFor(suggested));
 		publishField();
+		publishNotice();
 	} else if (wholeChanged) remote?.setLayout(layoutFor(suggested));
 	syncSuggestion();
 }
@@ -3122,7 +4343,8 @@ function tick() {
 	const f = r.consume(now);
 	const pad = r.pad;
 	const ptr = r.pointer;
-	if (config.mode === "pc") pcTick(f, pad, ptr, now);
+	if (onPc()) pcTick(f, pad, ptr, now);
+	else if (config.mode === "pc" && (f.touching || !!pad?.buttons)) heldBack();
 	if (config.tabId === null || !links.size) {
 		lastTargets.clear();
 		return;
@@ -3183,7 +4405,8 @@ async function boot() {
 		appName: APP_NAME,
 		service: SERVICE,
 		layout: layoutFor(suggested),
-		remember: true
+		remember: true,
+		rotateInvite: true
 	});
 	remote = r;
 	const state = () => ({
@@ -3201,22 +4424,29 @@ async function boot() {
 	});
 	r.on("status", report);
 	r.on("lan", report);
+	r.on("invite", report);
 	r.on("connect", () => {
+		reportPhone();
 		report();
 		r.setValues({ target: config.mode });
 		publishField(true);
+		publishNotice(true);
 	});
 	r.on("disconnect", () => {
 		pc.gestures.reset();
 		report();
 	});
+	r.on("join", () => void reportPhone());
+	r.on("leave", () => void reportPhone());
 	r.on("button", ({ id, ev }) => {
 		if (config.mode !== "pc") return;
+		if (!onPc()) return heldBack();
 		pc.gestures.button(id, ev, performance.now());
 		tick();
 	});
 	r.on("text", ({ s, del }) => {
 		if (config.mode !== "pc") return;
+		if (!onPc()) return heldBack();
 		const t = parseNativeText({
 			t: "text",
 			s,
@@ -3232,8 +4462,13 @@ async function boot() {
 			to: "bg",
 			type: "mode",
 			mode: v
+		}).then((res) => {
+			if (res?.refused !== "deny") return;
+			r.setValues({ target: config.mode });
+			r.feedback({ toast: "Not allowed on this PC" });
 		});
 		else if (id === "mouse-wheel" && typeof v === "number" && config.mode === "pc") {
+			if (!onPc()) return heldBack();
 			pc.gestures.wheel(v);
 			tick();
 		}
@@ -3244,6 +4479,7 @@ async function boot() {
 		type: "offscreen-ready"
 	}));
 	if (cfg && !configured) applyConfig(cfg);
+	reportPhone(true);
 	startClock();
 }
 boot().catch((e) => {

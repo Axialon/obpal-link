@@ -1,7 +1,6 @@
 import { n as renderSVG } from "./dist-lkpp0okm.js";
-import { a as mountLook, c as syncLook, d as LOGO_WORD, f as family, i as mountLogo, l as radioGroup, n as lightCards, o as settle, r as markContext, s as startLook, t as LINK_ICONS, u as ICONS } from "./icons-CqXPcAkE.js";
-import { E as isTargetMode, T as TARGET_MODES, b as DEFAULT_MODE, l as workerStale, o as parseLink } from "./messages-By7t0qaI.js";
-import { _ as pcView, g as parsePcState, n as EMPTY_PC, t as DESKTOP_URL, v as scopeLabel } from "./native-CHu3H134.js";
+import { a as mountLook, c as syncLook, d as showAsk, f as ICONS, i as mountLogo, l as radioGroup, m as family, n as lightCards, o as settle, p as LOGO_WORD, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-D5puVZHj.js";
+import { B as DEFAULT_MODE, E as scopeLabel, G as TARGET_MODES, J as askFor, K as isTargetMode, Q as parsePhone, T as pcView, Z as parseAnswers, a as parseFacts, d as DESKTOP_URL, f as EMPTY_PC, q as accessOf, s as parseLink, u as workerStale, w as parsePcState } from "./messages-c7VGwEsP.js";
 //#region src/popup/popup.ts
 /**
 * Popup: the ob.Pal lockup with the link's status, and the controls: what the phone drives (Controller / 3D / Keys /
@@ -14,6 +13,9 @@ import { _ as pcView, g as parsePcState, n as EMPTY_PC, t as DESKTOP_URL, v as s
 * Two kinds of code: the online one (through the room service) and, for a remembered phone, a direct LAN code
 * that needs no server. The direct code takes over by itself while the service is unreachable; the chips under
 * the QR switch by hand. Remembered phones can be forgotten here.
+*
+* A phone that wants the PC and hasn't been answered for yet gets the prompt at the top (../ui/ask.ts); one this PC
+* said no to shows in the PC card, with the way to allow it after all.
 */
 markContext();
 startLook();
@@ -148,6 +150,9 @@ var state = {
 	code: "auto",
 	pc: { ...EMPTY_PC },
 	pcPermission: false,
+	phone: null,
+	answers: {},
+	facts: null,
 	stale: false
 };
 var parseFrames = (x) => {
@@ -161,6 +166,7 @@ app.innerHTML = `
     <span class="tag">Link</span>
     <span class="conn" id="conn">
       <span class="status" id="status" role="status"><i aria-hidden="true"></i><span id="status-t"></span><b id="device-name" hidden></b></span>
+      <span class="facts" id="facts" hidden>${ICONS.lock}<span id="facts-t"></span></span>
       <button class="unpair" id="unpair" type="button" title="Disconnect" aria-label="Disconnect the phone" hidden>${ICONS.close}</button>
     </span>
     <button class="icon-btn" id="look" type="button" title="Surface and colour" aria-label="Surface and colour">${ICONS.palette}</button>
@@ -222,6 +228,13 @@ lightCards();
 var lookMenu = document.getElementById("look-menu");
 mountLook(lookMenu);
 family.popover(document.getElementById("look"), lookMenu, (m) => syncLook(m));
+var askEl = askCard((key, allow) => void send({
+	to: "bg",
+	type: "answer",
+	key,
+	allow
+}));
+app.insertBefore(askEl, app.querySelector(".grid"));
 var $ = (id) => document.getElementById(id);
 var tabBtn = $("tab");
 var allBtn = $("all");
@@ -262,8 +275,10 @@ function render() {
 	$("device-name").hidden = !connected;
 	$("device-name").textContent = link?.device || "Phone";
 	$("unpair").hidden = !connected;
+	renderFacts();
 	app.classList.toggle("linked", connected);
 	$("pair").hidden = connected;
+	showAsk(askEl, askFor(state.mode, connectedPhone(), state.answers, state.pcPermission), () => chips.find((c) => c.getAttribute("aria-checked") === "true")?.focus());
 	const code = shownCode();
 	const lanPhone = link?.pairs.find((p) => p.id === link.lanFor);
 	const qr = $("qr");
@@ -331,6 +346,48 @@ function render() {
 			note.append(b);
 		}
 	}
+}
+/**
+* The link's badge beside the phone's name, as the pairing chip shows it: a lock, the path in a word and the round
+* trip; its title says all of it (encrypted end to end, how the phone proved itself, the path, DTLS). Only what the
+* connection's own statistics say, and only once it's encrypted.
+*/
+var VERIFIED = {
+	qr: "Verified by the QR code",
+	code: "Verified by the code typed",
+	lan: "Verified by a remembered pairing"
+};
+var PATH = {
+	lan: ["Direct", "Direct, on the same network"],
+	nat: ["Direct", "Direct, over the internet"],
+	direct: ["Direct", "Direct, peer to peer"],
+	relay: ["Relayed", "Relayed through TURN, which can’t read it"],
+	unknown: ["", "Finding the path"]
+};
+/** Asked of the link every FACTS_MS while the popup is open, and at once when a phone connects. */
+var FACTS_MS = 2e3;
+async function pollFacts() {
+	state.facts = state.link?.status === "connected" ? parseFacts(await send({
+		to: "bg",
+		type: "facts"
+	})) : null;
+	renderFacts();
+}
+function renderFacts() {
+	const f = state.link?.status === "connected" ? state.facts : null;
+	const el = $("facts");
+	el.hidden = !f;
+	if (!f) return;
+	const rtt = f.rttMs !== void 0 ? `${f.rttMs} ms` : "";
+	$("facts-t").textContent = [PATH[f.path][0], rtt].filter(Boolean).join(" · ");
+	const path = f.path === "relay" && f.relay ? `Relayed through TURN over ${f.relay.toUpperCase()}, which can’t read it` : PATH[f.path][1];
+	const dtls = [f.dtls, f.cipher].filter(Boolean).join(", ");
+	el.title = [
+		`Encrypted end to end${dtls ? ` (${dtls})` : ""}`,
+		VERIFIED[f.verified],
+		path,
+		...rtt ? [`${rtt} round trip`] : []
+	].join("\n");
 }
 /** Remembered phones as chips: tap one to make the direct code for it, × to forget it. */
 function renderRemembered(connected) {
@@ -411,6 +468,53 @@ var send = (m) => chrome.runtime.sendMessage(m).catch((e) => ({
 	error: String(e)
 }));
 var isOk = (r) => typeof r === "object" && r !== null && r.ok === true;
+/** The helper's views that say what is controlled: those wait on the phone being let in. */
+var CONTROL_VIEWS = /* @__PURE__ */ new Set([
+	"desktop",
+	"idle",
+	"allow",
+	"elevated",
+	"active"
+]);
+/** The phone connected now, as the service worker has it (null while none is). */
+var connectedPhone = () => state.link?.status === "connected" ? state.phone : null;
+/**
+* The PC card while the phone connected now isn't let in (ob.Pal Desktop stays disarmed meanwhile): waiting for the
+* answer the prompt above asks for, or refused, with the way to allow it after all. Null: the helper's own state
+* decides the card (the phone is allowed, none is connected, or the helper can't run anyway).
+*/
+function accessCard(v) {
+	const phone = connectedPhone();
+	if (!phone || !CONTROL_VIEWS.has(v.kind)) return null;
+	const access = accessOf(state.answers, phone.key);
+	if (access === "allow") return null;
+	if (access === "ask") return {
+		icon: ICONS.phone,
+		title: "Waiting for your answer",
+		sub: `${phone.name} asks to control this PC`,
+		actions: [],
+		kinds: false,
+		live: false,
+		tone: "plain"
+	};
+	return {
+		icon: LINK_ICONS.shield,
+		title: `${phone.name} can’t control this PC`,
+		sub: "You said no. Its other targets still work.",
+		kinds: false,
+		live: false,
+		tone: "warn",
+		actions: [{
+			label: `Allow ${phone.name}`,
+			run: () => void send({
+				to: "bg",
+				type: "answer",
+				key: phone.key,
+				allow: true
+			})
+		}]
+	};
+}
 var pcKinds = [...app.querySelectorAll("#pc-kinds .kind")];
 var pressed = (b) => b.getAttribute("aria-pressed") === "true";
 for (const b of pcKinds) b.addEventListener("click", () => b.setAttribute("aria-pressed", String(!pressed(b))));
@@ -422,7 +526,8 @@ function renderPc() {
 	tabBtn.hidden = on;
 	allBtn.hidden = on;
 	if (!on) return;
-	const { icon, title, sub, actions, kinds, live, tone } = describe(state.pcPermission ? pcView(state.pc) : { kind: "permission" });
+	const view = state.pcPermission ? pcView(state.pc) : { kind: "permission" };
+	const { icon, title, sub, actions, kinds, live, tone } = accessCard(view) ?? describe(view);
 	$("pc-legend").hidden = !live;
 	const ic = $("pc-ic");
 	ic.innerHTML = icon;
@@ -733,10 +838,18 @@ $("unpair").addEventListener("click", () => void send({
 chrome.storage.onChanged.addListener((changes, area) => {
 	if (area === "session") {
 		if (changes.tab) state.tab = typeof changes.tab.newValue === "number" ? changes.tab.newValue : null;
-		if (changes.link) state.link = parseLink(changes.link.newValue);
+		if (changes.link) {
+			const was = state.link?.status;
+			state.link = parseLink(changes.link.newValue);
+			if (state.link?.status !== was) pollFacts();
+		}
 		if (changes.frames) state.frames = parseFrames(changes.frames.newValue);
 		if (changes.pc) state.pc = parsePcState(changes.pc.newValue) ?? { ...EMPTY_PC };
-	} else if (area === "local" && changes.mode && isTargetMode(changes.mode.newValue)) state.mode = changes.mode.newValue;
+		if (changes.phone) state.phone = parsePhone(changes.phone.newValue);
+	} else if (area === "local") {
+		if (changes.mode && isTargetMode(changes.mode.newValue)) state.mode = changes.mode.newValue;
+		if (changes.answers) state.answers = parseAnswers(changes.answers.newValue);
+	}
 	render();
 });
 var refreshPermissions = async () => {
@@ -760,9 +873,10 @@ async function init() {
 			"tab",
 			"link",
 			"frames",
-			"pc"
+			"pc",
+			"phone"
 		]),
-		chrome.storage.local.get("mode"),
+		chrome.storage.local.get(["mode", "answers"]),
 		chrome.permissions.contains(ALL_SITES),
 		chrome.permissions.contains(NATIVE_PERMISSION)
 	]);
@@ -771,11 +885,15 @@ async function init() {
 	state.link = parseLink(session.link);
 	state.frames = parseFrames(session.frames);
 	state.pc = parsePcState(session.pc) ?? { ...EMPTY_PC };
+	state.phone = parsePhone(session.phone);
+	state.answers = parseAnswers(local.answers);
 	state.mode = isTargetMode(local.mode) ? local.mode : DEFAULT_MODE;
 	state.allSites = allSites;
 	state.pcPermission = pcPermission;
 	render();
 	settle();
+	pollFacts();
+	setInterval(() => void pollFacts(), FACTS_MS);
 	if (state.mode === "pc" && pcPermission) send({
 		to: "bg",
 		type: "pc-connect"
