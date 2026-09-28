@@ -1,21 +1,4 @@
-//#region \0rolldown/runtime.js
-var __defProp = Object.defineProperty;
-var __exportAll = (all, no_symbols) => {
-	let target = {};
-	for (var name in all) __defProp(target, name, {
-		get: all[name],
-		enumerable: true
-	});
-	if (!no_symbols) __defProp(target, Symbol.toStringTag, { value: "Module" });
-	return target;
-};
-//#endregion
 //#region ../node_modules/.pnpm/uqr@0.1.3/node_modules/uqr/dist/index.mjs
-var dist_exports = /* @__PURE__ */ __exportAll({
-	QrCodeDataType: () => QrCodeDataType,
-	encode: () => encode,
-	renderSVG: () => renderSVG
-});
 var QrCodeDataType = /* @__PURE__ */ ((QrCodeDataType2) => {
 	QrCodeDataType2[QrCodeDataType2["Border"] = -1] = "Border";
 	QrCodeDataType2[QrCodeDataType2["Data"] = 0] = "Data";
@@ -892,4 +875,4 @@ function renderSVG(data, options = {}) {
 	return svg;
 }
 //#endregion
-export { renderSVG as n, dist_exports as t };
+export { renderSVG as n, encode as t };

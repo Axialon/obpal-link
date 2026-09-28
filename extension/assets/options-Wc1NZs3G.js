@@ -1,5 +1,5 @@
-import { a as mountLook, d as showAsk, f as ICONS, i as mountLogo, n as lightCards, o as settle, p as LOGO_WORD, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-D5puVZHj.js";
-import { B as DEFAULT_MODE, J as askFor, K as isTargetMode, Q as parsePhone, Z as parseAnswers, d as DESKTOP_URL, f as EMPTY_PC, g as PC_PAGE_PORT_NAME, s as parseLink, w as parsePcState } from "./messages-c7VGwEsP.js";
+import { a as mountLook, d as showAsk, f as ICONS, i as mountLogo, n as lightCards, o as settle, p as LOGO_WORD, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Cz_Po6CA.js";
+import { $ as parsePhone, Q as parseAnswers, T as parsePcState, V as DEFAULT_MODE, Y as askFor, _ as PC_PAGE_PORT_NAME, d as DESKTOP_URL, f as EMPTY_PC, m as MAC_ACCESSIBILITY, q as isTargetMode, s as parseLink } from "./messages-DDUUhVrs.js";
 //#region src/options/options.ts
 startLook();
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
@@ -22,7 +22,7 @@ app.innerHTML = `
     <span class="ver" id="ver"></span>
   </header>
   <section class="hero rise" style="--i:1" aria-labelledby="title">
-    <p class="kicker">${LINK_ICONS.pc}<span>ob.Pal Desktop · Windows</span></p>
+    <p class="kicker">${LINK_ICONS.pc}<span>ob.Pal Desktop · Windows and macOS</span></p>
     <h1 id="title" tabindex="-1">PC control</h1>
     <p class="lede">Your phone as this computer’s mouse and keyboard: in every window, or only in the programs you allow.</p>
     <div class="helper" id="helper" hidden>
@@ -44,6 +44,12 @@ app.innerHTML = `
           <span class="row-t"><b>Pause all</b><small>Nothing reaches any program while paused</small></span>
           <span class="sw" aria-hidden="true"><i></i></span>
         </button>
+        <button class="row big" id="mac-shortcuts" type="button" role="switch" aria-checked="true" hidden>
+          <span class="row-ic">${LINK_ICONS.keys}</span>
+          <span class="row-t"><b>Use ⌘ for Ctrl shortcuts</b><small>Off uses Control for games. Alt is ⌥ Option.</small></span>
+          <span class="sw" aria-hidden="true"><i></i></span>
+        </button>
+        <p class="scope" id="mac-testing" hidden>macOS: awaiting a first Mac test.</p>
         <p class="scope" id="foot"></p>
       </section>
       <section class="card programs rise" style="--i:3" aria-labelledby="list-h">
@@ -211,6 +217,12 @@ function renderList(programs) {
 }
 function render() {
 	const ready = pc.link === "ready";
+	const mac = pc.platform;
+	const shortcuts = $("mac-shortcuts");
+	shortcuts.hidden = !mac;
+	shortcuts.disabled = !ready;
+	shortcuts.setAttribute("aria-checked", String(mac?.ctrlToCmd !== false));
+	$("mac-testing").hidden = !mac;
 	const pause = $("pause");
 	pause.setAttribute("aria-checked", String(!!pc.config?.paused));
 	pause.disabled = !ready;
@@ -255,11 +267,11 @@ function render() {
 	}
 	const foot = $("foot");
 	foot.hidden = !ready;
-	foot.textContent = desktop ? "Every window receives input, except those running as administrator: Windows keeps them out of reach." : "Only the program in front receives input, and only the kinds allowed here.";
+	foot.textContent = desktop ? mac ? "Every window receives input while Accessibility is allowed." : "Every window receives input, except those running as administrator: Windows keeps them out of reach." : "Only the program in front receives input, and only the kinds allowed here.";
 }
 function noticeFor() {
 	switch (pc.link) {
-		case "ready": return null;
+		case "ready": return pc.platform?.accessibility === false ? { text: MAC_ACCESSIBILITY } : null;
 		case "permission": return permission ? null : {
 			text: "PC control is off.",
 			action: {
@@ -294,6 +306,11 @@ function requestPermission() {
 		render();
 	}, () => render());
 }
+$("mac-shortcuts").addEventListener("click", () => void send({
+	to: "bg",
+	type: "pc-macshortcuts",
+	ctrlToCmd: pc.platform?.ctrlToCmd === false
+}));
 $("pause").addEventListener("click", () => void send({
 	to: "bg",
 	type: "pc-pause",

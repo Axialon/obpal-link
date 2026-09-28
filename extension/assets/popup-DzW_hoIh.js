@@ -1,6 +1,6 @@
-import { n as renderSVG } from "./dist-lkpp0okm.js";
-import { a as mountLook, c as syncLook, d as showAsk, f as ICONS, i as mountLogo, l as radioGroup, m as family, n as lightCards, o as settle, p as LOGO_WORD, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-D5puVZHj.js";
-import { B as DEFAULT_MODE, E as scopeLabel, G as TARGET_MODES, J as askFor, K as isTargetMode, Q as parsePhone, T as pcView, Z as parseAnswers, a as parseFacts, d as DESKTOP_URL, f as EMPTY_PC, q as accessOf, s as parseLink, u as workerStale, w as parsePcState } from "./messages-c7VGwEsP.js";
+import { a as mountLook, c as syncLook, d as showAsk, f as ICONS, i as mountLogo, l as radioGroup, m as family, n as lightCards, o as settle, p as LOGO_WORD, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Cz_Po6CA.js";
+import { n as renderSVG } from "./dist-Dw4zoNcF.js";
+import { $ as parsePhone, D as scopeLabel, E as pcView, J as accessOf, K as TARGET_MODES, Q as parseAnswers, T as parsePcState, V as DEFAULT_MODE, Y as askFor, a as parseFacts, d as DESKTOP_URL, f as EMPTY_PC, m as MAC_ACCESSIBILITY, q as isTargetMode, s as parseLink, u as workerStale } from "./messages-DDUUhVrs.js";
 //#region src/popup/popup.ts
 /**
 * Popup: the ob.Pal lockup with the link's status, and the controls: what the phone drives (Controller / 3D / Keys /
@@ -559,6 +559,7 @@ function renderHelper() {
 	brand.className = "pc-brand";
 	brand.textContent = "ob.Pal ";
 	$("pc-ver").replaceChildren(brand, `Desktop${pc.version ? ` ${pc.version}` : ""}`);
+	$("pc-ver").title = pc.platform ? "macOS: awaiting a first Mac test. Ctrl shortcuts use " + (pc.platform.ctrlToCmd ? "⌘ Command" : "Control") + "; Alt is ⌥ Option." : "";
 	const panic = $("pc-panic");
 	panic.hidden = !pc.hotkey;
 	panic.replaceChildren();
@@ -598,6 +599,18 @@ function describe(v) {
 		run: () => void chrome.tabs.create({ url: DESKTOP_URL })
 	};
 	switch (v.kind) {
+		case "accessibility": return {
+			icon: LINK_ICONS.shield,
+			title: "Allow Accessibility on this Mac",
+			sub: MAC_ACCESSIBILITY,
+			actions: [{
+				label: "Mac setup",
+				run: () => void chrome.tabs.create({ url: `${DESKTOP_URL.replace("#readme", "")}#install-on-a-mac` })
+			}],
+			kinds: false,
+			live: false,
+			tone: "warn"
+		};
 		case "permission": return {
 			icon: pc,
 			title: "PC",

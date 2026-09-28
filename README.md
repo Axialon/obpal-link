@@ -1,19 +1,26 @@
 # ob.Pal Link
 
-Your phone as a controller for any website. ob.Pal Link is a browser extension (Chromium, Manifest V3). Pair your phone by scanning a QR code; the phone needs no app, because the controller opens in its browser.
+Your phone as a controller for websites in your browser. ob.Pal Link is a browser extension (Chromium, Manifest V3). Pair your phone by scanning a QR code; the phone needs no app, because the controller opens in its browser.
 
-- **Controller**: a standard gamepad for any game that uses the Gamepad API, cloud gaming included.
+- **Controller**: a standard gamepad for browser games that read the Gamepad API (see [Limitations](#limitations)).
 - **3D**: drag to rotate, two fingers to pan and pinch to zoom, on any 3D viewer in the page.
 - **Keys**: keyboard and mouse input for keyboard games.
 - **PC** (Windows): your phone as this computer's mouse and keyboard, in every window or only the programs you allow, through the ob.Pal Desktop helper, with the phone's own keyboard for typing.
 
-A phone you've paired once also connects directly over your Wi-Fi when the internet is down.
+A phone you've paired once can also connect directly over your Wi-Fi when the internet is down, if your network lets devices reach each other (see [Limitations](#limitations)).
 
-It works in Chrome, Edge, Brave, Opera, Vivaldi and Arc (Chromium 120 or later).
+It works in Chrome, Edge, Brave and Vivaldi (Chromium 120 or later). Other Chromium browsers may work, but aren't tested.
 
 Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Source: [github.com/Axialon/obpal](https://github.com/Axialon/obpal) (this repository carries the releases)
 
-## What's new in 1.6
+## What's new in 1.6.1
+
+- **Bolder icons.** The toolbar and extensions-page icons are redrawn with heavier lines, so they stay clear at small sizes.
+- **Small fixes and hardening.** Nothing changes in how you pair, and remembered phones carry over.
+
+**Updating from 1.6.0:** replace the folder and reload, as below.
+
+## New in 1.6
 
 - **The PC asks first.** The first time a phone would control your PC, ob.Pal Link asks you once: **Allow** or **Deny**. Until you answer, the phone shows "Waiting for approval on the PC". Allowed phones never ask again, and you can change any answer in the options, under **Phones**.
 - **A fresh QR code after every pairing.** An old code can't pair a new phone; the phone says "This code was used". Phones you've paired still reconnect.
@@ -24,16 +31,14 @@ Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Sour
 
 ## Install
 
-The Chrome Web Store listing is on its way. Until then, install it from this repository:
+ob.Pal Link 1.6.1 is in review on the Chrome Web Store. Until it's published, install it from this repository:
 
 1. Download **[obpal-link.zip](https://github.com/Axialon/obpal-link/releases/latest/download/obpal-link.zip)** from the latest release and unzip it into a folder you'll keep. You can also clone this repository and use its `extension` folder.
 2. Open the extensions page:
    - Chrome: `chrome://extensions`
    - Edge: `edge://extensions`
    - Brave: `brave://extensions`
-   - Opera: `opera://extensions`
    - Vivaldi: `vivaldi://extensions`
-   - Arc: `arc://extensions`
 3. Turn on **Developer mode**.
 4. Click **Load unpacked** and select the folder (the one that contains `manifest.json`).
 5. Pin **ob.Pal Link** to the toolbar.

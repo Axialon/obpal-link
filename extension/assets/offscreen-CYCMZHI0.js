@@ -1,4 +1,4 @@
-import { $ as phoneKeyOf, A as Accum, B as DEFAULT_MODE, C as parseNativeText, F as PadButton, H as PAGE_MODES, I as PadFlag, K as isTargetMode, L as decodePad, M as clamp$1, N as hysteresis, P as stickCurve, R as packetType, W as SERVICE, X as noticeFor, Y as isPcAccess, _ as buildNativeFrame, c as parseOffscreenRequest, h as NATIVE_PORT_NAME, i as parseConfig, j as buttonValue, k as typingToast, o as parseFromPage, p as HeldState, v as heldSignature, y as isIdleFrame, z as APP_NAME } from "./messages-c7VGwEsP.js";
+import { A as typingToast, B as APP_NAME, F as stickCurve, G as SERVICE, I as PadButton, L as PadFlag, M as buttonValue, N as clamp$1, P as hysteresis, R as decodePad, U as PAGE_MODES, V as DEFAULT_MODE, X as isPcAccess, Z as noticeFor, b as isIdleFrame, c as parseOffscreenRequest, et as phoneKeyOf, g as NATIVE_PORT_NAME, i as parseConfig, j as Accum, o as parseFromPage, p as HeldState, q as isTargetMode, v as buildNativeFrame, w as parseNativeText, y as heldSignature, z as packetType } from "./messages-DDUUhVrs.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -1098,6 +1098,24 @@ var PAD_CONTROLS = [
 * on the screen (KEY_TARGETS) where the screen takes typing.
 */
 var CONTROLS = {
+	"face.drums": [
+		"kick",
+		"snare",
+		"hat"
+	],
+	"face.keys": [
+		"note1",
+		"note2",
+		"note3",
+		"note4",
+		"note5",
+		"note6",
+		"note7",
+		"note8",
+		"sustain",
+		"octaveup",
+		"octavedown"
+	],
 	"face.gamepad": PAD_CONTROLS,
 	"face.wheel": PAD_CONTROLS,
 	"face.wii": [
@@ -1173,12 +1191,27 @@ function fromActions(t, heldOnly = []) {
 }
 /** On the gamepad a pad's own buttons pass straight through: the standard mapping is already the controller's layout. */
 var PAD_THROUGH = Object.fromEntries(PAD_CONTROLS.map((c, i) => [padButton(i, true), c]));
-({ ...fromActions({
-	primary: "a",
-	secondary: "b",
-	next: "right",
-	prev: "left"
-}) }), { ...PAD_THROUGH }, fromActions({
+var GAMEPAD_KEYS = {
+	...fromActions({
+		primary: "a",
+		secondary: "b",
+		next: "right",
+		prev: "left"
+	}),
+	"key:ArrowUp": "up",
+	"key:ArrowDown": "down",
+	...PAD_THROUGH
+};
+fromActions({
+	primary: "kick",
+	secondary: "snare",
+	next: "hat"
+}), fromActions({
+	primary: "note1",
+	secondary: "sustain",
+	next: "octaveup",
+	prev: "octavedown"
+}, ["sustain"]), { ...GAMEPAD_KEYS }, fromActions({
 	primary: "a",
 	secondary: "b",
 	next: "plus",
@@ -1225,7 +1258,9 @@ var Utility = {
 	track: "motion.track",
 	trackpad: "touch.trackpad",
 	hold: "motion.hold",
-	tilt: "motion.tilt"
+	tilt: "motion.tilt",
+	drums: "music.hit",
+	keys: "music.note"
 };
 Utility.aim, Utility.steer, Utility.point;
 var u = (route, over = {}) => ({
@@ -1260,7 +1295,9 @@ var Controller = {
 	mouse: "face.mouse",
 	trackpad: "face.trackpad",
 	hand: "face.hand",
-	keyboard: "face.keyboard"
+	keyboard: "face.keyboard",
+	drums: "face.drums",
+	keys: "face.keys"
 };
 /** The controllers, in the picker's order: Controller, Pointer, Touch, 3D, Keys (CATALOGUE §9.1). */
 var CONTROLLERS = {
@@ -1335,6 +1372,24 @@ var CONTROLLERS = {
 		utilities: [],
 		modes: [],
 		controls: CONTROLS["face.keyboard"]
+	},
+	"face.drums": {
+		id: "face.drums",
+		name: "Drums",
+		category: "Music",
+		for: "Velocity pads and held strike gestures",
+		utilities: [Utility.drums, Utility.tilt],
+		modes: [Mode.pad],
+		controls: CONTROLS["face.drums"]
+	},
+	"face.keys": {
+		id: "face.keys",
+		name: "Tone keys",
+		category: "Music",
+		for: "Scale-locked notes, tilt bend, sustain and an air instrument",
+		utilities: [Utility.keys, Utility.tilt],
+		modes: [Mode.pad],
+		controls: CONTROLS["face.keys"]
 	}
 };
 Object.keys(CONTROLLERS);
@@ -1398,6 +1453,32 @@ function readMode(msg, layout = {}) {
 		...controller ? { controller } : {},
 		...profile ? { profile } : {}
 	};
+}
+//#endregion
+//#region ../packages/core/src/sim.ts
+/** Bound work before dispatch. Prototype keys and non-finite data never reach a scene adapter. */
+function validSimMessage(value) {
+	const m = value;
+	if (!m || m.t !== "sim" || m.v !== 1 || ![
+		"watch",
+		"input",
+		"frame"
+	].includes(m.kind) || !Number.isSafeInteger(m.seq) || m.seq < 0) return false;
+	let count = 0;
+	function valid(v, depth) {
+		if (++count > 16e3 || depth > 12) return false;
+		if (v === null || typeof v === "boolean") return true;
+		if (typeof v === "number") return Number.isFinite(v) && Math.abs(v) <= 1e9;
+		if (typeof v === "string") return v.length <= 2048;
+		if (Array.isArray(v)) return v.length <= 4096 && v.every((x) => valid(x, depth + 1));
+		if (typeof v === "object") return Object.entries(v).every(([k, x]) => k.length <= 64 && ![
+			"__proto__",
+			"prototype",
+			"constructor"
+		].includes(k) && valid(x, depth + 1));
+		return false;
+	}
+	return valid(m.data, 0);
 }
 //#endregion
 //#region ../packages/host/src/stream.ts
@@ -1795,7 +1876,8 @@ var Remote = class Remote {
 			claim: [],
 			lan: [],
 			code: [],
-			invite: []
+			invite: [],
+			sim: []
 		};
 		this.cards = [];
 		this.shortCode = null;
@@ -2281,10 +2363,10 @@ var Remote = class Remote {
 			peer.session = sdpSession(d.offer.sdp);
 			peer.cands.push(...early);
 			pc.onicecandidate = (e) => {
-				if (e.candidate) this.sigOf(peer).send({
+				this.sigOf(peer).send({
 					t: "sig",
 					to: peer.sig,
-					d: { cand: e.candidate.toJSON() }
+					d: { cand: e.candidate?.toJSON() ?? { candidate: "" } }
 				});
 			};
 			await pc.setRemoteDescription(d.offer);
@@ -2354,6 +2436,7 @@ var Remote = class Remote {
 	}
 	async onCtl(peer, data) {
 		if (typeof data !== "string") return;
+		if (data.length > 65536) return;
 		let m;
 		try {
 			m = JSON.parse(data);
@@ -2466,6 +2549,9 @@ var Remote = class Remote {
 		if (!this.listening(peer)) return;
 		const who = this.participant(peer);
 		switch (m.t) {
+			case "sim":
+				if (m.kind !== "frame" && validSimMessage(m)) this.emit("sim", m, who);
+				break;
 			case "btn":
 				this.emit("button", {
 					id: m.id,
@@ -2907,6 +2993,11 @@ var Remote = class Remote {
 	send(peer, m) {
 		if (peer.ctl.readyState === "open") peer.ctl.send(JSON.stringify(m));
 	}
+	/** Optional shared-sim state, sent only to subscribers and dropped under backpressure. */
+	sendSim(m, who) {
+		const p = this.peers.get(who);
+		if (p?.bound && p.ctl.bufferedAmount < 65536 && validSimMessage(m)) this.send(p, m);
+	}
 	/**
 	* A bound peer's connection went quiet or failed: it goes unless it comes back in time. A phone through the room
 	* service gets longer, since it may be finding a new path (an ICE restart) after changing networks.
@@ -2954,14 +3045,49 @@ var Remote = class Remote {
 		const compact = opts.variant === "compact";
 		const card = document.createElement("div");
 		card.className = compact ? "obpal-card obpal-compact" : "obpal-card";
-		card.innerHTML = `
-      <div class="obpal-qr" role="img" aria-label="QR code to pair your phone"></div>
-      <div class="obpal-body">
-        <div class="obpal-title">${compact ? `<span class="obpal-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.8" width="10" height="18.4" rx="2.8"/><path d="M10.5 18h3"/></svg></span>` : ""}<span class="obpal-title-text"></span></div>
-        ${compact ? "" : "<ol class=\"obpal-steps\"><li>Open your phone’s camera</li><li>Point it at this code</li><li>Tap <b>Start</b> on your phone</li></ol>"}
-        <div class="obpal-status" aria-live="polite"></div>
-        ${opts.testLink === false ? "" : `<a class="obpal-link" target="_blank" rel="noopener" title="Open the controller on this device">${compact ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4.5h5.5V10M19.5 4.5 11 13M18 14v4a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 18V8a1.5 1.5 0 0 1 1.5-1.5h4"/></svg><span>This device</span>` : "Open the controller on this device"}</a>`}
-      </div>`;
+		const node = (parent, tag, cls, text = "") => {
+			const el = document.createElement(tag);
+			el.className = cls;
+			el.textContent = text;
+			parent.appendChild(el);
+			return el;
+		};
+		const glyph = (parent, phone) => {
+			const ns = "http://www.w3.org/2000/svg";
+			const svg = document.createElementNS(ns, "svg");
+			svg.setAttribute("viewBox", "0 0 24 24");
+			svg.setAttribute("aria-hidden", "true");
+			const path = document.createElementNS(ns, "path");
+			path.setAttribute("d", phone ? "M9.8 2.8h4.4A2.8 2.8 0 0 1 17 5.6v12.8a2.8 2.8 0 0 1-2.8 2.8H9.8A2.8 2.8 0 0 1 7 18.4V5.6a2.8 2.8 0 0 1 2.8-2.8ZM10.5 18h3" : "M14 4.5h5.5V10M19.5 4.5 11 13M18 14v4a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 18V8a1.5 1.5 0 0 1 1.5-1.5h4");
+			svg.append(path);
+			parent.append(svg);
+		};
+		const qr = node(card, "div", "obpal-qr");
+		qr.setAttribute("role", "img");
+		qr.setAttribute("aria-label", "QR code to pair your phone");
+		const body = node(card, "div", "obpal-body");
+		const title = node(body, "div", "obpal-title");
+		if (compact) glyph(node(title, "span", "obpal-ic"), true);
+		node(title, "span", "obpal-title-text");
+		if (!compact) {
+			const steps = node(body, "ol", "obpal-steps");
+			node(steps, "li", "", "Open your phone’s camera");
+			node(steps, "li", "", "Point it at this code");
+			const tap = node(steps, "li", "", "Tap ");
+			node(tap, "b", "", "Start");
+			tap.append(" on your phone");
+		}
+		node(body, "div", "obpal-status").setAttribute("aria-live", "polite");
+		if (opts.testLink !== false) {
+			const link = node(body, "a", "obpal-link");
+			link.setAttribute("target", "_blank");
+			link.setAttribute("rel", "noopener");
+			link.setAttribute("title", "Open the controller on this device");
+			if (compact) {
+				glyph(link, false);
+				node(link, "span", "", "This device");
+			} else link.textContent = "Open the controller on this device";
+		}
 		card.querySelector(".obpal-title-text").textContent = opts.title ?? (compact ? "Scan to control" : "Use your phone as a remote");
 		el.appendChild(card);
 		const entry = {
@@ -2980,13 +3106,10 @@ var Remote = class Remote {
 		const url = this.pairingUrl;
 		if (c.link) c.link.href = url;
 		__vitePreload(async () => {
-			const { renderSVG } = await import("./dist-lkpp0okm.js").then((n) => n.t);
-			return { renderSVG };
-		}, []).then(({ renderSVG }) => {
-			if (url === this.pairingUrl) c.qr.innerHTML = renderSVG(url, {
-				border: 2,
-				ecc: "M"
-			});
+			const { plainQrElement } = await import("./qr-B4n4DSjF.js");
+			return { plainQrElement };
+		}, []).then(({ plainQrElement }) => {
+			if (url === this.pairingUrl) c.qr.replaceChildren(plainQrElement(url));
 		});
 	}
 	renderCards() {

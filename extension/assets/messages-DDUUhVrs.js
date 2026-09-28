@@ -210,6 +210,7 @@ var NATIVE_PORT_NAME = "obpal-link/native";
 /** runtime.connect() port an extension page holds while it shows the helper's state (the options page). */
 var PC_PAGE_PORT_NAME = "obpal-link/pc-page";
 /** Where to get the helper. */
+var MAC_ACCESSIBILITY = "Allow ob.Pal Desktop in System Settings, then Privacy & Security, then Accessibility.";
 var DESKTOP_URL = "https://github.com/Axialon/obpal-link/tree/main/desktop#readme";
 var isObj$1 = (x) => typeof x === "object" && x !== null && !Array.isArray(x);
 var fin$1 = (v) => typeof v === "number" && Number.isFinite(v);
@@ -307,6 +308,13 @@ function typingToast(r) {
 		case "offline": return "Not typed: ob.Pal Desktop isn’t connected";
 	}
 }
+function parseMacPlatform(x) {
+	return isObj$1(x) && x.os === "macos" && bool(x.accessibility) && bool(x.ctrlToCmd) ? {
+		os: "macos",
+		accessibility: x.accessibility,
+		ctrlToCmd: x.ctrlToCmd
+	} : null;
+}
 var MAX_PATH = 1024;
 var MAX_PROGRAMS = 200;
 function parseScope(x) {
@@ -369,6 +377,13 @@ function parsePcStatus(x) {
 function parseHelperMessage(x) {
 	if (!isObj$1(x)) return null;
 	switch (x.t) {
+		case "platform": {
+			const platform = parseMacPlatform(x);
+			return platform ? {
+				t: "platform",
+				...platform
+			} : null;
+		}
 		case "hello": {
 			if (!Number.isInteger(x.v) || !str(x.version, 32) || !str(x.os, 16) || !isObj$1(x.caps)) return null;
 			if (x.hotkey !== null && !str(x.hotkey, 40)) return null;
@@ -449,11 +464,14 @@ function parsePcStats(x) {
 function parsePcState(x) {
 	if (!isObj$1(x) || !PC_LINKS.includes(x.link)) return null;
 	if (x.version !== null && !str(x.version, 32) || x.hotkey !== null && !str(x.hotkey, 40) || x.error !== null && !str(x.error, 300)) return null;
+	const platform = x.platform === void 0 ? void 0 : parseMacPlatform(x.platform);
+	if (platform === null) return null;
 	const config = x.config === null ? null : parsePcConfig(x.config);
 	const status = x.status === null ? null : parsePcStatus(x.status);
 	const stats = x.stats === null || x.stats === void 0 ? null : parsePcStats(x.stats);
 	if (config === null && x.config !== null || status === null && x.status !== null) return null;
 	return {
+		...platform ? { platform } : {},
 		link: x.link,
 		version: x.version,
 		desktopCap: x.desktopCap === true,
@@ -475,6 +493,7 @@ function pcView(s) {
 			error: s.error ?? "The helper stopped."
 		};
 	}
+	if (s.platform?.accessibility === false) return { kind: "accessibility" };
 	if (s.config?.paused) return { kind: "paused" };
 	if (s.status?.panic) return {
 		kind: "panic",
@@ -519,6 +538,7 @@ function pcView(s) {
 */
 function typingField(s) {
 	const st = s.status;
+	if (s.platform?.accessibility === false) return null;
 	if (s.link !== "ready" || !st?.text || !st.enabled || st.panic || s.config?.paused) return null;
 	const front = st.front;
 	if (!front || front.elevated) return null;
@@ -559,6 +579,11 @@ function parsePcRequest(x) {
 			keyboard: x.keyboard,
 			mouse: x.mouse
 		} : null;
+		case "pc-macshortcuts": return bool(x.ctrlToCmd) ? {
+			to: "bg",
+			type: "pc-macshortcuts",
+			ctrlToCmd: x.ctrlToCmd
+		} : null;
 		case "pc-pause": return bool(x.on) ? {
 			to: "bg",
 			type: "pc-pause",
@@ -591,6 +616,10 @@ function toHelperRequest(r) {
 			on: r.on,
 			keyboard: r.keyboard,
 			mouse: r.mouse
+		};
+		case "pc-macshortcuts": return {
+			t: "macshortcuts",
+			ctrlToCmd: r.ctrlToCmd
 		};
 		case "pc-pause": return {
 			t: "pause",
@@ -848,6 +877,7 @@ var ALLOWED_SENDERS = {
 	"pc-scope": ["extension"],
 	"pc-forget": ["extension"],
 	"pc-desktop": ["extension"],
+	"pc-macshortcuts": ["extension"],
 	"pc-pause": ["extension"],
 	"pc-resume": ["extension"],
 	"pc-stats": ["extension"]
@@ -862,4 +892,4 @@ function workerStale(reply, mine) {
 	return (isObj(reply) && typeof reply.version === "string" ? reply.version : null) !== mine;
 }
 //#endregion
-export { phoneKeyOf as $, Accum as A, DEFAULT_MODE as B, parseNativeText as C, toHelperRequest as D, scopeLabel as E, PadButton as F, TARGET_MODES as G, PAGE_MODES as H, PadFlag as I, askFor as J, isTargetMode as K, decodePad as L, clamp as M, hysteresis as N, typingField as O, stickCurve as P, parsePhone as Q, packetType as R, parseNativeFrame as S, pcView as T, PORT_NAME as U, MIN_VIEW_AREA as V, SERVICE as W, noticeFor as X, isPcAccess as Y, parseAnswers as Z, buildNativeFrame as _, parseFacts as a, isTypingRefusal as b, parseOffscreenRequest as c, DESKTOP_URL as d, withAnswer as et, EMPTY_PC as f, PC_PAGE_PORT_NAME as g, NATIVE_PORT_NAME as h, parseConfig as i, buttonValue as j, typingToast as k, senderKind as l, NATIVE_HOST as m, linkConfig as n, parseFromPage as o, HeldState as p, accessOf as q, parseBgRequest as r, parseLink as s, allowedFrom as t, withoutAnswer as tt, workerStale as u, heldSignature as v, parsePcState as w, parseHelperMessage as x, isIdleFrame as y, APP_NAME as z };
+export { parsePhone as $, typingToast as A, APP_NAME as B, parseNativeFrame as C, scopeLabel as D, pcView as E, stickCurve as F, SERVICE as G, MIN_VIEW_AREA as H, PadButton as I, accessOf as J, TARGET_MODES as K, PadFlag as L, buttonValue as M, clamp as N, toHelperRequest as O, hysteresis as P, parseAnswers as Q, decodePad as R, parseHelperMessage as S, parsePcState as T, PAGE_MODES as U, DEFAULT_MODE as V, PORT_NAME as W, isPcAccess as X, askFor as Y, noticeFor as Z, PC_PAGE_PORT_NAME as _, parseFacts as a, isIdleFrame as b, parseOffscreenRequest as c, DESKTOP_URL as d, phoneKeyOf as et, EMPTY_PC as f, NATIVE_PORT_NAME as g, NATIVE_HOST as h, parseConfig as i, Accum as j, typingField as k, senderKind as l, MAC_ACCESSIBILITY as m, linkConfig as n, withoutAnswer as nt, parseFromPage as o, HeldState as p, isTargetMode as q, parseBgRequest as r, parseLink as s, allowedFrom as t, withAnswer as tt, workerStale as u, buildNativeFrame as v, parseNativeText as w, isTypingRefusal as x, heldSignature as y, packetType as z };

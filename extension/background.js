@@ -1,4 +1,4 @@
-import { B as DEFAULT_MODE, C as parseNativeText, D as toHelperRequest, J as askFor, K as isTargetMode, O as typingField, Q as parsePhone, S as parseNativeFrame, Z as parseAnswers, b as isTypingRefusal, et as withAnswer, f as EMPTY_PC, l as senderKind, m as NATIVE_HOST, n as linkConfig, q as accessOf, r as parseBgRequest, s as parseLink, t as allowedFrom, tt as withoutAnswer, w as parsePcState, x as parseHelperMessage } from "./assets/messages-c7VGwEsP.js";
+import { $ as parsePhone, C as parseNativeFrame, J as accessOf, O as toHelperRequest, Q as parseAnswers, S as parseHelperMessage, T as parsePcState, V as DEFAULT_MODE, Y as askFor, f as EMPTY_PC, h as NATIVE_HOST, k as typingField, l as senderKind, n as linkConfig, nt as withoutAnswer, q as isTargetMode, r as parseBgRequest, s as parseLink, t as allowedFrom, tt as withAnswer, w as parseNativeText, x as isTypingRefusal } from "./assets/messages-DDUUhVrs.js";
 //#region src/native.ts
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
 var RETRY_MS = [
@@ -150,11 +150,23 @@ var NativeBridge = class {
 		const m = parseHelperMessage(raw);
 		if (!m) return;
 		switch (m.t) {
+			case "platform":
+				this.set({ platform: {
+					os: m.os,
+					accessibility: m.accessibility,
+					ctrlToCmd: m.ctrlToCmd
+				} });
+				break;
 			case "hello":
 				this.ready = true;
 				this.retries = 0;
 				this.textCap = m.caps.text;
 				this.set({
+					platform: m.os === "macos" ? {
+						os: "macos",
+						accessibility: false,
+						ctrlToCmd: true
+					} : void 0,
 					link: "ready",
 					version: m.version,
 					desktopCap: m.caps.desktop,
@@ -641,6 +653,7 @@ async function handle(msg, sender) {
 		case "pc-scope":
 		case "pc-forget":
 		case "pc-desktop":
+		case "pc-macshortcuts":
 		case "pc-pause":
 		case "pc-resume":
 		case "pc-stats": return native.handle(msg);
