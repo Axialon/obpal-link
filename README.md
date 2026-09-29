@@ -13,12 +13,16 @@ It works in Chrome, Edge, Brave and Vivaldi (Chromium 120 or later). Other Chrom
 
 Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Source: [github.com/Axialon/obpal](https://github.com/Axialon/obpal) (this repository carries the releases)
 
-## What's new in 1.6.1
+## What's new in 1.6.2
+
+- **Safer when a phone drops.** If your phone stops sending (it sleeps, loses signal or closes the controller), Link lets go of any held keys, buttons and mouse presses within half a second, and stops sending input. Nothing stays pressed on your computer.
+- **Clearer about what works.** The extension's descriptions name the tested browsers and say that PC control is Windows only.
+
+**Updating from 1.6.1:** replace the folder and reload, as below. Remembered phones carry over.
+
+## New in 1.6.1
 
 - **Bolder icons.** The toolbar and extensions-page icons are redrawn with heavier lines, so they stay clear at small sizes.
-- **Small fixes and hardening.** Nothing changes in how you pair, and remembered phones carry over.
-
-**Updating from 1.6.0:** replace the folder and reload, as below.
 
 ## New in 1.6
 
@@ -31,7 +35,7 @@ Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Sour
 
 ## Install
 
-ob.Pal Link 1.6.1 is in review on the Chrome Web Store. Until it's published, install it from this repository:
+ob.Pal Link is in review on the Chrome Web Store. Until it's published there, install it from this repository:
 
 1. Download **[obpal-link.zip](https://github.com/Axialon/obpal-link/releases/latest/download/obpal-link.zip)** from the latest release and unzip it into a folder you'll keep. You can also clone this repository and use its `extension` folder.
 2. Open the extensions page:

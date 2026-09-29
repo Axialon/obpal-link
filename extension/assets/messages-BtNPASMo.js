@@ -125,6 +125,21 @@ var PadFlag = {
 	tiltSteer: 2,
 	point: 4
 };
+function emptyPad() {
+	return {
+		flags: 0,
+		seq: 0,
+		t: 0,
+		buttons: 0,
+		axes: [
+			0,
+			0,
+			0,
+			0
+		],
+		triggers: [0, 0]
+	};
+}
 function decodePad(buf) {
 	if (buf.byteLength < 24) return null;
 	const dv = new DataView(buf);
@@ -892,4 +907,4 @@ function workerStale(reply, mine) {
 	return (isObj(reply) && typeof reply.version === "string" ? reply.version : null) !== mine;
 }
 //#endregion
-export { parsePhone as $, typingToast as A, APP_NAME as B, parseNativeFrame as C, scopeLabel as D, pcView as E, stickCurve as F, SERVICE as G, MIN_VIEW_AREA as H, PadButton as I, accessOf as J, TARGET_MODES as K, PadFlag as L, buttonValue as M, clamp as N, toHelperRequest as O, hysteresis as P, parseAnswers as Q, decodePad as R, parseHelperMessage as S, parsePcState as T, PAGE_MODES as U, DEFAULT_MODE as V, PORT_NAME as W, isPcAccess as X, askFor as Y, noticeFor as Z, PC_PAGE_PORT_NAME as _, parseFacts as a, isIdleFrame as b, parseOffscreenRequest as c, DESKTOP_URL as d, phoneKeyOf as et, EMPTY_PC as f, NATIVE_PORT_NAME as g, NATIVE_HOST as h, parseConfig as i, Accum as j, typingField as k, senderKind as l, MAC_ACCESSIBILITY as m, linkConfig as n, withoutAnswer as nt, parseFromPage as o, HeldState as p, isTargetMode as q, parseBgRequest as r, parseLink as s, allowedFrom as t, withAnswer as tt, workerStale as u, buildNativeFrame as v, parseNativeText as w, isTypingRefusal as x, heldSignature as y, packetType as z };
+export { parseAnswers as $, typingToast as A, packetType as B, parseNativeFrame as C, scopeLabel as D, pcView as E, stickCurve as F, PORT_NAME as G, DEFAULT_MODE as H, PadButton as I, isTargetMode as J, SERVICE as K, PadFlag as L, buttonValue as M, clamp as N, toHelperRequest as O, hysteresis as P, noticeFor as Q, decodePad as R, parseHelperMessage as S, parsePcState as T, MIN_VIEW_AREA as U, APP_NAME as V, PAGE_MODES as W, askFor as X, accessOf as Y, isPcAccess as Z, PC_PAGE_PORT_NAME as _, parseFacts as a, isIdleFrame as b, parseOffscreenRequest as c, DESKTOP_URL as d, parsePhone as et, EMPTY_PC as f, NATIVE_PORT_NAME as g, NATIVE_HOST as h, parseConfig as i, Accum as j, typingField as k, senderKind as l, MAC_ACCESSIBILITY as m, linkConfig as n, withAnswer as nt, parseFromPage as o, HeldState as p, TARGET_MODES as q, parseBgRequest as r, withoutAnswer as rt, parseLink as s, allowedFrom as t, phoneKeyOf as tt, workerStale as u, buildNativeFrame as v, parseNativeText as w, isTypingRefusal as x, heldSignature as y, emptyPad as z };

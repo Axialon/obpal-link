@@ -1,5 +1,5 @@
-import { a as mountLook, d as showAsk, f as ICONS, i as mountLogo, n as lightCards, o as settle, p as LOGO_WORD, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Cz_Po6CA.js";
-import { $ as parsePhone, Q as parseAnswers, T as parsePcState, V as DEFAULT_MODE, Y as askFor, _ as PC_PAGE_PORT_NAME, d as DESKTOP_URL, f as EMPTY_PC, m as MAC_ACCESSIBILITY, q as isTargetMode, s as parseLink } from "./messages-DDUUhVrs.js";
+import { a as mountLook, d as showAsk, f as ICONS, i as mountLogo, n as lightCards, o as settle, p as LOGO_WORD, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-BV8pwiPD.js";
+import { $ as parseAnswers, H as DEFAULT_MODE, J as isTargetMode, T as parsePcState, X as askFor, _ as PC_PAGE_PORT_NAME, d as DESKTOP_URL, et as parsePhone, f as EMPTY_PC, m as MAC_ACCESSIBILITY, s as parseLink } from "./messages-BtNPASMo.js";
 //#region src/options/options.ts
 startLook();
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
@@ -22,7 +22,7 @@ app.innerHTML = `
     <span class="ver" id="ver"></span>
   </header>
   <section class="hero rise" style="--i:1" aria-labelledby="title">
-    <p class="kicker">${LINK_ICONS.pc}<span>ob.Pal Desktop · Windows and macOS</span></p>
+    <p class="kicker">${LINK_ICONS.pc}<span>ob.Pal Desktop · Windows</span></p>
     <h1 id="title" tabindex="-1">PC control</h1>
     <p class="lede">Your phone as this computer’s mouse and keyboard: in every window, or only in the programs you allow.</p>
     <div class="helper" id="helper" hidden>
@@ -49,7 +49,7 @@ app.innerHTML = `
           <span class="row-t"><b>Use ⌘ for Ctrl shortcuts</b><small>Off uses Control for games. Alt is ⌥ Option.</small></span>
           <span class="sw" aria-hidden="true"><i></i></span>
         </button>
-        <p class="scope" id="mac-testing" hidden>macOS: awaiting a first Mac test.</p>
+        <p class="scope" id="mac-testing" hidden>macOS preview: awaiting a first Mac test.</p>
         <p class="scope" id="foot"></p>
       </section>
       <section class="card programs rise" style="--i:3" aria-labelledby="list-h">

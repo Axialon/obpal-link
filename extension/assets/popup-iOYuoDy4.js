@@ -1,6 +1,6 @@
-import { a as mountLook, c as syncLook, d as showAsk, f as ICONS, i as mountLogo, l as radioGroup, m as family, n as lightCards, o as settle, p as LOGO_WORD, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Cz_Po6CA.js";
+import { a as mountLook, c as syncLook, d as showAsk, f as ICONS, i as mountLogo, l as radioGroup, m as family, n as lightCards, o as settle, p as LOGO_WORD, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-BV8pwiPD.js";
 import { n as renderSVG } from "./dist-Dw4zoNcF.js";
-import { $ as parsePhone, D as scopeLabel, E as pcView, J as accessOf, K as TARGET_MODES, Q as parseAnswers, T as parsePcState, V as DEFAULT_MODE, Y as askFor, a as parseFacts, d as DESKTOP_URL, f as EMPTY_PC, m as MAC_ACCESSIBILITY, q as isTargetMode, s as parseLink, u as workerStale } from "./messages-DDUUhVrs.js";
+import { $ as parseAnswers, D as scopeLabel, E as pcView, H as DEFAULT_MODE, J as isTargetMode, T as parsePcState, X as askFor, Y as accessOf, a as parseFacts, d as DESKTOP_URL, et as parsePhone, f as EMPTY_PC, m as MAC_ACCESSIBILITY, q as TARGET_MODES, s as parseLink, u as workerStale } from "./messages-BtNPASMo.js";
 //#region src/popup/popup.ts
 /**
 * Popup: the ob.Pal lockup with the link's status, and the controls: what the phone drives (Controller / 3D / Keys /
@@ -559,7 +559,7 @@ function renderHelper() {
 	brand.className = "pc-brand";
 	brand.textContent = "ob.Pal ";
 	$("pc-ver").replaceChildren(brand, `Desktop${pc.version ? ` ${pc.version}` : ""}`);
-	$("pc-ver").title = pc.platform ? "macOS: awaiting a first Mac test. Ctrl shortcuts use " + (pc.platform.ctrlToCmd ? "⌘ Command" : "Control") + "; Alt is ⌥ Option." : "";
+	$("pc-ver").title = pc.platform ? "macOS preview: awaiting a first Mac test. Ctrl shortcuts use " + (pc.platform.ctrlToCmd ? "⌘ Command" : "Control") + "; Alt is ⌥ Option." : "";
 	const panic = $("pc-panic");
 	panic.hidden = !pc.hotkey;
 	panic.replaceChildren();

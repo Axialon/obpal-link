@@ -1,4 +1,4 @@
-import { A as typingToast, B as APP_NAME, F as stickCurve, G as SERVICE, I as PadButton, L as PadFlag, M as buttonValue, N as clamp$1, P as hysteresis, R as decodePad, U as PAGE_MODES, V as DEFAULT_MODE, X as isPcAccess, Z as noticeFor, b as isIdleFrame, c as parseOffscreenRequest, et as phoneKeyOf, g as NATIVE_PORT_NAME, i as parseConfig, j as Accum, o as parseFromPage, p as HeldState, q as isTargetMode, v as buildNativeFrame, w as parseNativeText, y as heldSignature, z as packetType } from "./messages-DDUUhVrs.js";
+import { A as typingToast, B as packetType, F as stickCurve, H as DEFAULT_MODE, I as PadButton, J as isTargetMode, K as SERVICE, L as PadFlag, M as buttonValue, N as clamp$1, P as hysteresis, Q as noticeFor, R as decodePad, V as APP_NAME, W as PAGE_MODES, Z as isPcAccess, b as isIdleFrame, c as parseOffscreenRequest, g as NATIVE_PORT_NAME, i as parseConfig, j as Accum, o as parseFromPage, p as HeldState, tt as phoneKeyOf, v as buildNativeFrame, w as parseNativeText, y as heldSignature, z as emptyPad } from "./messages-BtNPASMo.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -25,7 +25,7 @@ function qSlerp(a, b, t) {
 		bz = -bz;
 		bw = -bw;
 	}
-	if (cos > .9995) return qNorm([
+	if (cos > 1 - 1e-12) return qNorm([
 		a[0] + (bx - a[0]) * t,
 		a[1] + (by - a[1]) * t,
 		a[2] + (bz - a[2]) * t,
@@ -847,13 +847,14 @@ var CodePake = class CodePake {
 * only" where storage is unavailable (private mode, storage denied, a browser that can't store certificates).
 */
 var DB = "obpal";
-var VERSION = 1;
+var VERSION = 2;
 var CERT_TTL = 31536e6;
 /** Renew a certificate this close to its expiry, so a pairing never breaks mid-week. */
 var CERT_RENEW = 6048e5;
 var memory = {
 	certs: /* @__PURE__ */ new Map(),
-	pairs: /* @__PURE__ */ new Map()
+	pairs: /* @__PURE__ */ new Map(),
+	connections: /* @__PURE__ */ new Map()
 };
 var dbPromise = null;
 function open() {
@@ -864,8 +865,15 @@ function open() {
 				const db = req.result;
 				if (!db.objectStoreNames.contains("certs")) db.createObjectStore("certs");
 				if (!db.objectStoreNames.contains("pairs")) db.createObjectStore("pairs", { keyPath: "id" });
+				if (!db.objectStoreNames.contains("connections")) db.createObjectStore("connections", { keyPath: "id" });
 			};
-			req.onsuccess = () => resolve(req.result);
+			req.onsuccess = () => {
+				req.result.onversionchange = () => {
+					req.result.close();
+					dbPromise = null;
+				};
+				resolve(req.result);
+			};
 			req.onerror = () => resolve(null);
 			req.onblocked = () => resolve(null);
 		} catch {
@@ -881,7 +889,7 @@ function tx(store, mode, run) {
 			try {
 				const t = db.transaction(store, mode);
 				const req = run(t.objectStore(store));
-				req.onsuccess = () => resolve(req.result);
+				t.oncomplete = () => resolve(req.result);
 				req.onerror = () => resolve(void 0);
 				t.onabort = () => resolve(void 0);
 			} catch {
@@ -1359,7 +1367,7 @@ var CONTROLLERS = {
 		id: "face.hand",
 		name: "3D hand",
 		category: "3D",
-		for: "Hold the pad and move the phone: what you hold follows your hand",
+		for: "Hold the pad and move the phone: what you hold moves with it",
 		utilities: [Utility.track],
 		modes: [Mode.track],
 		controls: CONTROLS["face.hand"]
@@ -1484,6 +1492,8 @@ function validSimMessage(value) {
 //#region ../packages/host/src/stream.ts
 /** A pointer stream that stops (the utility was switched off, the phone went away) is gone after this long. */
 var POINTER_STALE_MS = 300;
+/** A silent pad releases its controls before its connection expires. */
+var PAD_STALE_MS = 300;
 /** A pose stream that stops is gone after this long. */
 var POSE_STALE_MS = 250;
 var zeroAcc = () => ({
@@ -1599,12 +1609,17 @@ var Stream = class {
 	get padLive() {
 		return !!this.padState && performance.now() - this.padAt < 1500;
 	}
-	/** Latest controller state while the device is in gamepad mode (null otherwise). */
+	/** Latest controller state, neutral after a short silence, null once the pad expires. */
 	get pad() {
 		if (this.padState && !this.padLive) {
 			this.padState = null;
 			this.hooks.pad(false);
 		}
+		if (this.padState && performance.now() - this.padAt >= PAD_STALE_MS) return {
+			...emptyPad(),
+			seq: this.padState.seq,
+			t: this.padState.t
+		};
 		return this.padState;
 	}
 	/**
@@ -1646,11 +1661,11 @@ var Stream = class {
 				gen: this.pose.gen
 			} : null
 		};
-		if (!s || !this.buf.length) return frame;
 		if (this.padLive && this.padAt > this.stateAt) {
 			frame.mode = Mode.gamepad;
 			return frame;
 		}
+		if (!s || !this.buf.length) return frame;
 		let ai = this.buf.length - 1;
 		let bi = -1;
 		let alpha = 0;
@@ -1877,7 +1892,8 @@ var Remote = class Remote {
 			lan: [],
 			code: [],
 			invite: [],
-			sim: []
+			sim: [],
+			attention: []
 		};
 		this.cards = [];
 		this.shortCode = null;
@@ -2308,7 +2324,7 @@ var Remote = class Remote {
 		};
 		ctl.onmessage = (e) => void this.onCtl(peer, e.data);
 		st.onmessage = (e) => {
-			if (!this.listening(peer) || !(e.data instanceof ArrayBuffer)) return;
+			if (!this.listening(peer) || peer.paused || !(e.data instanceof ArrayBuffer)) return;
 			const type = packetType(e.data);
 			if (type === 18) peer.stream.onPad(e.data);
 			else if (type === 20) peer.stream.onPointer(e.data);
@@ -2517,11 +2533,14 @@ var Remote = class Remote {
 				secret: this.secret,
 				fp: this.fp
 			}) : void 0;
+			const kind = this.opts.kind ?? (typeof location === "undefined" ? "site" : location.protocol === "chrome-extension:" ? "pc" : location.pathname.startsWith("/sim/") ? "sim" : location.pathname.startsWith("/view/") ? "viewer" : "site");
 			this.send(peer, {
 				t: "welcome",
 				proto: 1,
 				name: this.opts.appName,
 				layout: this.layout,
+				attention: true,
+				kind,
 				...pair ? { pair } : {},
 				...invite ? { invite } : {},
 				...peer.lan ? {} : { restart: true }
@@ -2547,6 +2566,18 @@ var Remote = class Remote {
 			return;
 		}
 		if (!this.listening(peer)) return;
+		if (m.t === "attention" && typeof m.active === "boolean") {
+			const paused = !m.active;
+			if (!!peer.paused === paused) return;
+			peer.paused = paused;
+			const hadPad = !!peer.stream.pad;
+			peer.stream.reset();
+			if (hadPad) this.emit("pad", false, this.participant(peer));
+			this.emit("attention", this.participant(peer));
+			this.renderCards();
+			return;
+		}
+		if (peer.paused && m.t !== "ping" && m.t !== "bye") return;
 		const who = this.participant(peer);
 		switch (m.t) {
 			case "sim":
@@ -2818,7 +2849,8 @@ var Remote = class Remote {
 			...p.controller ? { controller: p.controller } : {},
 			...p.profile ? { profile: p.profile } : {},
 			...p.pair ? { pair: p.pair } : {},
-			...p.fp ? { fp: b64url(p.fp) } : {}
+			...p.fp ? { fp: b64url(p.fp) } : {},
+			...p.paused ? { paused: true } : {}
 		};
 	}
 	/** Everyone controlling the scene, oldest (the lead) first. */
@@ -2859,7 +2891,7 @@ var Remote = class Remote {
 	}
 	/** Read the device in control's (the lead's) input for this frame. Call once per rendered frame. */
 	consume(now = performance.now()) {
-		return (this.active?.stream ?? this.idle).consume(now, this.status === "connected");
+		return (this.active?.stream ?? this.idle).consume(now, this.status === "connected" && !this.active?.paused);
 	}
 	/** One participant's gamepad state, pointer and frame (shared scenes). */
 	padOf(who) {
@@ -2872,7 +2904,7 @@ var Remote = class Remote {
 	}
 	consumeOf(who, now = performance.now()) {
 		const p = this.peers.get(who);
-		return (p?.bound ? p.stream : this.idle).consume(now, !!p?.bound);
+		return (p?.bound ? p.stream : this.idle).consume(now, !!p?.bound && !p.paused);
 	}
 	/** Vibrate a device (Gamepad API dual-rumble semantics): `who`, else the device in control. */
 	rumble(strong, weak, ms, who) {
@@ -3129,7 +3161,7 @@ var Remote = class Remote {
 			offline: "Offline"
 		};
 		for (const c of this.cards) {
-			c.status.textContent = (c.compact ? short : text)[this.status];
+			c.status.textContent = this.bound().length && this.bound().every((p) => p.paused) ? "Phone paused" : (c.compact ? short : text)[this.status];
 			c.status.dataset.s = this.status;
 		}
 	}
@@ -3988,6 +4020,8 @@ function suggestForFrames(hosts, table = SITE_PROFILES) {
 var TICK_MS = 1e3 / 60;
 /** A clock tick this soon after a packet-driven one is skipped: packets set the pace while input flows. */
 var TICK_MIN_GAP_MS = 6;
+/** Stop native frames before the helper's 500 ms watchdog if the phone stops sending input. */
+var PC_INPUT_STALE_MS = 300;
 var HEARTBEAT_MS = 250;
 var RUMBLE_GAP_MS = 50;
 /**
@@ -4284,6 +4318,7 @@ var pc = {
 	held: new HeldState(),
 	gestures: new PcGestures(),
 	port: null,
+	inputAt: -Infinity,
 	lastTick: 0,
 	lastSent: 0,
 	/** What the last frame sent held: a change goes out at once, so a release never waits for the heartbeat. */
@@ -4331,6 +4366,10 @@ var tupleToPad = (p) => p ? {
 	triggers: [p[5], p[6]]
 } : null;
 function pcTick(f, pad, ptr, now) {
+	if (!f.connected || now - pc.inputAt >= PC_INPUT_STALE_MS) {
+		pcLetGo();
+		return;
+	}
 	const dt = pc.lastTick ? Math.min(50, now - pc.lastTick) : TICK_MS;
 	pc.lastTick = now;
 	const padIn = !!ptr && (ptr.flags & PointerFlag.relative) !== 0 && pad ? tupleToPad(withRelativeAim(padTuple(pad), relativeRate(ptr, now))) : pad;
@@ -4374,11 +4413,12 @@ function pcTick(f, pad, ptr, now) {
 		pc.port = null;
 	}
 }
-/** Leaving the PC target: nothing stays held, and the worker closes the helper port (which releases too). */
+/** Leaving the PC target or losing input: release once and stop resending, so the helper's watchdog can fire. */
 function pcLetGo() {
 	pc.mapper.releaseAll();
 	pc.held.clear();
 	pc.gestures.reset();
+	pc.inputAt = -Infinity;
 	pc.lastTick = 0;
 	pc.lastSig = "";
 	const port = pc.port;
@@ -4535,7 +4575,7 @@ async function boot() {
 	const state = () => ({
 		status: r.status,
 		url: r.pairingUrl,
-		device: r.deviceName,
+		device: r.deviceName && r.participants.every((p) => p.paused) ? `${r.deviceName} · paused` : r.deviceName,
 		lan: r.lanUrl,
 		lanFor: r.lanFor,
 		pairs: r.remembered
@@ -4546,6 +4586,10 @@ async function boot() {
 		link: state()
 	});
 	r.on("status", report);
+	r.on("attention", () => {
+		pc.gestures.reset();
+		report();
+	});
 	r.on("lan", report);
 	r.on("invite", report);
 	r.on("connect", () => {
@@ -4556,7 +4600,7 @@ async function boot() {
 		publishNotice(true);
 	});
 	r.on("disconnect", () => {
-		pc.gestures.reset();
+		pcLetGo();
 		report();
 	});
 	r.on("join", () => void reportPhone());
@@ -4579,7 +4623,10 @@ async function boot() {
 		pc.gestures.text(t.s, t.del);
 		tick();
 	});
-	r.on("input", tick);
+	r.on("input", (who) => {
+		if (who.lead) pc.inputAt = performance.now();
+		tick();
+	});
 	r.on("value", ({ id, v }) => {
 		if (id === "target" && isTargetMode(v)) toBg({
 			to: "bg",

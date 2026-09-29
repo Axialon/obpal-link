@@ -1,4 +1,4 @@
-import { $ as parsePhone, C as parseNativeFrame, J as accessOf, O as toHelperRequest, Q as parseAnswers, S as parseHelperMessage, T as parsePcState, V as DEFAULT_MODE, Y as askFor, f as EMPTY_PC, h as NATIVE_HOST, k as typingField, l as senderKind, n as linkConfig, nt as withoutAnswer, q as isTargetMode, r as parseBgRequest, s as parseLink, t as allowedFrom, tt as withAnswer, w as parseNativeText, x as isTypingRefusal } from "./assets/messages-DDUUhVrs.js";
+import { $ as parseAnswers, C as parseNativeFrame, H as DEFAULT_MODE, J as isTargetMode, O as toHelperRequest, S as parseHelperMessage, T as parsePcState, X as askFor, Y as accessOf, et as parsePhone, f as EMPTY_PC, h as NATIVE_HOST, k as typingField, l as senderKind, n as linkConfig, nt as withAnswer, r as parseBgRequest, rt as withoutAnswer, s as parseLink, t as allowedFrom, w as parseNativeText, x as isTypingRefusal } from "./assets/messages-BtNPASMo.js";
 //#region src/native.ts
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
 var RETRY_MS = [
