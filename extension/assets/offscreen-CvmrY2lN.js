@@ -1,4 +1,6 @@
-import { A as typingToast, B as packetType, F as stickCurve, H as DEFAULT_MODE, I as PadButton, J as isTargetMode, K as SERVICE, L as PadFlag, M as buttonValue, N as clamp$1, P as hysteresis, Q as noticeFor, R as decodePad, V as APP_NAME, W as PAGE_MODES, Z as isPcAccess, b as isIdleFrame, c as parseOffscreenRequest, g as NATIVE_PORT_NAME, i as parseConfig, j as Accum, o as parseFromPage, p as HeldState, tt as phoneKeyOf, v as buildNativeFrame, w as parseNativeText, y as heldSignature, z as emptyPad } from "./messages-BtNPASMo.js";
+import { $ as APP_NAME, A as typingToast, F as stickCurve, G as PadButton, H as phoneKeyOf, J as emptyPad, K as PadFlag, M as buttonValue, N as clamp$1, P as hysteresis, R as isPcAccess, Y as packetType, b as isIdleFrame, c as parseOffscreenRequest, et as DEFAULT_MODE, g as NATIVE_PORT_NAME, i as parseConfig, it as SERVICE, j as Accum, nt as PAGE_MODES, o as parseFromPage, ot as isTargetMode, p as HeldState, q as decodePad, v as buildNativeFrame, w as parseNativeText, y as heldSignature, z as noticeFor } from "./messages-CWZnFxhW.js";
+import { C as sdpSession, S as sdpFingerprint, _ as lanIceCredentials, b as readLocalIce, c as candidatesOf, d as encodePairing, f as equalBytes, g as lanContext, h as lanAnswerSdp, l as certFingerprint, m as importPairKey, o as b64url, p as fromB64url, r as sealSessionContext, s as bindMac, t as connectionSeal, u as encodeLanPairing, v as newSecret, x as roomIdFor, y as randomBytes } from "./seal-BUbx7ZQ6.js";
+import { t as communityMarker } from "./origin-fHVBxSre.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -144,203 +146,6 @@ function accumDelta(a, b) {
 		zoom: d16(a.raw.zoom, b.raw.zoom) / 4096,
 		twist: d16(a.raw.twist, b.raw.twist) / 100
 	};
-}
-//#endregion
-//#region ../packages/core/src/pairing.ts
-var enc$2 = new TextEncoder();
-function b64url(bytes) {
-	let s = "";
-	for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-	return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-function fromB64url(s) {
-	let t = s.replace(/-/g, "+").replace(/_/g, "/");
-	while (t.length % 4) t += "=";
-	const bin = atob(t);
-	const out = new Uint8Array(bin.length);
-	for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-	return out;
-}
-function concat(...parts) {
-	const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
-	let o = 0;
-	for (const p of parts) {
-		out.set(p, o);
-		o += p.length;
-	}
-	return out;
-}
-function equalBytes(a, b) {
-	if (a.length !== b.length) return false;
-	let d = 0;
-	for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
-	return d === 0;
-}
-var newSecret = () => crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(16));
-var randomBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
-function encodePairing(p) {
-	return `1.${b64url(p.secret)}.${b64url(p.fp)}`;
-}
-/** Public room id: a hash of the secret, so the room service never learns the secret. */
-async function roomIdFor(secret) {
-	const d = await crypto.subtle.digest("SHA-256", concat(enc$2.encode("obpal-room-v1"), secret));
-	return b64url(new Uint8Array(d)).slice(0, 22);
-}
-/**
-* The SHA-256 DTLS fingerprint an SDP blob commits to, read strictly: the description must have exactly one media
-* section and exactly one `a=fingerprint` line (at session level or in that section, so it is the one DTLS checks),
-* and it must be a well-formed sha-256 fingerprint. Anything else is null. A description that says more (a second
-* fingerprint anywhere, one hidden in another line's text, a second media section) could show one fingerprint to
-* this parser and another to DTLS, which is how someone relaying between two DTLS sessions would pass a check.
-*/
-function sdpFingerprint(sdp) {
-	const lines = (sdp ?? "").split(/\r?\n/);
-	if (lines.filter((l) => l.startsWith("m=")).length !== 1) return null;
-	const fps = lines.filter((l) => l.startsWith("a=fingerprint:"));
-	if (fps.length !== 1) return null;
-	const m = /^a=fingerprint:sha-256 ((?:[0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2})$/i.exec(fps[0].trimEnd());
-	return m ? Uint8Array.from(m[1].split(":").map((h) => parseInt(h, 16))) : null;
-}
-/**
-* The session an SDP blob belongs to: its o= line's session id, which stays the same through every offer one peer
-* connection makes (RFC 8829 §5.2.2), so a later offer with it renegotiates that connection. Null without one.
-*/
-function sdpSession(sdp) {
-	return /^o=\S+ (\d{1,20}) \d+ IN /m.exec(sdp ?? "")?.[1] ?? null;
-}
-/** Fingerprint as SDP writes it: upper-case hex pairs joined by colons. */
-var fingerprintHex = (fp) => Array.from(fp, (b) => b.toString(16).padStart(2, "0").toUpperCase()).join(":");
-/** Fingerprint of a certificate, via getFingerprints() or a throwaway offer where unsupported. */
-async function certFingerprint(cert) {
-	const f = (cert.getFingerprints?.())?.find((x) => x.algorithm?.toLowerCase() === "sha-256");
-	if (f?.value) return Uint8Array.from(f.value.split(":").map((h) => parseInt(h, 16)));
-	const pc = new RTCPeerConnection({ certificates: [cert] });
-	pc.createDataChannel("fp");
-	const offer = await pc.createOffer();
-	pc.close();
-	const fp = sdpFingerprint(offer.sdp);
-	if (!fp) throw new Error("Could not read the DTLS fingerprint");
-	return fp;
-}
-/**
-* A remembered pairing's key as both ends keep it: a non-extractable HKDF key, good for the binding's MAC (deriveKey)
-* and the direct code's ICE credentials (deriveBits). Script can use it, but no script, the page's own included, can
-* read it back.
-*/
-function importPairKey(raw) {
-	return crypto.subtle.importKey("raw", raw, "HKDF", false, ["deriveBits", "deriveKey"]);
-}
-/** HKDF's input key: bytes are imported for this one use, and a kept key is used as it is. */
-var hkdfKey = (key, usage) => key instanceof Uint8Array ? crypto.subtle.importKey("raw", key, "HKDF", false, [usage]) : Promise.resolve(key);
-async function hkdf(key, salt, info, bytes) {
-	const base = await hkdfKey(key, "deriveBits");
-	const bits = await crypto.subtle.deriveBits({
-		name: "HKDF",
-		hash: "SHA-256",
-		salt,
-		info: enc$2.encode(info)
-	}, base, bytes * 8);
-	return new Uint8Array(bits);
-}
-/**
-* Channel binding: proves the device holds the pairing key and binds it to both DTLS identities and to the
-* context of this attempt (the room id online, "lan:<nonce>" for a direct LAN connection).
-* mac = HMAC-SHA256(HKDF(key, salt=context, info="obpal bind v1"), fpDevice || fpHost || context)
-*/
-async function bindMac(key, fpDevice, fpHost, context) {
-	const base = await hkdfKey(key, "deriveKey");
-	const mac = await crypto.subtle.deriveKey({
-		name: "HKDF",
-		hash: "SHA-256",
-		salt: enc$2.encode(context),
-		info: enc$2.encode("obpal bind v1")
-	}, base, {
-		name: "HMAC",
-		hash: "SHA-256",
-		length: 256
-	}, false, ["sign"]);
-	const sig = await crypto.subtle.sign("HMAC", mac, concat(fpDevice, fpHost, enc$2.encode(context)));
-	return b64url(new Uint8Array(sig));
-}
-/** The direct code's binding context (also the salt of the derived ICE credentials). */
-var lanContext = (nonce) => `lan:${b64url(nonce)}`;
-var UUID = /^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})$/i;
-var IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
-var IPV6 = /^[0-9a-f:]+(%[A-Za-z0-9._-]{1,16})?$/i;
-var HOSTNAME = /^[A-Za-z0-9]([A-Za-z0-9-]{0,62}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,62}[A-Za-z0-9])?)*$/;
-var isLanHost = (h) => h.length <= 253 && (IPV4.test(h) || h.includes(":") && IPV6.test(h) || HOSTNAME.test(h));
-var uuidBytes = (name) => {
-	const m = UUID.exec(name);
-	if (!m) return null;
-	const hex = m.slice(1).join("");
-	return Uint8Array.from({ length: 16 }, (_, i) => parseInt(hex.slice(i * 2, i * 2 + 2), 16));
-};
-/** mDNS names (36-char UUIDs) shrink to 22 characters; everything else travels as written. */
-function encodeCandidate(c) {
-	const u = c.host.endsWith(".local") ? uuidBytes(c.host.slice(0, -6)) : null;
-	return `${u ? `m${b64url(u)}` : `a${c.host}`}~${c.port}`;
-}
-/** The direct code: `2.<id>.<nonce>.<ufrag>.<pwd>.<candidates>`, in the same URL fragment position as the online code. */
-function encodeLanPairing(p) {
-	return `2.${b64url(p.id)}.${b64url(p.nonce)}.${p.ufrag}.${p.pwd}.${p.cands.slice(0, 4).map(encodeCandidate).join(",")}`;
-}
-/**
-* The phone's ICE credentials for a direct code, known to both sides without any exchange:
-* HKDF-SHA256(key, salt = nonce, info = "obpal lan ice v1") -> 24 bytes -> base64 (the ice-char alphabet):
-* 8 characters of ufrag and 24 of password.
-*/
-async function lanIceCredentials(key, nonce) {
-	const bytes = await hkdf(key, nonce, "obpal lan ice v1", 24);
-	const s = btoa(String.fromCharCode(...bytes));
-	return {
-		ufrag: s.slice(0, 8),
-		pwd: s.slice(8, 32)
-	};
-}
-/** Read the ICE credentials and UDP host candidates of a gathered local description. */
-function readLocalIce(sdp) {
-	const ufrag = /^a=ice-ufrag:(\S+)/m.exec(sdp ?? "")?.[1];
-	const pwd = /^a=ice-pwd:(\S+)/m.exec(sdp ?? "")?.[1];
-	if (!ufrag || !pwd) return null;
-	return {
-		ufrag,
-		pwd,
-		cands: candidatesOf(sdp ?? "")
-	};
-}
-/** UDP host candidates from candidate lines (SDP a= lines or RTCIceCandidate.candidate strings), deduplicated. */
-function candidatesOf(text) {
-	const out = [];
-	for (const m of text.matchAll(/candidate:\S+ 1 udp \d+ (\S+) (\d+) typ host/gi)) {
-		const c = {
-			host: m[1],
-			port: Number(m[2])
-		};
-		if (isLanHost(c.host) && c.port > 0 && !out.some((o) => o.host === c.host && o.port === c.port)) out.push(c);
-	}
-	return out.slice(0, 4);
-}
-var sdpHead = (ufrag, pwd, fp, setup) => [
-	"v=0",
-	"o=- 0 0 IN IP4 127.0.0.1",
-	"s=-",
-	"t=0 0",
-	"a=group:BUNDLE 0",
-	"a=msid-semantic: WMS",
-	"m=application 9 UDP/DTLS/SCTP webrtc-datachannel",
-	"c=IN IP4 0.0.0.0",
-	`a=ice-ufrag:${ufrag}`,
-	`a=ice-pwd:${pwd}`,
-	"a=ice-options:trickle",
-	`a=fingerprint:sha-256 ${fingerprintHex(fp)}`,
-	`a=setup:${setup}`,
-	"a=mid:0",
-	"a=sctp-port:5000",
-	"a=max-message-size:262144"
-];
-/** The phone's answer as the host reconstructs it: derived credentials, the remembered phone fingerprint, no candidates. */
-function lanAnswerSdp(p) {
-	return [...sdpHead(p.ufrag, p.pwd, p.fp, "active"), ""].join("\r\n");
 }
 /** How long a connect attempt may take before the service counts as unreachable (the offline fallback's budget). */
 var REACH_TIMEOUT_MS = 1500;
@@ -839,6 +644,56 @@ var CodePake = class CodePake {
 		};
 	}
 };
+var BodyFlag = { tracked: 1 };
+function decodeBody(buf) {
+	if (buf.byteLength !== 276) return null;
+	const dv = new DataView(buf);
+	if (dv.getUint8(0) !== 23 || dv.getUint8(1) & ~BodyFlag.tracked || dv.getUint8(9) !== 33 || dv.getUint16(10, true)) return null;
+	return {
+		flags: dv.getUint8(1),
+		seq: dv.getUint16(2, true),
+		t: dv.getUint32(4, true),
+		gen: dv.getUint8(8),
+		landmarks: Array.from({ length: 33 }, (_, i) => [
+			0,
+			1,
+			2
+		].map((a) => dv.getInt16(12 + i * 8 + a * 2, true) / 2e3)),
+		visibility: Array.from({ length: 33 }, (_, i) => dv.getUint8(18 + i * 8) / 255),
+		presence: Array.from({ length: 33 }, (_, i) => dv.getUint8(19 + i * 8) / 255)
+	};
+}
+var HandFlag = { tracked: 1 };
+var HandGesture = {
+	pinch: 1,
+	grip: 2,
+	point: 4
+};
+var SCALE = 2e3;
+var GESTURES = HandGesture.pinch | HandGesture.grip | HandGesture.point;
+function decodeHand(buf) {
+	if (buf.byteLength !== 144) return null;
+	const dv = new DataView(buf);
+	if (dv.getUint8(0) !== 22) return null;
+	const flags = dv.getUint8(1), handedness = dv.getUint8(9), gestures = dv.getUint8(11);
+	if ((flags & ~HandFlag.tracked) !== 0 || handedness > 2 || (gestures & ~GESTURES) !== 0) return null;
+	const point = (off) => [
+		dv.getInt16(off, true) / SCALE,
+		dv.getInt16(off + 2, true) / SCALE,
+		dv.getInt16(off + 4, true) / SCALE
+	];
+	return {
+		flags,
+		seq: dv.getUint16(2, true),
+		t: dv.getUint32(4, true),
+		gen: dv.getUint8(8),
+		handedness: handedness === 1 ? "left" : handedness === 2 ? "right" : "unknown",
+		confidence: dv.getUint8(10) / 255,
+		gestures,
+		p: point(12),
+		landmarks: Array.from({ length: 21 }, (_, i) => point(18 + i * 6))
+	};
+}
 //#endregion
 //#region ../packages/core/src/store.ts
 /**
@@ -1017,13 +872,15 @@ function decodePose(buf) {
 		3
 	].map((i) => dv.getInt16(20 + i * 2, true) / 32767);
 	const l = Math.hypot(...q) || 1;
+	const source = dv.getUint8(29);
 	return {
 		flags: dv.getUint8(1),
 		seq: dv.getUint16(2, true),
 		t: dv.getUint32(4, true),
 		p,
 		q: q.map((v) => v / l),
-		gen: dv.getUint8(28)
+		gen: dv.getUint8(28),
+		source: source === 1 ? "camera" : source === 2 ? "model" : "unknown"
 	};
 }
 /**
@@ -1264,6 +1121,8 @@ var Utility = {
 	steer: "motion.steer",
 	point: "motion.point",
 	track: "motion.track",
+	cameraHand: "camera.hand",
+	cameraBody: "camera.body",
 	trackpad: "touch.trackpad",
 	hold: "motion.hold",
 	tilt: "motion.tilt",
@@ -1488,6 +1347,39 @@ function validSimMessage(value) {
 	}
 	return valid(m.data, 0);
 }
+/** The same validation and lifetime for a phone stream and an entirely local webcam. */
+var BodyInput = class {
+	constructor() {
+		this.state = null;
+		this.at = 0;
+		this.generation = 0;
+	}
+	reset() {
+		this.state = null;
+		this.at = 0;
+	}
+	receive(packet, now = performance.now()) {
+		const s = decodeBody(packet), old = this.state;
+		if (!s || old && !seqNewer(s.seq, old.seq)) return false;
+		const acquired = !!(s.flags & BodyFlag.tracked) && (!old || !(old.flags & BodyFlag.tracked) || now - this.at >= 250);
+		if (!old || s.gen !== old.gen || acquired) this.generation++;
+		this.state = s;
+		this.at = now;
+		return true;
+	}
+	read(now = performance.now()) {
+		const s = this.state;
+		return s && now - this.at < 250 ? {
+			tracked: !!(s.flags & BodyFlag.tracked),
+			gen: this.generation,
+			t: s.t,
+			receivedAt: this.at,
+			landmarks: s.landmarks,
+			visibility: s.visibility,
+			presence: s.presence
+		} : null;
+	}
+};
 //#endregion
 //#region ../packages/host/src/stream.ts
 /** A pointer stream that stops (the utility was switched off, the phone went away) is gone after this long. */
@@ -1496,6 +1388,8 @@ var POINTER_STALE_MS = 300;
 var PAD_STALE_MS = 300;
 /** A pose stream that stops is gone after this long. */
 var POSE_STALE_MS = 250;
+/** A silent hand stops driving the host after this long. */
+var HAND_STALE_MS = 250;
 var zeroAcc = () => ({
 	aim: [0, 0],
 	pad1: [0, 0],
@@ -1513,7 +1407,7 @@ function combineAcc(a, b, k) {
 	};
 }
 var lerpAcc = (a, b, t) => combineAcc(a, combineAcc(b, a, -1), t);
-/** One device's input: its STATE, PAD and POINTER packets, buffered and interpolated for the host's frames. */
+/** One device's input packets, buffered and interpolated for the host's frames. */
 var Stream = class {
 	constructor(hooks, latency = "smooth") {
 		this.hooks = hooks;
@@ -1525,6 +1419,11 @@ var Stream = class {
 		this.ptrAt = 0;
 		this.pose = null;
 		this.poseAt = 0;
+		this.poseGen = 0;
+		this.hand = null;
+		this.handAt = 0;
+		this.handGen = 0;
+		this.body = new BodyInput();
 		this.stateAt = 0;
 		this.latestAcc = null;
 		this.outAcc = null;
@@ -1543,6 +1442,9 @@ var Stream = class {
 		this.ptrAt = 0;
 		this.pose = null;
 		this.poseAt = 0;
+		this.hand = null;
+		this.handAt = 0;
+		this.body.reset();
 		this.stateAt = 0;
 		this.latest = null;
 		this.latestAcc = null;
@@ -1601,10 +1503,24 @@ var Stream = class {
 	}
 	onPose(data) {
 		const p = decodePose(data);
-		if (!p || this.pose && p.gen === this.pose.gen && !seqNewer(p.seq, this.pose.seq)) return;
+		if (!p || this.pose && !seqNewer(p.seq, this.pose.seq)) return;
+		if (!this.pose || p.gen !== this.pose.gen || p.source !== this.pose.source) this.poseGen++;
 		this.pose = p;
 		this.poseAt = performance.now();
 		this.hooks.input();
+	}
+	onHand(data) {
+		const h = decodeHand(data);
+		if (!h || this.hand && !seqNewer(h.seq, this.hand.seq)) return;
+		const now = performance.now(), previous = this.hand;
+		const acquired = (h.flags & HandFlag.tracked) !== 0 && (!previous || !(previous.flags & HandFlag.tracked) || now - this.handAt >= HAND_STALE_MS);
+		if (!previous || h.gen !== previous.gen || h.handedness !== previous.handedness || acquired) this.handGen++;
+		this.hand = h;
+		this.handAt = now;
+		this.hooks.input();
+	}
+	onBody(data) {
+		if (this.body.receive(data)) this.hooks.input();
 	}
 	get padLive() {
 		return !!this.padState && performance.now() - this.padAt < 1500;
@@ -1658,8 +1574,20 @@ var Stream = class {
 				q: this.pose.q,
 				tracked: (this.pose.flags & PoseFlag.tracked) !== 0,
 				touching: (this.pose.flags & PoseFlag.touching) !== 0,
-				gen: this.pose.gen
-			} : null
+				gen: this.poseGen,
+				source: this.pose.source
+			} : null,
+			hand: this.hand && now - this.handAt < HAND_STALE_MS ? {
+				tracked: (this.hand.flags & HandFlag.tracked) !== 0,
+				gen: this.handGen,
+				t: this.hand.t,
+				handedness: this.hand.handedness,
+				confidence: this.hand.confidence,
+				gestures: this.hand.gestures,
+				p: this.hand.p,
+				landmarks: this.hand.landmarks
+			} : null,
+			body: this.body.read(now)
 		};
 		if (this.padLive && this.padAt > this.stateAt) {
 			frame.mode = Mode.gamepad;
@@ -1875,6 +1803,7 @@ var Remote = class Remote {
 		this.held = {};
 		this.scenePending = false;
 		this.handlers = {
+			seal: [],
 			status: [],
 			connect: [],
 			disconnect: [],
@@ -2329,6 +2258,8 @@ var Remote = class Remote {
 			if (type === 18) peer.stream.onPad(e.data);
 			else if (type === 20) peer.stream.onPointer(e.data);
 			else if (type === 21) peer.stream.onPose(e.data);
+			else if (type === 22) peer.stream.onHand(e.data);
+			else if (type === 23) peer.stream.onBody(e.data);
 			else peer.stream.onState(e.data);
 		};
 		return peer;
@@ -2484,6 +2415,15 @@ var Remote = class Remote {
 					return;
 				}
 			}
+			if (!peer.fp) return;
+			const sealRoom = peer.room ?? {
+				secret: this.secret,
+				roomId: this.roomId
+			};
+			const sealNonce = b64url(randomBytes(16));
+			const context = peer.lan ? lanContext(peer.lan.nonce) : sealRoom.roomId;
+			const sealKey = peer.lan?.pair.key ?? sealRoom.secret;
+			const [seal, sealProof] = await Promise.all([connectionSeal(peer.fp, this.fp, context, peer.lan?.pair.key, sealNonce), bindMac(sealKey, peer.fp, this.fp, sealSessionContext(context, sealNonce))]);
 			const minted = !peer.lan && this.opts.remember ? await this.mintKey() : null;
 			if (peer.bound || this.peers.get(peer.id) !== peer) return;
 			if (this.shared && this.bound().length >= this.seats) {
@@ -2494,6 +2434,7 @@ var Remote = class Remote {
 				setTimeout(() => this.dropPeer(peer.id), 200);
 				return;
 			}
+			peer.seal = seal;
 			peer.bound = true;
 			peer.via = peer.lan ? "lan" : "code" in m ? "code" : "qr";
 			peer.name = String(m.name || "Phone").slice(0, 40);
@@ -2536,6 +2477,8 @@ var Remote = class Remote {
 			const kind = this.opts.kind ?? (typeof location === "undefined" ? "site" : location.protocol === "chrome-extension:" ? "pc" : location.pathname.startsWith("/sim/") ? "sim" : location.pathname.startsWith("/view/") ? "viewer" : "site");
 			this.send(peer, {
 				t: "welcome",
+				sealNonce,
+				sealProof,
 				proto: 1,
 				name: this.opts.appName,
 				layout: this.layout,
@@ -2563,6 +2506,19 @@ var Remote = class Remote {
 			this.renderCards();
 			this.sceneChanged();
 			this.prepareLan();
+			return;
+		}
+		if (m.t === "seal-ready" && peer.bound && peer.seal && !peer.sealStarted && Number.isFinite(m.t0)) {
+			peer.sealStarted = true;
+			this.send(peer, {
+				t: "seal-start",
+				t0: m.t0
+			});
+			this.emit("seal", {
+				id: peer.id,
+				seal: peer.seal,
+				delayMs: 350
+			});
 			return;
 		}
 		if (!this.listening(peer)) return;
@@ -2857,15 +2813,21 @@ var Remote = class Remote {
 	get participants() {
 		return this.bound().map((p) => this.participant(p));
 	}
-	/**
-	* Each connected device's link, oldest first, from the connection's own statistics: its path, ICE's round trip and
-	* DTLS (linkInfo), and how the device proved itself when it bound. For a connection badge that claims only this.
-	*/
+	/** Current verified seals, without waiting for network statistics. */
+	get seals() {
+		return this.bound().flatMap((p) => p.seal ? [{
+			id: p.id,
+			name: p.name,
+			verified: p.via ?? "qr",
+			seal: p.seal
+		}] : []);
+	}
 	async links() {
 		return Promise.all(this.bound().map(async (p) => ({
 			id: p.id,
 			name: p.name,
 			verified: p.via ?? "qr",
+			seal: p.seal,
 			link: await linkInfo(p.pc)
 		})));
 	}
@@ -3098,6 +3060,12 @@ var Remote = class Remote {
 		qr.setAttribute("role", "img");
 		qr.setAttribute("aria-label", "QR code to pair your phone");
 		const body = node(card, "div", "obpal-body");
+		const domain = new URL(this.service).hostname;
+		node(body, "b", "obpal-domain", domain);
+		node(body, "p", "obpal-cues", "Opens in your phone's browser · no app · no account");
+		node(body, "p", "obpal-cues", `Check your camera shows ${domain}`);
+		const marker = communityMarker(location.origin);
+		if (marker) body.append(marker);
 		const title = node(body, "div", "obpal-title");
 		if (compact) glyph(node(title, "span", "obpal-ic"), true);
 		node(title, "span", "obpal-title-text");
@@ -4572,20 +4540,35 @@ async function boot() {
 		rotateInvite: true
 	});
 	remote = r;
-	const state = () => ({
-		status: r.status,
-		url: r.pairingUrl,
-		device: r.deviceName && r.participants.every((p) => p.paused) ? `${r.deviceName} · paused` : r.deviceName,
-		lan: r.lanUrl,
-		lanFor: r.lanFor,
-		pairs: r.remembered
-	});
+	let moment = null;
+	const state = () => {
+		const seal = r.seals[0]?.seal;
+		return {
+			status: r.status,
+			url: r.pairingUrl,
+			device: r.deviceName && r.participants.every((p) => p.paused) ? `${r.deviceName} · paused` : r.deviceName,
+			lan: r.lanUrl,
+			lanFor: r.lanFor,
+			pairs: r.remembered,
+			...seal ? {
+				seal,
+				...moment?.seal === seal ? { sealAt: moment.at } : {}
+			} : {}
+		};
+	};
 	const report = () => void toBg({
 		to: "bg",
 		type: "link",
 		link: state()
 	});
 	r.on("status", report);
+	r.on("seal", ({ seal, delayMs }) => {
+		moment = {
+			seal,
+			at: Date.now() + delayMs
+		};
+		report();
+	});
 	r.on("attention", () => {
 		pc.gestures.reset();
 		report();
@@ -4600,6 +4583,7 @@ async function boot() {
 		publishNotice(true);
 	});
 	r.on("disconnect", () => {
+		moment = null;
 		pcLetGo();
 		report();
 	});

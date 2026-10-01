@@ -1,5 +1,10 @@
 (function() {
 	//#region src/shared/constants.ts
+	/**
+	* ob.Pal room service (signaling + TURN credentials). Also the only required host permission. A build of your own
+	* names yours: OBPAL_PUBLIC_ORIGIN=https://your.host pnpm run build:extension (spec/SECURITY.md §6).
+	*/
+	var SERVICE = "https://obpal.blackboxes.net";
 	/** Name of the runtime.connect() port a page bridge opens to the offscreen link. */
 	var PORT_NAME = "obpal-link/page";
 	/** window.postMessage channel id shared by the isolated-world bridge and the MAIN-world page script. */
@@ -8,6 +13,8 @@
 	//#region src/shared/math.ts
 	/** Small numeric helpers shared by the key and 3D mappers. Pure. */
 	var clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+	`${SERVICE}`;
+	`${SERVICE}`;
 	//#endregion
 	//#region src/shared/messages.ts
 	/**

@@ -45,7 +45,7 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
 /* The look: every surface in one row, the colours under them. */
 .look-menu { width: 372px; min-width: 0; max-width: calc(100vw - 24px); padding: 14px 14px 12px; }
 .look-menu .looks { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
-.look-menu .look { gap: 6px; padding: 8px 0 7px; border-radius: 12px; font-size: 10.5px; letter-spacing: -0.01em; }
+.look-menu .look { gap: 6px; padding: 7.5px 0; border-radius: 12px; font-size: 10.5px; letter-spacing: -0.01em; }
 .look-menu .look i { width: 38px; height: 27px; border-radius: 8px; }
 .look-menu .look i::before { left: 5px; right: 5px; top: 5px; height: 7px; }
 .look-menu .look i::after { left: 5px; bottom: 5px; width: 12px; height: 4px; }
@@ -91,6 +91,9 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
 .scan-hint.direct .ic { color: rgb(var(--haze-rgb)); }
 [data-bb-theme='light'] .scan-hint.direct .ic { color: #6d4fc7; }
 .scan-hint.warn, .scan-hint.warn .ic { color: var(--warn-text); }
+.scan-check { margin: 0; max-width: 220px; text-align: center; color: var(--secondary); font-size: 11px; line-height: 1.45; }
+.scan-check b { font-weight: 650; }
+.scan-check a { color: var(--accent-text); text-underline-offset: 3px; }
 
 /* Which code: online through ob.Pal, or direct over the local network. The lit half slides to the one shown. */
 .codes { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 999px; border: 1px solid var(--line); background: var(--fill); }
@@ -101,7 +104,7 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
 }
 .codes:has(.code[data-code='lan'][aria-checked='true'])::before { transform: translate3d(100%, 0, 0); background: linear-gradient(150deg, rgb(var(--haze-rgb) / 0.98), rgb(var(--haze-rgb) / 0.8)); box-shadow: 0 8px 18px -10px rgb(var(--haze-rgb) / 0.9), inset 0 1px 0 rgb(255 255 255 / 0.45); }
 .code {
-  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; padding: 0 12px 0 10px;
+  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; padding: 0 11px;
   border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: 700 12px/1 var(--font); transition: color 0.25s var(--ease);
 }
 .code .ic { width: 15px; height: 15px; }
@@ -149,7 +152,7 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
 .chips:has(.chip[data-mode='keys'][aria-checked='true']) { --at: 2; }
 .chips:has(.chip[data-mode='pc'][aria-checked='true']) { --at: 3; }
 .chip {
-  position: relative; z-index: 1; display: grid; justify-items: center; gap: 7px; min-width: 0; padding: 12px 2px 10px; border: 0; border-radius: 15px;
+  position: relative; z-index: 1; display: grid; justify-items: center; gap: 7px; min-width: 0; padding: 11px 2px; border: 0; border-radius: 15px;
   background: transparent; color: var(--secondary); text-align: center; transition: color 0.3s var(--ease), background 0.2s, transform 0.12s var(--ease);
 }
 .chip .ic { width: 22px; height: 22px; transition: transform 0.35s var(--spring); }
@@ -163,7 +166,7 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
 .chip[aria-checked='true'] small { color: rgb(0 0 0 / 0.55); }
 /* With room (the popup to themselves): the glyph beside the name, and a few words under it. */
 @container controls (width >= 480px) {
-  .chip { grid-auto-flow: column; justify-content: start; align-items: center; gap: 11px; padding: 12px 10px 12px 14px; text-align: left; }
+  .chip { grid-auto-flow: column; justify-content: start; align-items: center; gap: 11px; padding: 12px; text-align: left; }
   .chip:hover .ic { transform: scale(1.08); }
   .chip-t small { display: block; }
   .says { display: none; }
@@ -237,3 +240,10 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
 @media (prefers-reduced-motion: reduce) {
   .qr.sweep::after, .qr:hover::after, .conn[data-s='connected'] .status i::after, .says.new { animation: none; }
 }
+.seal-open{border:1px solid var(--line);border-radius:10px;background:var(--glass);color:var(--accent-text);font:600 11px var(--font);padding:5px 7px}.seal-popup{padding:12px;margin:0 14px 12px;border-radius:20px;text-align:center}.seal-popup[hidden]{display:none}.seal-popup p{font-size:12px;color:var(--secondary);margin:2px 0}
+
+/* A question owns this moment; the underlying waiting summary stays out of its way. */
+.pop:has(.ask:not([hidden])) .pc-state { display: none; }
+.pop .link-journey { margin: 0; }
+/* A QR stays still while it can be scanned. */
+.qr.sweep::after, .qr:hover::after, .conn[data-s='connected'] .status i::after { animation: none; }

@@ -1,4 +1,4 @@
-import { $ as parseAnswers, C as parseNativeFrame, H as DEFAULT_MODE, J as isTargetMode, O as toHelperRequest, S as parseHelperMessage, T as parsePcState, X as askFor, Y as accessOf, et as parsePhone, f as EMPTY_PC, h as NATIVE_HOST, k as typingField, l as senderKind, n as linkConfig, nt as withAnswer, r as parseBgRequest, rt as withoutAnswer, s as parseLink, t as allowedFrom, w as parseNativeText, x as isTypingRefusal } from "./assets/messages-BtNPASMo.js";
+import { B as parseAnswers, C as parseNativeFrame, I as accessOf, L as askFor, O as toHelperRequest, Q as guideStatus, S as parseHelperMessage, T as parsePcState, U as withAnswer, V as parsePhone, W as withoutAnswer, Z as guideRequest, et as DEFAULT_MODE, f as EMPTY_PC, h as NATIVE_HOST, k as typingField, l as senderKind, n as linkConfig, ot as isTargetMode, r as parseBgRequest, s as parseLink, t as allowedFrom, w as parseNativeText, x as isTypingRefusal } from "./assets/messages-CWZnFxhW.js";
 //#region src/native.ts
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
 var RETRY_MS = [
@@ -733,6 +733,12 @@ async function handle(msg, sender) {
 	}
 }
 chrome.runtime.onMessage.addListener((raw, sender, respond) => {
+	const guide = guideRequest(raw, sender, chrome.runtime.id);
+	if (guide) {
+		if (guide === "desktop-guide-open") chrome.runtime.openOptionsPage().then(() => respond({ ok: true }), () => respond({ ok: false }));
+		else chrome.storage.session.get("pc").then(({ pc }) => respond(guideStatus(parsePcState(pc) ?? EMPTY_PC)), () => respond(guideStatus(EMPTY_PC)));
+		return true;
+	}
 	const msg = parseBgRequest(raw);
 	if (!msg) return false;
 	const kind = senderKind({

@@ -3,7 +3,7 @@
 Your phone as a controller for websites in your browser. ob.Pal Link is a browser extension (Chromium, Manifest V3). Pair your phone by scanning a QR code; the phone needs no app, because the controller opens in its browser.
 
 - **Controller**: a standard gamepad for browser games that read the Gamepad API (see [Limitations](#limitations)).
-- **3D**: drag to rotate, two fingers to pan and pinch to zoom, on any 3D viewer in the page.
+- **3D**: drag to rotate, two fingers to pan and pinch to zoom, in compatible 3D viewers in the page.
 - **Keys**: keyboard and mouse input for keyboard games.
 - **PC** (Windows): your phone as this computer's mouse and keyboard, in every window or only the programs you allow, through the ob.Pal Desktop helper, with the phone's own keyboard for typing.
 
@@ -13,7 +13,16 @@ It works in Chrome, Edge, Brave and Vivaldi (Chromium 120 or later). Other Chrom
 
 Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Source: [github.com/Axialon/obpal](https://github.com/Axialon/obpal) (this repository carries the releases)
 
-## What's new in 1.6.2
+## What's new in 1.7.0
+
+- **Pair, enable, try.** The popup walks you through the three steps, and **Try** opens a dot demo: turn on **This tab** there, choose **Controller**, and the dots follow your phone's left stick. A quick check before you open a game.
+- **The connection seal.** When your phone connects, Link and the phone show the same three symbols. Check they match, and you know it's your phone that paired.
+- **The PC install guide.** On ob.Pal's Desktop install page, Link shows whether the helper is connected and its version, and **Check in Link** opens the PC settings. The page gets nothing else, and can't send input or allow a phone.
+- **Clearer words.** Rumble, 3D and the stop keys say exactly where they work. Allow and Deny, held-input release and `Ctrl`+`Alt`+`Backspace` work as before.
+
+**Updating from 1.6:** from the Chrome Web Store, it updates by itself. From this repository, replace the folder and reload, as below. Remembered phones carry over.
+
+## New in 1.6.2
 
 - **Safer when a phone drops.** If your phone stops sending (it sleeps, loses signal or closes the controller), Link lets go of any held keys, buttons and mouse presses within half a second, and stops sending input. Nothing stays pressed on your computer.
 - **Clearer about what works.** The extension's descriptions name the tested browsers and say that PC control is Windows only.
@@ -35,7 +44,9 @@ Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Sour
 
 ## Install
 
-ob.Pal Link is in review on the Chrome Web Store. Until it's published there, install it from this repository:
+**[Add ob.Pal Link from the Chrome Web Store](https://chromewebstore.google.com/detail/obpal-link/jnnpcnoilofjaffabnhecfokjjknlemg)**. It works in Chrome, Edge, Brave and Vivaldi, and updates by itself. A new version can reach the store a few days after its release here, while the store reviews it.
+
+Or install it from this repository:
 
 1. Download **[obpal-link.zip](https://github.com/Axialon/obpal-link/releases/latest/download/obpal-link.zip)** from the latest release and unzip it into a folder you'll keep. You can also clone this repository and use its `extension` folder.
 2. Open the extensions page:
@@ -138,7 +149,7 @@ In Point, the phone's volume keys work too where its browser allows: up is Left,
 **Typing.** When a text field on the PC has the keyboard focus, the phone shows **Type**: one tap opens the phone's own keyboard. In a password field, the phone types into a password field of its own, so nothing is suggested, learned or kept. **Keyboard** in the phone's tray opens it at any time. **Type** shows only where typing goes through: the whole PC or an allowed program, with keys allowed and not paused. If typing can't get through, the phone says why. Typing needs ob.Pal Desktop 0.3 or later.
 
 - Nothing reaches the PC until you pick **PC** and turn on the whole PC or allow a program. Manage both in the extension's options, where **Pause all** stops everything.
-- `Ctrl`+`Alt`+`Backspace` stops everything at once. Windows keeps programs running as administrator out of reach.
+- `Ctrl`+`Alt`+`Backspace` stops keyboard and mouse input from the phone at once. Windows keeps programs running as administrator out of reach.
 - **Updating the helper:** switch ob.Pal Link away from **PC** and close its options page if it's open (or close the browser), then unzip the new version over the old folder.
 - **Removing it:** double-click `uninstall.cmd` in its folder. It removes the helper, its settings and its files, with the browser still open.
 
@@ -155,10 +166,10 @@ There are no accounts and no analytics, and the extension loads no remote code. 
 | Permission | Why |
 |---|---|
 | `offscreen` | An MV3 service worker can't hold a WebRTC connection, so an offscreen document keeps the link to the phone. |
-| `storage` | Remembers the chosen mode, the look, and your Allow or Deny for each phone. Until the browser closes, session storage also holds the controlled tab and the link status. |
+| `storage` | Remembers the chosen mode, the look, and your Allow or Deny for each phone. Until the browser closes, session storage also holds the controlled tab, the link status and its connection seal. |
 | `activeTab` | Clicking the toolbar icon grants access to the current tab only. |
 | `scripting` | Injects the input bridge into the tab you turned on. |
-| `https://obpal.blackboxes.net/*` | Pairing (signaling) and relay (TURN) credentials. |
+| `https://obpal.blackboxes.net/*` | Pairing (signaling) and relay (TURN) credentials. On the Desktop install page only, it shows whether the helper is connected and its version. |
 | `<all_urls>` (optional, off by default) | Only when you turn on **All sites**: reaches game frames served from other domains, and keeps control across navigation. |
 | `nativeMessaging` (optional, off by default) | Only when you pick **PC**: talks to ob.Pal Desktop on your computer. |
 | `notifications` (optional, off by default) | Only when you turn on **Notify me** in the options: a phone's first request to control the PC comes as a notification with **Allow** and **Deny**. |

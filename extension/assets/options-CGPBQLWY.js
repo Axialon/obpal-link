@@ -1,5 +1,5 @@
-import { a as mountLook, d as showAsk, f as ICONS, i as mountLogo, n as lightCards, o as settle, p as LOGO_WORD, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-BV8pwiPD.js";
-import { $ as parseAnswers, H as DEFAULT_MODE, J as isTargetMode, T as parsePcState, X as askFor, _ as PC_PAGE_PORT_NAME, d as DESKTOP_URL, et as parsePhone, f as EMPTY_PC, m as MAC_ACCESSIBILITY, s as parseLink } from "./messages-BtNPASMo.js";
+import { B as parseAnswers, L as askFor, T as parsePcState, V as parsePhone, _ as PC_PAGE_PORT_NAME, d as DESKTOP_URL, et as DEFAULT_MODE, f as EMPTY_PC, m as MAC_ACCESSIBILITY, ot as isTargetMode, s as parseLink } from "./messages-CWZnFxhW.js";
+import { a as mountLook, d as showAsk, f as ICONS, i as mountLogo, n as lightCards, o as settle, p as LOGO_WORD, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-DxjiK1Tk.js";
 //#region src/options/options.ts
 startLook();
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
@@ -27,9 +27,11 @@ app.innerHTML = `
     <p class="lede">Your phone as this computer’s mouse and keyboard: in every window, or only in the programs you allow.</p>
     <div class="helper" id="helper" hidden>
       <span class="helper-ver" id="helper-ver"></span>
-      <span class="helper-panic" id="helper-panic" title="The panic key stops everything at once"></span>
+      <span class="helper-panic" id="helper-panic" title="The panic key stops keyboard and mouse input from the phone"></span>
     </div>
   </section>
+  <ol class="link-journey" aria-label="PC setup"><li>Pair <small>In Link’s popup</small></li><li>Allow <small>Per phone, below</small></li><li>Enable <small>A program or Whole PC</small></li></ol>
+  <p class="pc-safety">PC permission is separate from This tab. Check the helper’s panic-key status before enabling input; Pause all remains available.</p>
   <p class="note swap" id="note" role="alert" hidden></p>
   <div class="layout">
     <div class="col">

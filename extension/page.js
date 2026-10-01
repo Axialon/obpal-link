@@ -141,6 +141,11 @@
 	}
 	//#endregion
 	//#region src/shared/constants.ts
+	/**
+	* ob.Pal room service (signaling + TURN credentials). Also the only required host permission. A build of your own
+	* names yours: OBPAL_PUBLIC_ORIGIN=https://your.host pnpm run build:extension (spec/SECURITY.md §6).
+	*/
+	var SERVICE = "https://obpal.blackboxes.net";
 	/** window.postMessage channel id shared by the isolated-world bridge and the MAIN-world page script. */
 	var CHANNEL = "obpal-link/v1";
 	/**
@@ -443,6 +448,8 @@
 	}
 	/** Legacy keypress char code: printable keys and Enter produce one, everything else none (and no keypress). */
 	var pressCharCode = (key) => key.length === 1 ? key.charCodeAt(0) : key === "Enter" ? 13 : 0;
+	`${SERVICE}`;
+	`${SERVICE}`;
 	//#endregion
 	//#region src/shared/messages.ts
 	/**

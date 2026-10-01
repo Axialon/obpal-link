@@ -1,3 +1,120 @@
+//#region src/shared/constants.ts
+/** Constants shared by every ob.Pal Link context. Pure: nothing here touches chrome.* or the DOM. */
+var APP_NAME = "ob.Pal Link";
+/**
+* ob.Pal room service (signaling + TURN credentials). Also the only required host permission. A build of your own
+* names yours: OBPAL_PUBLIC_ORIGIN=https://your.host pnpm run build:extension (spec/SECURITY.md §6).
+*/
+var SERVICE = "https://obpal.blackboxes.net";
+/** Name of the runtime.connect() port a page bridge opens to the offscreen link. */
+var PORT_NAME = "obpal-link/page";
+/**
+* What the phone drives: the controlled tab (Controller, 3D and Keys go to page frames; index order is the
+* wire encoding, InputFrame.m) or the PC itself through the native helper (no page frames at all).
+*/
+var TARGET_MODES = [
+	"gamepad",
+	"viewer",
+	"keys",
+	"pc"
+];
+var DEFAULT_MODE = "gamepad";
+/** The modes that send input frames to page scripts. */
+var PAGE_MODES = [
+	"gamepad",
+	"viewer",
+	"keys"
+];
+var isTargetMode = (v) => typeof v === "string" && TARGET_MODES.includes(v);
+/** Visible canvas area (CSS px²) a frame needs before it wins the 3D-viewer role over the top frame. */
+var MIN_VIEW_AREA = 19200;
+//#endregion
+//#region src/shared/desktop-guide.ts
+var DESKTOP_GUIDE_CHANNEL = "obpal-link/desktop-guide/v1";
+var DESKTOP_GUIDE_URL = `${SERVICE}/link/desktop/`;
+var LINK_TRY_URL = `${SERVICE}/link/try/`;
+/** Only our own isolated content script in the exact, top-level companion route may use this read-only bridge. */
+function guideRequest(raw, sender, self) {
+	if (!raw || typeof raw !== "object" || sender.id !== self || sender.frameId !== 0 || !Number.isInteger(sender.tab?.id)) return null;
+	try {
+		const url = new URL(sender.url ?? "");
+		if (url.origin !== "https://obpal.blackboxes.net" || url.pathname !== "/link/desktop/") return null;
+	} catch {
+		return null;
+	}
+	const msg = raw;
+	return msg.to === "bg" && (msg.type === "desktop-guide-status" || msg.type === "desktop-guide-open") ? msg.type : null;
+}
+/** No phone identities, paths, permissions, input, credentials or native error strings cross into the page. */
+function guideStatus(pc) {
+	return {
+		channel: DESKTOP_GUIDE_CHANNEL,
+		status: pc.link,
+		...typeof pc.version === "string" && /^[0-9]+(?:\.[0-9]+){1,3}$/.test(pc.version) ? { version: pc.version } : {}
+	};
+}
+/** Standard-mapping button indices (https://w3c.github.io/gamepad/#remapping). */
+var PadButton = {
+	A: 0,
+	B: 1,
+	X: 2,
+	Y: 3,
+	LB: 4,
+	RB: 5,
+	LT: 6,
+	RT: 7,
+	View: 8,
+	Menu: 9,
+	L3: 10,
+	R3: 11,
+	Up: 12,
+	Down: 13,
+	Left: 14,
+	Right: 15,
+	Guide: 16
+};
+/** flags: b0 gyro aim is on, b1 tilt steering is on, b2 the Wii-style pointer is on (POINTER packets follow). */
+var PadFlag = {
+	gyroAim: 1,
+	tiltSteer: 2,
+	point: 4
+};
+function emptyPad() {
+	return {
+		flags: 0,
+		seq: 0,
+		t: 0,
+		buttons: 0,
+		axes: [
+			0,
+			0,
+			0,
+			0
+		],
+		triggers: [0, 0]
+	};
+}
+function decodePad(buf) {
+	if (buf.byteLength < 24) return null;
+	const dv = new DataView(buf);
+	if (dv.getUint8(0) !== 18) return null;
+	return {
+		flags: dv.getUint8(1),
+		seq: dv.getUint16(2, true),
+		t: dv.getUint32(4, true),
+		buttons: dv.getUint32(8, true),
+		axes: [
+			dv.getInt16(12, true) / 32767,
+			dv.getInt16(14, true) / 32767,
+			dv.getInt16(16, true) / 32767,
+			dv.getInt16(18, true) / 32767
+		],
+		triggers: [dv.getUint8(20) / 255, dv.getUint8(21) / 255]
+	};
+}
+/** Packet type from the first byte (0x11 STATE, 0x12 PAD, 0x14 POINTER, …) without decoding. */
+var packetType = (buf) => buf.byteLength ? new DataView(buf).getUint8(0) : 0;
+//#endregion
 //#region src/shared/access.ts
 var isPcAccess = (x) => x === "allow" || x === "deny" || x === "ask";
 /** A pairing id (16 bytes, base64url), or "fp:" and a DTLS fingerprint (32 bytes, base64url). */
@@ -69,98 +186,6 @@ function noticeFor(mode, access) {
 	return access === "ask" ? WAITING : REFUSED;
 }
 //#endregion
-//#region src/shared/constants.ts
-/** Constants shared by every ob.Pal Link context. Pure: nothing here touches chrome.* or the DOM. */
-var APP_NAME = "ob.Pal Link";
-/**
-* ob.Pal room service (signaling + TURN credentials). Also the only required host permission. A build of your own
-* names yours: OBPAL_PUBLIC_ORIGIN=https://your.host pnpm run build:extension (spec/SECURITY.md §6).
-*/
-var SERVICE = "https://obpal.blackboxes.net";
-/** Name of the runtime.connect() port a page bridge opens to the offscreen link. */
-var PORT_NAME = "obpal-link/page";
-/**
-* What the phone drives: the controlled tab (Controller, 3D and Keys go to page frames; index order is the
-* wire encoding, InputFrame.m) or the PC itself through the native helper (no page frames at all).
-*/
-var TARGET_MODES = [
-	"gamepad",
-	"viewer",
-	"keys",
-	"pc"
-];
-var DEFAULT_MODE = "gamepad";
-/** The modes that send input frames to page scripts. */
-var PAGE_MODES = [
-	"gamepad",
-	"viewer",
-	"keys"
-];
-var isTargetMode = (v) => typeof v === "string" && TARGET_MODES.includes(v);
-/** Visible canvas area (CSS px²) a frame needs before it wins the 3D-viewer role over the top frame. */
-var MIN_VIEW_AREA = 19200;
-/** Standard-mapping button indices (https://w3c.github.io/gamepad/#remapping). */
-var PadButton = {
-	A: 0,
-	B: 1,
-	X: 2,
-	Y: 3,
-	LB: 4,
-	RB: 5,
-	LT: 6,
-	RT: 7,
-	View: 8,
-	Menu: 9,
-	L3: 10,
-	R3: 11,
-	Up: 12,
-	Down: 13,
-	Left: 14,
-	Right: 15,
-	Guide: 16
-};
-/** flags: b0 gyro aim is on, b1 tilt steering is on, b2 the Wii-style pointer is on (POINTER packets follow). */
-var PadFlag = {
-	gyroAim: 1,
-	tiltSteer: 2,
-	point: 4
-};
-function emptyPad() {
-	return {
-		flags: 0,
-		seq: 0,
-		t: 0,
-		buttons: 0,
-		axes: [
-			0,
-			0,
-			0,
-			0
-		],
-		triggers: [0, 0]
-	};
-}
-function decodePad(buf) {
-	if (buf.byteLength < 24) return null;
-	const dv = new DataView(buf);
-	if (dv.getUint8(0) !== 18) return null;
-	return {
-		flags: dv.getUint8(1),
-		seq: dv.getUint16(2, true),
-		t: dv.getUint32(4, true),
-		buttons: dv.getUint32(8, true),
-		axes: [
-			dv.getInt16(12, true) / 32767,
-			dv.getInt16(14, true) / 32767,
-			dv.getInt16(16, true) / 32767,
-			dv.getInt16(18, true) / 32767
-		],
-		triggers: [dv.getUint8(20) / 255, dv.getUint8(21) / 255]
-	};
-}
-/** Packet type from the first byte (0x11 STATE, 0x12 PAD, 0x14 POINTER, …) without decoding. */
-var packetType = (buf) => buf.byteLength ? new DataView(buf).getUint8(0) : 0;
-//#endregion
 //#region src/shared/math.ts
 /** Small numeric helpers shared by the key and 3D mappers. Pure. */
 var clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
@@ -226,7 +251,7 @@ var NATIVE_PORT_NAME = "obpal-link/native";
 var PC_PAGE_PORT_NAME = "obpal-link/pc-page";
 /** Where to get the helper. */
 var MAC_ACCESSIBILITY = "Allow ob.Pal Desktop in System Settings, then Privacy & Security, then Accessibility.";
-var DESKTOP_URL = "https://github.com/Axialon/obpal-link/tree/main/desktop#readme";
+var DESKTOP_URL = DESKTOP_GUIDE_URL;
 var isObj$1 = (x) => typeof x === "object" && x !== null && !Array.isArray(x);
 var fin$1 = (v) => typeof v === "number" && Number.isFinite(v);
 var str = (v, max) => typeof v === "string" && v.length <= max;
@@ -741,13 +766,17 @@ function parseLink(x) {
 	if (!Array.isArray(rawPairs) || rawPairs.length > 32) return null;
 	const pairs = rawPairs.map(parseRemembered);
 	if (pairs.some((p) => !p)) return null;
+	if (x.seal !== void 0 && (!Array.isArray(x.seal) || x.seal.length !== 3 || !x.seal.every((i) => Number.isInteger(i) && within(i, 0, 63)))) return null;
+	if (x.sealAt !== void 0 && (!x.seal || !within(x.sealAt, 0, 0x5af3107a4000))) return null;
 	return {
 		status: x.status,
 		url: x.url,
 		device: x.device,
 		lan,
 		lanFor,
-		pairs
+		pairs,
+		...x.seal ? { seal: [...x.seal] } : {},
+		...x.sealAt !== void 0 ? { sealAt: x.sealAt } : {}
 	};
 }
 function parseBgRequest(x) {
@@ -907,4 +936,4 @@ function workerStale(reply, mine) {
 	return (isObj(reply) && typeof reply.version === "string" ? reply.version : null) !== mine;
 }
 //#endregion
-export { parseAnswers as $, typingToast as A, packetType as B, parseNativeFrame as C, scopeLabel as D, pcView as E, stickCurve as F, PORT_NAME as G, DEFAULT_MODE as H, PadButton as I, isTargetMode as J, SERVICE as K, PadFlag as L, buttonValue as M, clamp as N, toHelperRequest as O, hysteresis as P, noticeFor as Q, decodePad as R, parseHelperMessage as S, parsePcState as T, MIN_VIEW_AREA as U, APP_NAME as V, PAGE_MODES as W, askFor as X, accessOf as Y, isPcAccess as Z, PC_PAGE_PORT_NAME as _, parseFacts as a, isIdleFrame as b, parseOffscreenRequest as c, DESKTOP_URL as d, parsePhone as et, EMPTY_PC as f, NATIVE_PORT_NAME as g, NATIVE_HOST as h, parseConfig as i, Accum as j, typingField as k, senderKind as l, MAC_ACCESSIBILITY as m, linkConfig as n, withAnswer as nt, parseFromPage as o, HeldState as p, TARGET_MODES as q, parseBgRequest as r, withoutAnswer as rt, parseLink as s, allowedFrom as t, phoneKeyOf as tt, workerStale as u, buildNativeFrame as v, parseNativeText as w, isTypingRefusal as x, heldSignature as y, emptyPad as z };
+export { APP_NAME as $, typingToast as A, parseAnswers as B, parseNativeFrame as C, scopeLabel as D, pcView as E, stickCurve as F, PadButton as G, phoneKeyOf as H, accessOf as I, emptyPad as J, PadFlag as K, askFor as L, buttonValue as M, clamp as N, toHelperRequest as O, hysteresis as P, guideStatus as Q, isPcAccess as R, parseHelperMessage as S, parsePcState as T, withAnswer as U, parsePhone as V, withoutAnswer as W, LINK_TRY_URL as X, packetType as Y, guideRequest as Z, PC_PAGE_PORT_NAME as _, parseFacts as a, TARGET_MODES as at, isIdleFrame as b, parseOffscreenRequest as c, DESKTOP_URL as d, DEFAULT_MODE as et, EMPTY_PC as f, NATIVE_PORT_NAME as g, NATIVE_HOST as h, parseConfig as i, SERVICE as it, Accum as j, typingField as k, senderKind as l, MAC_ACCESSIBILITY as m, linkConfig as n, PAGE_MODES as nt, parseFromPage as o, isTargetMode as ot, HeldState as p, decodePad as q, parseBgRequest as r, PORT_NAME as rt, parseLink as s, allowedFrom as t, MIN_VIEW_AREA as tt, workerStale as u, buildNativeFrame as v, parseNativeText as w, isTypingRefusal as x, heldSignature as y, noticeFor as z };
