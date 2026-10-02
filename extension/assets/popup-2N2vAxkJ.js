@@ -1,533 +1,8 @@
+import { n as qrDotPoints, t as brandedQrElement } from "./qr-BJ9kwVUy.js";
 import { B as parseAnswers, D as scopeLabel, E as pcView, I as accessOf, L as askFor, T as parsePcState, V as parsePhone, X as LINK_TRY_URL, a as parseFacts, at as TARGET_MODES, d as DESKTOP_URL, et as DEFAULT_MODE, f as EMPTY_PC, m as MAC_ACCESSIBILITY, ot as isTargetMode, s as parseLink, u as workerStale } from "./messages-CWZnFxhW.js";
-import { a as mountLook, c as syncLook, d as showAsk, f as ICONS, i as mountLogo, l as radioGroup, m as family, n as lightCards, o as settle, p as LOGO_WORD, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-DxjiK1Tk.js";
-import { n as renderSVG, t as encode } from "./dist-Dw4zoNcF.js";
-import { a as glyphDots, i as SEAL_GLYPHS, n as sealNames } from "./seal-BUbx7ZQ6.js";
-//#region ../packages/host/src/dot-tokens.ts
-var DOT_SIZES = {
-	micro: {
-		diameter: 1.8,
-		pitch: 8
-	},
-	base: {
-		diameter: 3,
-		pitch: 12
-	},
-	display: {
-		diameter: 4.2,
-		pitch: 16
-	},
-	beacon: {
-		diameter: 6,
-		pitch: 20
-	},
-	seal: {
-		diameter: 4.2,
-		pitch: 16
-	}
-};
-var DOT_TIMING = {
-	assemble: 640,
-	ripple: 480,
-	shimmer: 700,
-	breathe: 6400,
-	stream: 900,
-	partIn: 200,
-	partOut: 320,
-	handshake: 1200,
-	fade: 120
-};
-var DOT_MATERIAL = {
-	roughness: .32,
-	key: 1,
-	rim: .35,
-	fill: .18,
-	edgeGlow: .1,
-	touchRadius: 54,
-	maxTouch: 8,
-	parallaxDegrees: 3
-};
-/** Chip-local overrides precede family roles; gradients are never accepted as a colour. */
-function resolveDotTokens(element, scale = "base") {
-	const style = getComputedStyle(element);
-	const color = (fallback, ...names) => names.map((name) => {
-		const value = style.getPropertyValue(name).trim();
-		return /^(?:\d+(?:\.\d+)?\s+){2}\d+(?:\.\d+)?$/.test(value) ? `rgb(${value.split(/\s+/).join(",")})` : value;
-	}).find((value) => value && (typeof CSS === "undefined" ? !/(?:gradient|url)\(/.test(value) : CSS.supports("color", value))) || fallback;
-	const active = color(style.color, "--ob-dot-active", "--a", "--bb-accent-text", "--bb-accent", "--accent");
-	const lightSurface = element.closest?.("[data-bb-theme]")?.getAttribute("data-bb-theme") === "light";
-	return {
-		scale,
-		...DOT_SIZES[scale],
-		colors: {
-			active,
-			light: color(active, "--ob-dot-light", "--a", lightSurface ? "--bb-accent-text" : "--bb-accent", "--accent"),
-			ink: color(style.color, "--ob-dot-ink", "--bb-ink-2", "--secondary"),
-			muted: color(style.color, "--ob-dot-muted", "--bb-ink-3", "--muted"),
-			depth: color(style.color, "--ob-dot-depth", "--haze-rgb", "--bb-aurora", "--bb-ink-3")
-		},
-		surface: color("transparent", "--ob-dot-surface", "--s", "--glass", "--bb-surface", "--bb-sheet")
-	};
-}
-var dotTimeline = (startedAt, duration = DOT_TIMING.handshake) => ({
-	startedAt,
-	duration
-});
-/** Cubic family curves, evaluated by time rather than by frame count. */
-function dotEase(progress, arrival = false) {
-	const x = Math.max(0, Math.min(1, progress));
-	const [x1, y1, x2, y2] = arrival ? [
-		.16,
-		1,
-		.3,
-		1
-	] : [
-		.2,
-		.8,
-		.2,
-		1
-	];
-	const cubic = (t, a, b) => 3 * (1 - t) ** 2 * t * a + 3 * (1 - t) * t * t * b + t ** 3;
-	let low = 0, high = 1;
-	for (let i = 0; i < 14; i++) {
-		const t = (low + high) / 2;
-		if (cubic(t, x1, x2) < x) low = t;
-		else high = t;
-	}
-	return x === 0 || x === 1 ? x : cubic((low + high) / 2, y1, y2);
-}
-//#endregion
-//#region ../packages/host/src/dot-field.ts
-var clamp = (n, low = 0, high = 1) => Math.max(low, Math.min(high, n));
-var ease = (n) => {
-	const t = clamp(n);
-	return t * t * (3 - 2 * t);
-};
-var lerp = (a, b, t) => a + (b - a) * t;
-var TAU = Math.PI * 2;
-var BANDS = 12;
-var ROLES = [
-	"active",
-	"light",
-	"ink",
-	"muted",
-	"depth"
-];
-/**
-* A decorative Canvas 2D field shared by the app and embed. Only finite effects own a RAF loop; the idle breath
-* uses compositor opacity. Coordinates and timing are deterministic so both ends can show the same handshake.
-*/
-var DotField = class {
-	get frames() {
-		return this.rendered;
-	}
-	get resolvedTokens() {
-		return this.tokens;
-	}
-	get normalizedPoints() {
-		return this.points ?? this.dots.map((p) => ({
-			x: p.x / this.width,
-			y: p.y / this.height
-		}));
-	}
-	get dotCount() {
-		return this.dots.length;
-	}
-	constructor(canvas, options = {}) {
-		this.canvas = canvas;
-		this.options = options;
-		this.bands = Array.from({ length: BANDS * ROLES.length }, () => []);
-		this.paints = [];
-		this.source = [];
-		this.dots = [];
-		this.width = 0;
-		this.height = 0;
-		this.dpr = 1;
-		this.accent = "";
-		this.surface = "";
-		this.radius = 2;
-		this.sourceRadius = 2;
-		this.at = null;
-		this.light = {
-			x: 0,
-			y: 0
-		};
-		this.part = null;
-		this.strength = 0;
-		this.playing = null;
-		this.progress = null;
-		this.frame = 0;
-		this.rendered = 0;
-		this.intersecting = true;
-		this.dead = false;
-		this.opacity = null;
-		this.resize = () => {
-			if (this.dead) return;
-			const rect = this.canvas.getBoundingClientRect();
-			const dpr = clamp(Number.isFinite(globalThis.devicePixelRatio) ? globalThis.devicePixelRatio : 1, 1, 3);
-			if (this.width === rect.width && this.height === rect.height && this.dpr === dpr) return;
-			this.width = Math.max(0, rect.width);
-			this.height = Math.max(0, rect.height);
-			this.dpr = dpr;
-			this.canvas.width = Math.round(this.width * dpr);
-			this.canvas.height = Math.round(this.height * dpr);
-			this.context?.setTransform(this.width ? this.canvas.width / this.width : 1, 0, 0, this.height ? this.canvas.height / this.height : 1, 0, 0);
-			this.layout();
-			this.visibilityChanged();
-		};
-		this.visibilityChanged = () => {
-			if (!this.visible) {
-				this.stopFrame();
-				this.opacity?.pause();
-				return;
-			}
-			this.opacity?.play();
-			this.draw(performance.now());
-			this.schedule();
-		};
-		this.motionChanged = () => {
-			this.stopFrame();
-			this.playing = null;
-			this.at = null;
-			this.part = null;
-			this.strength = 0;
-			this.light = {
-				x: 0,
-				y: 0
-			};
-			if (this.reduced && this.progress !== null) this.progress = 1;
-			this.breathe();
-			this.draw(performance.now());
-		};
-		this.context = canvas.getContext("2d");
-		this.limit = clamp(Math.floor(options.maxDots ?? 300) || 300, 1, 300);
-		this.spacing = Math.max(4, Number.isFinite(options.spacing) ? options.spacing : resolveDotTokens(canvas, options.scale).pitch);
-		this.points = options.points ? this.normalize(options.points, options.preservePoints ? 4096 : this.limit) : void 0;
-		this.motion = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
-		this.motion?.addEventListener("change", this.motionChanged);
-		canvas.ownerDocument.addEventListener("visibilitychange", this.visibilityChanged);
-		canvas.ownerDocument.defaultView?.addEventListener("resize", this.resize);
-		this.resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(this.resize) : null;
-		this.resizeObserver?.observe(canvas);
-		this.intersectionObserver = typeof IntersectionObserver === "function" ? new IntersectionObserver((entries) => {
-			this.intersecting = entries.some((entry) => entry.isIntersecting);
-			this.visibilityChanged();
-		}) : null;
-		this.intersectionObserver?.observe(canvas);
-		this.refresh();
-		this.resize();
-		this.breathe();
-	}
-	get visible() {
-		return !this.dead && !!this.context && !this.canvas.ownerDocument.hidden && this.intersecting && this.width > 0 && this.height > 0;
-	}
-	get reduced() {
-		return this.motion?.matches ?? false;
-	}
-	normalize(points, limit = this.limit) {
-		const valid = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
-		const count = Math.min(valid.length, limit);
-		return Array.from({ length: count }, (_, i) => {
-			const p = valid[Math.floor(i * valid.length / count)];
-			return {
-				x: clamp(p.x),
-				y: clamp(p.y),
-				...p.role && ROLES.includes(p.role) ? { role: p.role } : {}
-			};
-		});
-	}
-	/** Switch between a normalized glyph and the adaptive grid. */
-	setPoints(points) {
-		if (this.dead) return;
-		this.points = points ? this.normalize(points, this.options.preservePoints ? 4096 : this.limit) : void 0;
-		this.layout();
-		this.draw(performance.now());
-	}
-	/** Preserve up to 4,096 normalized QR module centres. Surplus modules fade before the bounded glyph settles. */
-	setSource(points) {
-		if (this.dead) return;
-		this.source = this.normalize(points, 4096);
-		this.measureSource();
-	}
-	layout() {
-		if (!this.width || !this.height) {
-			this.dots = [];
-			return;
-		}
-		let points = this.points;
-		if (!points) {
-			const space = Math.max(this.spacing, Math.sqrt(this.width * this.height / this.limit));
-			let cols = Math.max(1, Math.floor(this.width / space)), rows = Math.max(1, Math.floor(this.height / space));
-			while (cols * rows > this.limit) if (cols >= rows) cols--;
-			else rows--;
-			points = [];
-			for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) points.push({
-				x: (x + .5) / cols,
-				y: (y + .5) / rows
-			});
-		}
-		this.dots = points.map((p, i) => ({
-			x: p.x * this.width,
-			y: p.y * this.height,
-			role: p.role,
-			phase: (i * 137 + 17) % 997 / 997
-		}));
-		const diameter = this.options.diameter ?? this.tokens.diameter;
-		const radius = this.points && this.tokens.scale === "seal" ? Math.min(diameter, this.gridPitch(this.points) * .64) / 2 : diameter / 2;
-		this.radius = Math.min(radius, this.width / 8, this.height / 8);
-		this.measureSource();
-	}
-	gridPitch(points) {
-		let step = this.spacing;
-		for (const [axis, size] of [["x", this.width], ["y", this.height]]) {
-			const positions = [...new Set(points.map((p) => p[axis]))].sort((a, b) => a - b);
-			for (let i = 1; i < positions.length; i++) {
-				const gap = (positions[i] - positions[i - 1]) * size;
-				if (gap > 1e-4) step = Math.min(step, gap);
-			}
-		}
-		return step;
-	}
-	measureSource() {
-		this.sourceRadius = Math.max(.6, this.gridPitch(this.source) * .42);
-	}
-	/** Resolve family tokens again after a theme change, including the pairing chip's shadow tokens. */
-	refresh() {
-		if (this.dead) return;
-		this.tokens = resolveDotTokens(this.canvas, this.options.scale ?? (this.options.points ? "seal" : "base"));
-		this.accent = this.options.accent || this.tokens.colors[this.options.role ?? "active"];
-		this.surface = this.options.surface || this.tokens.surface;
-		this.layout();
-		this.draw(performance.now());
-	}
-	/** Run a finite effect. The handshake takes 1.2 seconds unless a synchronized caller drives it manually. */
-	effect(kind, duration = DOT_TIMING[kind]) {
-		if (this.dead) return;
-		this.stopFrame();
-		this.opacity?.cancel();
-		this.opacity = null;
-		this.progress = null;
-		this.playing = this.reduced ? null : {
-			kind,
-			start: performance.now(),
-			duration: Math.max(1, Number.isFinite(duration) ? duration : 700)
-		};
-		if (this.reduced) {
-			this.draw(performance.now());
-			this.opacity = this.canvas.animate?.([{ opacity: 0 }, { opacity: 1 }], {
-				duration: DOT_TIMING.fade,
-				iterations: 1
-			}) ?? null;
-			if (!this.visible) this.opacity?.pause();
-		} else {
-			this.draw(performance.now());
-			this.schedule();
-		}
-	}
-	/** A pointer or touch position in canvas-local CSS pixels. A stationary pointer never starts a loop. */
-	pointer(x, y) {
-		if (this.dead || this.reduced) return;
-		const at = x === null || !Number.isFinite(x) || !Number.isFinite(y) ? null : {
-			x,
-			y
-		};
-		if (this.at?.x === at?.x && this.at?.y === at?.y) return;
-		if (this.options.decorative) {
-			const now = performance.now();
-			this.stopFrame();
-			this.playing = null;
-			this.opacity?.cancel();
-			this.opacity = null;
-			if (at) this.at = at;
-			this.part = {
-				start: now,
-				duration: at ? DOT_TIMING.partIn : DOT_TIMING.partOut,
-				from: this.strength,
-				to: at ? 1 : 0
-			};
-			this.draw(now);
-			this.schedule();
-		} else {
-			this.at = at;
-			this.opacity?.cancel();
-			this.opacity = null;
-			this.draw(performance.now());
-		}
-	}
-	/** Light coordinates from already permitted motion input, normalized from -1 to 1. No sensor is requested. */
-	tilt(x, y) {
-		if (this.dead || this.reduced || !Number.isFinite(x) || !Number.isFinite(y)) return;
-		x = clamp(x, -1, 1);
-		y = clamp(y, -1, 1);
-		if (x === this.light.x && y === this.light.y) return;
-		this.light = {
-			x,
-			y
-		};
-		this.draw(performance.now());
-	}
-	/** Draw a deterministic QR lift, ribbon, glyph and ripple frame; it never starts its own RAF loop. */
-	handshake(progress) {
-		if (this.dead || !Number.isFinite(progress)) return;
-		this.stopFrame();
-		this.playing = null;
-		this.opacity?.cancel();
-		this.opacity = null;
-		this.progress = this.reduced ? 1 : clamp(progress);
-		this.draw(performance.now());
-	}
-	stopFrame() {
-		if (this.frame) cancelAnimationFrame(this.frame);
-		this.frame = 0;
-	}
-	schedule() {
-		if (this.visible && (this.playing || this.part) && !this.frame) this.frame = requestAnimationFrame((now) => {
-			this.frame = 0;
-			this.draw(now);
-			this.schedule();
-		});
-	}
-	breathe() {
-		this.opacity?.cancel();
-		this.opacity = !this.reduced && this.options.idle === true ? this.canvas.animate?.([
-			{ opacity: .86 },
-			{ opacity: 1 },
-			{ opacity: .86 }
-		], {
-			duration: DOT_TIMING.breathe,
-			iterations: 2
-		}) ?? null : null;
-		if (!this.visible) this.opacity?.pause();
-	}
-	/** Draw without scheduling another; the finished field has at most 300 dots, with a larger QR source during lift. */
-	draw(now) {
-		const context = this.context;
-		if (!this.visible || !context) return;
-		this.rendered++;
-		context.globalAlpha = 1;
-		context.clearRect(0, 0, this.width, this.height);
-		if (this.surface !== "transparent") {
-			context.fillStyle = this.surface;
-			context.fillRect(0, 0, this.width, this.height);
-		}
-		if (this.part) {
-			const p = clamp((now - this.part.start) / this.part.duration);
-			this.strength = lerp(this.part.from, this.part.to, dotEase(p));
-			if (p === 1) {
-				if (!this.part.to) this.at = null;
-				this.part = null;
-			}
-		}
-		const effect = this.playing;
-		const t = effect ? clamp((now - effect.start) / effect.duration) : 1;
-		const handshake = this.progress ?? (effect?.kind === "handshake" ? t : null);
-		const sourceCount = this.source.length || this.dots.length;
-		const count = handshake !== null && handshake < 1 ? Math.max(sourceCount, this.dots.length) : this.dots.length;
-		const diagonal = Math.hypot(this.width, this.height);
-		for (const band of this.bands) band.length = 0;
-		for (let i = 0; i < count; i++) {
-			const dot = this.dots[i % this.dots.length];
-			const source = this.source[i % this.source.length];
-			let x = dot?.x ?? this.width / 2, y = dot?.y ?? this.height / 2, radius = this.radius, square = false;
-			let alpha = this.points ? .76 : .25 + (dot?.phase ?? .5) * .13;
-			if (handshake !== null) {
-				const p = handshake;
-				const sx = source ? source.x * this.width : x, sy = source ? source.y * this.height : y;
-				const ribbonX = this.width * (.18 + .64 * (count > 1 ? i / (count - 1) : .5));
-				const ribbonY = this.height / 2 + Math.sin(i * .21) * .9;
-				square = p < .1;
-				if (p < .22) {
-					x = sx;
-					y = sy - Math.sin(p / .22 * Math.PI / 2) * Math.min(12, this.height * .15);
-					radius = lerp(this.sourceRadius, this.radius, ease(p / .22));
-				} else if (p < .45) {
-					const lift = Math.min(12, this.height * .15), f = ease((p - .22) / .23);
-					x = lerp(sx, ribbonX, f);
-					y = lerp(sy - lift, ribbonY, f);
-				} else if (p < .72) {
-					const f = ease((p - .45) / .27);
-					x = lerp(ribbonX, x, f);
-					y = lerp(ribbonY, y, f);
-				} else {
-					const wave = (p - .72) / .28;
-					const distance = Math.hypot(x - this.width / 2, y - this.height / 2) / diagonal;
-					const ring = Math.exp(-(((distance - wave * .65) / .12) ** 2)) * Math.sin(wave * Math.PI);
-					radius *= 1 + ring * .2;
-					alpha += ring * .24;
-				}
-				if (i >= sourceCount) alpha *= ease((p - .22) / .5);
-				if (i >= this.dots.length) alpha *= 1 - ease((p - .42) / .2);
-			} else if (effect?.kind === "assemble") {
-				const f = dotEase((t - (dot?.phase ?? 0) * .125) / .875, true);
-				x = lerp(this.width / 2, x, f);
-				y = lerp(this.height / 2, y, f);
-				alpha *= f;
-			} else if (effect?.kind === "ripple") {
-				const distance = Math.hypot(x - this.width / 2, y - this.height / 2) / diagonal;
-				const ring = Math.exp(-(((distance - dotEase(t, true) * .65) / .1) ** 2)) * Math.sin(t * Math.PI);
-				radius *= 1 + ring * .2;
-				alpha += ring * .4;
-			} else if (effect?.kind === "shimmer") {
-				const shine = Math.exp(-(((x / this.width - dotEase(t) * 1.4 + .2) / .12) ** 2)) * Math.sin(t * Math.PI);
-				alpha += shine * .5;
-			}
-			if (this.options.decorative && this.at && !this.reduced && handshake === null) {
-				const dx = x - this.at.x, dy = y - this.at.y, distance = Math.hypot(dx, dy);
-				const influence = Math.max(0, 1 - distance / DOT_MATERIAL.touchRadius) ** 2 * this.strength;
-				if (distance > 0) {
-					x += dx / distance * influence * Math.min(DOT_MATERIAL.maxTouch, this.spacing * .45);
-					y += dy / distance * influence * Math.min(DOT_MATERIAL.maxTouch, this.spacing * .45);
-				}
-				alpha += influence * .52;
-			}
-			if (!this.options.decorative && this.at && !this.reduced && handshake === null) alpha += Math.max(0, 1 - Math.hypot(x - this.at.x, y - this.at.y) / DOT_MATERIAL.touchRadius) ** 2 * .24;
-			if (!this.reduced) alpha += ((x / this.width - .5) * this.light.x + (y / this.height - .5) * this.light.y) * .2;
-			if (alpha <= 0) continue;
-			const band = ROLES.indexOf(dot?.role ?? this.options.role ?? "active") * BANDS + Math.round(clamp(alpha) * 11);
-			const paint = this.paints[i] ?? (this.paints[i] = {
-				x,
-				y,
-				radius,
-				square
-			});
-			paint.x = x;
-			paint.y = y;
-			paint.radius = radius;
-			paint.square = square;
-			this.bands[band].push(paint);
-		}
-		context.fillStyle = this.accent;
-		for (let b = 0; b < this.bands.length; b++) {
-			if (!this.bands[b].length) continue;
-			context.fillStyle = this.options.accent || this.tokens.colors[ROLES[Math.floor(b / BANDS)]];
-			context.globalAlpha = b % BANDS / 11;
-			context.beginPath();
-			for (const dot of this.bands[b]) if (dot.square) context.rect(dot.x - dot.radius, dot.y - dot.radius, dot.radius * 2, dot.radius * 2);
-			else {
-				context.moveTo(dot.x + dot.radius, dot.y);
-				context.arc(dot.x, dot.y, dot.radius, 0, TAU);
-			}
-			context.fill();
-		}
-		context.globalAlpha = 1;
-		if (effect && t === 1) {
-			this.playing = null;
-			this.stopFrame();
-		}
-	}
-	/** Release RAF, observers, listeners and compositor animation when its owning surface closes. */
-	destroy() {
-		if (this.dead) return;
-		this.dead = true;
-		this.stopFrame();
-		this.opacity?.cancel();
-		this.resizeObserver?.disconnect();
-		this.intersectionObserver?.disconnect();
-		this.motion?.removeEventListener("change", this.motionChanged);
-		this.canvas.ownerDocument.removeEventListener("visibilitychange", this.visibilityChanged);
-		this.canvas.ownerDocument.defaultView?.removeEventListener("resize", this.resize);
-	}
-};
-//#endregion
+import { a as dotClock, i as DotLoader, n as DOT_LOADER_STYLE, r as DotField, u as dotTimeline } from "./origin-BKT9Ocdt.js";
+import { a as mountLook, c as syncLook, d as showAsk, f as family, h as LINK_LOGO, i as mountLogo, l as radioGroup, m as ICONS, n as lightCards, o as settle, p as dotLoading, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-CtH5l-hq.js";
+import { a as glyphDots, i as SEAL_GLYPHS, n as sealNames } from "./seal-BlqsjHPq.js";
 //#region ../packages/host/src/seal.ts
 var fields = /* @__PURE__ */ new WeakMap();
 /** Three fixed-grid silhouettes, with one grid column between them. */
@@ -538,9 +13,9 @@ function sealPoints(seal) {
 	})));
 }
 /** DOM-only, accessible rendering works under Trusted Types and the embed's strict CSP. */
-function sealElement(seal) {
+function sealElement(seal, compact = false) {
 	const row = document.createElement("div");
-	row.className = "connection-seal";
+	row.className = `connection-seal${compact ? " seal-compact" : ""}`;
 	row.setAttribute("role", "img");
 	row.setAttribute("aria-label", `Connection seal: ${sealNames(seal)}`);
 	row.dataset.seal = seal.join("-");
@@ -558,7 +33,8 @@ function sealElement(seal) {
 		points: sealPoints(seal),
 		surface: "transparent",
 		scale: "seal",
-		preservePoints: true
+		preservePoints: true,
+		pixelAligned: true
 	});
 	fields.set(row, field);
 	const point = (event) => {
@@ -580,116 +56,348 @@ function destroySeal(row) {
 	fields.delete(row);
 }
 var SEAL_STYLE = `
-.connection-seal{display:grid;justify-items:center;color:var(--a,var(--accent,currentColor));padding:10px 0;gap:6px}
+.connection-seal,.seal-moment,.seal-stage{--ob-dot-active:var(--seal-ink,var(--bb-ink,var(--ink,currentColor)))}
+.connection-seal{display:grid;justify-items:center;color:var(--ob-dot-active);padding:10px 0;gap:6px;background:var(--seal-plate,var(--bb-sheet,var(--sheet,#141415)));border-radius:12px}
 .connection-seal canvas{display:block;width:224px;max-width:100%;height:70px;touch-action:pan-y}
+.connection-seal.seal-compact{display:inline-grid;flex:none;padding:0;gap:0}
+.seal-compact canvas{width:110px;height:34.6px;transition:transform 120ms var(--bb-ease,var(--ease,ease-out))}
+@media(prefers-reduced-motion:reduce){.seal-compact canvas{transform:none!important;transition:none}}
+.seal-compact .seal-names{display:none}
 .seal-names{display:grid;grid-template-columns:repeat(3,1fr);width:224px;max-width:100%;text-align:center;gap:8px}
 .seal-names small{font:600 11px/1.3 var(--font,system-ui);color:var(--ink,inherit)}
-.seal-moment{position:fixed;bottom:max(24px,env(safe-area-inset-bottom));right:24px;width:288px;box-sizing:border-box;padding:18px;color:var(--ink);background:var(--s,var(--sheet));border:1px solid var(--line,var(--edge,#8885));border-radius:24px;box-shadow:0 16px 48px #0006;backdrop-filter:blur(28px) saturate(150%);z-index:50;pointer-events:none;font:600 13px/1.4 var(--font,system-ui);text-align:center}
+.seal-moment{position:fixed;bottom:max(88px,env(safe-area-inset-bottom));right:24px;width:288px;box-sizing:border-box;padding:18px;color:var(--ink);background:var(--s,var(--sheet));border:1px solid var(--line,var(--edge,#8885));border-radius:24px;box-shadow:var(--bb-frost-shadow,0 16px 48px #0006);backdrop-filter:var(--bb-frost-blur,blur(28px) saturate(150%));z-index:50;pointer-events:none;font:600 13px/1.4 var(--font,system-ui);text-align:center}
 .seal-moment p{margin:4px 0}.seal-moment canvas{display:block;width:250px;max-width:100%;height:80px;margin:12px auto 0}
 .seal-first{font-size:11px;font-weight:500}.seal-first>span{display:block}.seal-first .trust-domain{display:flex;justify-content:center;margin-bottom:4px}
 .seal-moment .seal-names{margin:6px auto 0;width:250px;opacity:0}.seal-moment[data-settled] .seal-names{opacity:1}
 @media(max-width:520px){.seal-moment{right:12px;left:12px;width:auto;bottom:auto;top:calc(72px + env(safe-area-inset-top))}}
 `;
-/** One 1.2-second sequence. The authenticated peers schedule it; it never takes focus or catches input. */
-function sealMoment(parent, seal, delayMs, url, notice) {
-	const box = document.createElement("div");
-	box.className = "seal-moment";
-	box.setAttribute("aria-hidden", "true");
-	const title = document.createElement("p");
-	title.textContent = "Connection seal";
-	const canvas = document.createElement("canvas");
-	const labels = document.createElement("div");
-	labels.className = "seal-names";
-	for (const index of seal) {
-		const label = document.createElement("small");
-		label.textContent = SEAL_GLYPHS[index].name;
-		labels.append(label);
-	}
-	box.append(title, canvas, labels);
-	if (notice) box.prepend(notice);
-	parent.append(box);
-	if (parent instanceof ShadowRoot) {
-		const style = getComputedStyle(parent.querySelector(".wrap") ?? parent.host);
-		for (const token of [
-			"--a",
-			"--ink",
-			"--line",
-			"--edge"
-		]) box.style.setProperty(token, style.getPropertyValue(token));
-		box.style.setProperty("--s", style.getPropertyValue("--glass"));
-	}
-	const field = new DotField(canvas, {
-		points: sealPoints(seal),
-		surface: "transparent",
-		scale: "seal",
-		preservePoints: true,
-		idle: false
-	});
-	if (url) {
-		const qr = encode(url, {
-			ecc: "Q",
-			border: 0
+//#endregion
+//#region ../packages/host/src/seal-surface.ts
+var SEAL_SURFACE_STYLE = `
+.seal-stage{position:relative;width:100%;height:100%;isolation:isolate;border-radius:16px;background:var(--seal-plate,var(--bb-sheet,var(--sheet,#141415)));color:var(--seal-ink,var(--bb-ink,var(--ink,#fff)));overflow:hidden}
+.seal-stage .seal-plane{position:absolute;inset:0;transform-origin:50% 50%;will-change:transform}
+.seal-stage .seal-qr{position:absolute;inset:0;display:grid;place-items:center;background:#fff;border-radius:inherit}
+.seal-stage .seal-qr>svg{display:block;width:100%;height:100%}
+.seal-stage .seal-qr .dot-loader{color:#0b0d10}
+.seal-stage .dot-loader{position:absolute;left:50%;top:50%;translate:-50% -50%}
+.seal-stage .seal-peers{position:absolute;inset:12px;display:grid;align-content:center;gap:8px;grid-template-columns:1fr}
+.seal-stage[data-many] .seal-peers{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 6px;inset:8px}
+.seal-stage[data-dense] .seal-peers{gap:4px 6px}.seal-stage[data-dense] .seal-peer>small{font-size:8px;line-height:1;margin-top:1px}
+.seal-stage .seal-peer{display:grid;grid-template-columns:minmax(0,1fr);width:100%;justify-items:center;min-width:0;color:inherit;border:0;padding:0;background:none;cursor:pointer;font:500 10px/1.2 var(--font,system-ui)}
+.seal-stage .connection-seal{grid-template-columns:minmax(0,1fr);width:100%;min-width:0;padding:0;background:var(--seal-plate,var(--bb-sheet,var(--sheet,#141415)));border-radius:6px}
+.seal-stage .connection-seal canvas{width:100%;height:auto;aspect-ratio:35/11}
+.seal-stage .seal-names{display:none}.seal-stage .seal-peer>small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}
+.seal-stage .seal-flight{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.seal-action{display:grid;place-items:center;flex:none;width:44px;height:44px;border:0;background:transparent;color:var(--seal-ink,var(--bb-ink,var(--ink,#fff)));border-radius:50%;font:300 24px/1 system-ui;cursor:pointer}
+.seal-stage>.seal-action{position:absolute;right:2px;bottom:2px;z-index:2;background:var(--seal-plate,var(--bb-sheet,var(--sheet,#141415)))}
+.seal-action:focus-visible,.seal-stage .seal-peer:focus-visible{outline:2px solid currentColor;outline-offset:-3px}
+.seal-stage[data-qr] .seal-action{background:#fff;color:#14171c}
+.seal-action[hidden],.seal-stage [hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.seal-stage .seal-plane{transform:none!important;filter:none!important}}
+`;
+/** The QR's footprint is also the resting connection surface. No pairing state removes it. */
+var SealSurface = class {
+	constructor(options) {
+		this.options = options;
+		this.el = document.createElement("div");
+		this.plane = document.createElement("div");
+		this.qr = document.createElement("div");
+		this.peers = document.createElement("div");
+		this.flight = document.createElement("canvas");
+		this.action = document.createElement("button");
+		this.loader = new DotLoader({
+			size: 64,
+			label: "Making a pairing QR code"
 		});
-		const points = [];
-		for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) if (qr.data[y][x]) points.push({
-			x: .36 + (x + .5) / qr.size * .28,
-			y: .08 + (y + .5) / qr.size * .84
+		this.rows = /* @__PURE__ */ new Map();
+		this.source = [];
+		this.showingQr = true;
+		this.adding = false;
+		this.stop = () => {};
+		this.busy = false;
+		this.motion = matchMedia("(prefers-reduced-motion: reduce)");
+		this.lastActivity = -Infinity;
+		this.dead = false;
+		this.motionChanged = () => {
+			this.plane.style.removeProperty("transform");
+			this.plane.style.removeProperty("filter");
+		};
+		this.el.className = "seal-stage";
+		this.plane.className = "seal-plane";
+		this.qr.className = "seal-qr";
+		this.peers.className = "seal-peers";
+		this.flight.className = "seal-flight";
+		this.action.className = "seal-action";
+		this.action.type = "button";
+		this.flight.setAttribute("aria-hidden", "true");
+		this.qr.append(this.loader.el);
+		this.plane.append(this.qr, this.peers, this.flight);
+		this.el.append(this.plane, this.action);
+		this.field = new DotField(this.flight, {
+			points: [],
+			preservePoints: true,
+			scale: "seal",
+			surface: "transparent",
+			idle: false
 		});
-		field.setSource(points);
+		this.action.onclick = () => this.adding ? this.cancel() : this.add();
+		this.el.addEventListener("pointermove", (event) => {
+			if (this.motion.matches || this.busy || this.showingQr) return;
+			const rect = this.el.getBoundingClientRect();
+			this.plane.style.transform = `translate3d(${((event.clientX - rect.left) / rect.width - .5) * 3}px,${((event.clientY - rect.top) / rect.height - .5) * 2}px,0)`;
+		}, { passive: true });
+		this.el.addEventListener("pointerleave", () => this.plane.style.removeProperty("transform"));
+		this.el.addEventListener("pointerenter", () => this.shimmer());
+		this.el.addEventListener("focusin", () => this.shimmer());
+		this.motion.addEventListener("change", this.motionChanged);
+		this.rest();
 	}
-	field.handshake(0);
-	let raf = 0;
-	let dead = false;
-	const reduced = matchMedia("(prefers-reduced-motion: reduce)");
-	if (reduced.matches) box.style.opacity = "0";
-	let fade;
-	const start = setTimeout(() => {
+	/** Mount beside the QR when the card has a footer, keeping every peer's glyphs unobstructed. */
+	get addControl() {
+		return this.action;
+	}
+	/** An unavailable code is a static symbol, not work that appears to continue forever. */
+	setPlaceholder(symbol) {
+		this.loader.finish();
+		this.source = [];
+		this.qr.replaceChildren(symbol);
+	}
+	/** Reuse the same loader when the service starts making a code again. */
+	loading() {
+		this.source = [];
+		this.qr.replaceChildren(this.loader.el);
+		this.loader.start();
+	}
+	/** A scannable SVG stays still at rest; its own module centres become the moving source. */
+	setQr(svg, modules) {
+		this.source = modules;
+		this.loader.finish();
+		this.qr.replaceChildren(svg);
+		if (this.busy && this.showingQr) this.field.setSource(modules);
+		if (this.showingQr && !this.busy) {
+			this.field.setPoints(modules);
+			this.field.setSource([
+				{
+					x: .4,
+					y: .5
+				},
+				{
+					x: .5,
+					y: .5
+				},
+				{
+					x: .6,
+					y: .5
+				}
+			]);
+			this.animate(performance.now(), false, () => this.rest(), 240);
+		}
+	}
+	sync(list) {
+		if (this.dead) return;
+		const leaving = [...this.rows.keys()].filter((id) => !list.some((peer) => peer.id === id));
+		const old = leaving.length ? leaving.flatMap((id) => this.points(id)) : this.points();
+		for (const id of leaving) {
+			const row = this.rows.get(id);
+			destroySeal(row.seal);
+			row.button.remove();
+			this.rows.delete(id);
+		}
+		for (const peer of list) {
+			let row = this.rows.get(peer.id);
+			if (row?.seal.dataset.seal !== peer.seal.join("-")) {
+				if (row) {
+					destroySeal(row.seal);
+					row.button.remove();
+				}
+				const button = document.createElement("button");
+				button.type = "button";
+				button.className = "seal-peer";
+				button.dataset.peer = peer.id;
+				button.setAttribute("aria-label", `${peer.name}. Compare connection seal`);
+				const seal = sealElement(peer.seal);
+				const name = document.createElement("small");
+				name.textContent = peer.name;
+				button.append(seal, name);
+				button.onclick = () => this.options.compare(peer.id);
+				row = {
+					peer,
+					button,
+					seal
+				};
+				this.rows.set(peer.id, row);
+				this.peers.append(button);
+			}
+			row.peer = peer;
+		}
+		this.el.toggleAttribute("data-many", list.length > 1);
+		this.el.toggleAttribute("data-dense", list.length > 4);
+		if (leaving.length && !list.length) {
+			this.adding = false;
+			this.showingQr = true;
+			this.field.setPoints(old);
+			this.field.setSource(this.source);
+			this.animate(performance.now(), true, () => this.rest());
+		} else if (leaving.length) {
+			const burst = old.filter((_, i) => i % 3 === 0);
+			this.field.setPoints(burst);
+			this.field.setSource([{
+				x: .9,
+				y: .9
+			}]);
+			this.animate(performance.now(), true, () => this.rest(), 480, false);
+		} else if (!this.busy) this.rest();
+	}
+	/** The caller's scheduled clock survives delayed delivery and rendering work. */
+	reveal(id, delayMs) {
+		const row = this.rows.get(id);
+		if (!row) return;
+		const started = performance.now() + delayMs;
+		const timeline = dotTimeline(Date.now() + delayMs);
+		const first = this.showingQr;
+		this.adding = false;
+		this.showingQr = false;
+		this.field.setPoints(this.points(id));
+		this.field.setSource(first ? this.source : Array.from({ length: 60 }, (_, i) => ({
+			x: .88 + Math.cos(i) * .035,
+			y: .88 + Math.sin(i) * .035
+		})));
+		row.button.style.visibility = "hidden";
+		this.flight.dataset.timeline = JSON.stringify(timeline);
+		this.flight.dataset.started = String(started);
+		this.animate(started, false, () => {
+			row.button.style.removeProperty("visibility");
+			this.rest();
+		}, 1200, first);
+	}
+	add() {
+		if (!this.rows.size || this.adding) return;
+		this.options.add();
+		this.adding = true;
+		this.showingQr = true;
+		this.field.setPoints(this.points());
+		this.field.setSource(this.source);
+		this.animate(performance.now(), true, () => this.rest());
+	}
+	cancel() {
+		this.adding = false;
+		this.showingQr = false;
+		this.field.setPoints(this.points());
+		this.field.setSource(this.source);
+		this.animate(performance.now(), false, () => this.rest());
+	}
+	/** Opening an already connected surface shows its seal without replaying the handshake. */
+	settle() {
+		this.stop();
+		this.busy = false;
+		this.showingQr = !this.rows.size;
+		this.adding = false;
+		this.rest();
+	}
+	/** Activity is a finite breath, not an idle claim that a silent link is sending input. */
+	activity() {
+		const now = performance.now();
+		if (now - this.lastActivity < 700 || this.busy || this.showingQr || this.motion.matches) return;
+		this.lastActivity = now;
+		this.stop();
+		this.plane.style.removeProperty("filter");
+		this.stop = dotClock((t) => {
+			const p = Math.min(1, (t - now) / 640);
+			this.plane.style.transform = `translate3d(0,${-Math.sin(p * Math.PI)}px,0)`;
+			if (p === 1) this.plane.style.removeProperty("transform");
+			return p < 1;
+		});
+	}
+	shimmer() {
+		if (this.motion.matches || this.busy || this.showingQr) return;
 		const started = performance.now();
-		const timeline = dotTimeline(Date.now());
-		box.dataset.timeline = JSON.stringify(timeline);
-		box.style.removeProperty("opacity");
-		box.dataset.started = String(started);
-		if (reduced.matches) {
-			field.handshake(1);
-			box.dataset.settled = "";
-			fade = box.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: DOT_TIMING.fade });
+		this.stop();
+		this.plane.style.removeProperty("transform");
+		this.stop = dotClock((now) => {
+			const p = Math.min(1, (now - started) / 700);
+			this.plane.style.filter = `brightness(${1 + Math.sin(p * Math.PI) * .12})`;
+			if (p === 1) this.plane.style.removeProperty("filter");
+			return p < 1;
+		});
+	}
+	points(id) {
+		const rect = this.el.getBoundingClientRect();
+		if (!rect.width || !rect.height) return [];
+		const hidden = this.peers.hidden;
+		this.peers.hidden = false;
+		const points = [...this.rows.values()].filter((row) => !id || row.peer.id === id).flatMap((row) => {
+			const canvas = row.seal.querySelector("canvas").getBoundingClientRect();
+			return sealPoints(row.peer.seal).map((point) => ({
+				x: (canvas.left - rect.left + point.x * canvas.width) / rect.width,
+				y: (canvas.top - rect.top + point.y * canvas.height) / rect.height
+			}));
+		});
+		this.peers.hidden = hidden;
+		return points;
+	}
+	animate(started, reverse, done, duration = 1200, hidePeers = true) {
+		this.stop();
+		this.busy = true;
+		this.plane.style.removeProperty("filter");
+		this.plane.style.removeProperty("transform");
+		this.flight.hidden = false;
+		this.qr.hidden = true;
+		this.peers.hidden = hidePeers;
+		this.action.hidden = true;
+		const finish = () => {
+			this.busy = false;
+			this.flight.hidden = true;
+			done();
+		};
+		delete this.flight.dataset.settled;
+		if (this.motion.matches || performance.now() - started >= duration) {
+			this.flight.dataset.progress = "1.000";
+			this.flight.dataset.settled = "";
+			this.field.handshake(reverse ? 0 : 1);
+			finish();
 			return;
 		}
-		const frame = (now) => {
-			if (dead) return;
-			if (reduced.matches) {
-				field.handshake(1);
-				box.dataset.settled = "";
-				return;
+		this.stop = dotClock((now) => {
+			if (this.motion.matches || now - started >= duration) {
+				this.flight.dataset.progress = "1.000";
+				this.flight.dataset.settled = "";
+				this.field.handshake(reverse ? 0 : 1);
+				finish();
+				return false;
 			}
-			const progress = Math.min(1, (now - started) / 1200);
-			field.handshake(progress);
-			box.dataset.progress = progress.toFixed(3);
-			if (progress >= .72) box.dataset.settled = "";
-			if (progress < 1) raf = requestAnimationFrame(frame);
-		};
-		raf = requestAnimationFrame(frame);
-	}, Math.max(0, delayMs));
-	const cleanup = () => {
-		dead = true;
-		clearTimeout(start);
-		clearTimeout(end);
-		cancelAnimationFrame(raf);
-		fade?.cancel();
-		field.destroy();
-		box.remove();
-	};
-	const end = setTimeout(cleanup, Math.max(0, delayMs) + 3e3);
-	return cleanup;
-}
+			const p = Math.max(0, Math.min(1, (now - started) / duration));
+			this.flight.dataset.progress = p.toFixed(3);
+			this.field.handshake(reverse ? 1 - p : p);
+			return true;
+		});
+	}
+	rest() {
+		this.rows.forEach((row) => row.button.style.removeProperty("visibility"));
+		this.el.toggleAttribute("data-qr", this.showingQr);
+		this.qr.hidden = !this.showingQr;
+		this.peers.hidden = this.showingQr;
+		this.flight.hidden = true;
+		this.action.hidden = !this.rows.size;
+		this.action.textContent = this.adding ? "×" : "+";
+		this.action.setAttribute("aria-label", this.adding ? "Cancel adding a phone" : "Add a phone");
+	}
+	destroy() {
+		this.dead = true;
+		this.stop();
+		this.loader.destroy();
+		this.field.destroy();
+		this.rows.forEach((row) => destroySeal(row.seal));
+		this.motion.removeEventListener("change", this.motionChanged);
+	}
+};
 //#endregion
 //#region src/popup/popup.ts
 /**
 * Popup: the ob.Pal lockup with the link's status, and the controls: what the phone drives (Controller / 3D / Keys /
 * PC), and where: this tab (with the optional "All sites" permission), or for the PC target, ob.Pal Desktop: the whole
 * PC, or the program in front (allow it, or see what is being controlled), with the gestures that drive it. While no
-* phone is connected the pairing QR sits beside the controls; once one is, it is the status in the bar (its name, and
-* × to disconnect) and the controls have the popup to themselves. The palette button picks the surface and colour
+* phone is connected the pairing QR sits beside the controls; once one is, its dots become the persistent seal in
+* that same area. The palette button picks the surface and colour
 * (../ui/look.ts). It renders from storage (written by the service worker) and asks the worker to change things.
 *
 * Two kinds of code: the online one (through the room service) and, for a remembered phone, a direct LAN code
@@ -844,8 +552,7 @@ var parseFrames = (x) => {
 var app = document.getElementById("app");
 app.innerHTML = `
   <header class="bar rise">
-    <span class="logo" aria-label="ob.Pal"><span class="mark-slot" data-mark></span>${LOGO_WORD}</span>
-    <span class="tag">Link</span>
+    <span class="logo" aria-label="ob.Pal Link">${LINK_LOGO}</span>
     <span class="conn" id="conn">
       <span class="status" id="status" role="status"><i aria-hidden="true"></i><span id="status-t"></span><b id="device-name" hidden></b></span>
       <span class="facts" id="facts" hidden>${ICONS.lock}<span id="facts-t"></span></span>
@@ -863,7 +570,8 @@ app.innerHTML = `
       <div class="scan" id="scan">
         <div class="qr" id="qr" role="img" aria-label="Pairing QR code"></div>
         <p class="scan-hint" id="scan-hint">${ICONS.phone}<span id="scan-t">Scan with your phone</span></p>
-        <p class="scan-check"><b>obpal.blackboxes.net</b><br />Opens in your phone’s browser · no app · no account<br />Check your camera shows obpal.blackboxes.net<br /><a href="https://obpal.blackboxes.net/trust/" target="_blank" rel="noopener">How to check ob.Pal</a></p>
+        <div class="pair-icons"><span role="img" aria-label="Scan with your phone’s camera" title="Scan with your phone’s camera">${LINK_ICONS.scan}</span><span role="img" aria-label="No app needed" title="No app needed">${LINK_ICONS.noApp}</span><span role="img" aria-label="No account needed" title="No account needed">${LINK_ICONS.noAccount}</span><span role="img" aria-label="Encrypted, peer to peer" title="Encrypted, peer to peer">${ICONS.lock}</span></div>
+        <details class="scan-check"><summary aria-label="Pairing details">${ICONS.help}</summary><b>obpal.blackboxes.net</b><br />Opens in your phone’s browser · no app · no account<br />Check your camera shows obpal.blackboxes.net<br /><a href="https://obpal.blackboxes.net/trust/" target="_blank" rel="noopener">How to check ob.Pal</a></details>
         <div class="codes" id="codes" role="radiogroup" aria-label="Which code to show" hidden>
           <button class="code" type="button" role="radio" data-code="cloud" title="Through ob.Pal (needs internet)">${LINK_ICONS.cloud}<span>Online</span></button>
           <button class="code" type="button" role="radio" data-code="lan" title="Direct over Wi-Fi, no internet needed (remembered phones only)">${LINK_ICONS.lan}<span>Direct</span></button>
@@ -929,16 +637,45 @@ app.insertBefore(askEl, app.querySelector(".grid"));
 var $ = (id) => document.getElementById(id);
 $("try-demo").addEventListener("click", () => void chrome.tabs.create({ url: LINK_TRY_URL }));
 var sealStyle = document.createElement("style");
-sealStyle.textContent = SEAL_STYLE;
+sealStyle.textContent = SEAL_STYLE + SEAL_SURFACE_STYLE + DOT_LOADER_STYLE + `
+.seal-popup:not([data-expanded]){padding:6px 12px}
+.seal-popup:not([data-expanded])>b,.seal-popup:not([data-expanded])>p{display:none}
+#seal-glyphs{display:grid;place-items:center;min-height:44px;cursor:pointer;border-radius:12px}
+#seal-glyphs:focus-visible{outline:2px solid var(--bb-accent-text);outline-offset:2px}
+`;
 document.head.append(sealStyle);
-var stopMoment = () => {};
+var surface = new SealSurface({
+	add: () => {},
+	compare: () => {
+		$("link-seal").hidden = false;
+		if (!$("link-seal").hasAttribute("data-expanded")) $("seal-open").click();
+	}
+});
+$("qr").removeAttribute("role");
+$("qr").replaceChildren(surface.el);
+document.querySelector(".pair-icons").append(surface.addControl);
+chrome.runtime.onMessage.addListener((message, sender) => {
+	if (sender.id === chrome.runtime.id && message?.to === "seal-ui" && message.type === "activity") surface.activity();
+});
 $("seal-open").addEventListener("click", () => {
-	const show = $("link-seal").hidden;
+	const show = !$("link-seal").hasAttribute("data-expanded");
+	$("link-seal").toggleAttribute("data-expanded", show);
 	$("link-seal").hidden = !show;
+	$("seal-glyphs").querySelector(".connection-seal")?.classList.toggle("seal-compact", !show);
 	$("seal-open").setAttribute("aria-expanded", String(show));
 });
+$("seal-glyphs").setAttribute("role", "button");
+$("seal-glyphs").setAttribute("tabindex", "0");
+$("seal-glyphs").setAttribute("aria-label", "Compare connection seal");
+$("seal-glyphs").onclick = () => $("seal-open").click();
+$("seal-glyphs").onkeydown = (event) => {
+	if (event.key === "Enter" || event.key === " ") {
+		event.preventDefault();
+		$("seal-open").click();
+	}
+};
 addEventListener("pagehide", () => {
-	stopMoment();
+	surface.destroy();
 	const seal = $("seal-glyphs").querySelector(".connection-seal");
 	if (seal) destroySeal(seal);
 }, { once: true });
@@ -956,7 +693,6 @@ var momentKey = (link) => link?.seal && link.sealAt !== void 0 ? `${link.seal.jo
 function revealSeal() {
 	const link = state.link;
 	if (link?.status !== "connected" || !link.seal) {
-		stopMoment();
 		momentFor = null;
 		return;
 	}
@@ -964,9 +700,8 @@ function revealSeal() {
 	if (!key || key === momentFor) return;
 	momentFor = key;
 	const delayMs = link.sealAt - Date.now();
-	if (delayMs < 0 || delayMs > 350) return;
-	stopMoment();
-	stopMoment = sealMoment(document.body, link.seal, delayMs, qrFor && qrFor !== "offline" ? qrFor : void 0);
+	if (delayMs > 350) return;
+	surface.reveal("phone", delayMs);
 }
 var RESTRICTED = /^https:\/\/(chromewebstore\.google\.com|chrome\.google\.com\/webstore|microsoftedge\.microsoft\.com\/addons)/i;
 var scriptable = (url) => !!url && /^(https?|file):/i.test(url) && !RESTRICTED.test(url);
@@ -994,6 +729,7 @@ function render() {
 	const link = state.link;
 	const status = link?.status ?? "starting";
 	const connected = status === "connected";
+	app.querySelector(".pair-title").textContent = connected ? "Connection seal" : "Pair a phone";
 	$("journey-pair").dataset.done = String(connected);
 	const enabled = state.mode === "pc" ? state.pc.link === "ready" && state.pc.status?.enabled === true && !state.pc.config?.paused && !state.pc.status?.panic && connectedPhone() !== null && accessOf(state.answers, connectedPhone().key) === "allow" : state.tab !== null && state.tab === state.current?.id;
 	$("journey-enable").dataset.done = String(enabled);
@@ -1002,6 +738,12 @@ function render() {
 	$("status").dataset.s = status;
 	$("conn").dataset.s = status;
 	$("status-t").textContent = STATUS[status];
+	$("status-t").classList.toggle("dot-wait-label", [
+		"starting",
+		"ready",
+		"connecting"
+	].includes(status));
+	dotLoading($("status"), status === "starting" || ["ready", "connecting"].includes(status) && !!link?.url, STATUS[status]);
 	$("device-name").hidden = !connected;
 	$("device-name").textContent = link?.device || "Phone";
 	$("unpair").hidden = !connected;
@@ -1009,33 +751,39 @@ function render() {
 	const oldSeal = $("seal-glyphs").querySelector(".connection-seal");
 	if (oldSeal?.dataset.seal !== link?.seal?.join("-")) {
 		if (oldSeal) destroySeal(oldSeal);
-		$("seal-glyphs").replaceChildren(...connected && link?.seal ? [sealElement(link.seal)] : []);
+		$("seal-glyphs").replaceChildren(...connected && link?.seal ? [sealElement(link.seal, !$("link-seal").hasAttribute("data-expanded"))] : []);
 	}
+	$("seal-glyphs").setAttribute("aria-label", `${$("seal-glyphs").querySelector(".connection-seal")?.getAttribute("aria-label") ?? "Connection seal"}. Compare both screens`);
+	$("link-seal").hidden = !connected || !link?.seal || !$("link-seal").hasAttribute("data-expanded");
 	if (!connected || !link?.seal) {
-		$("link-seal").hidden = true;
+		$("link-seal").removeAttribute("data-expanded");
 		$("seal-open").setAttribute("aria-expanded", "false");
 	}
 	renderFacts();
 	app.classList.toggle("linked", connected);
-	$("pair").hidden = connected;
+	$("pair").hidden = false;
+	surface.sync(connected && link?.seal ? [{
+		id: "phone",
+		name: link.device || "Phone",
+		seal: link.seal
+	}] : []);
+	if (connected && link?.seal && !momentReady) surface.settle();
 	showAsk(askEl, askFor(state.mode, connectedPhone(), state.answers, state.pcPermission), () => chips.find((c) => c.getAttribute("aria-checked") === "true")?.focus());
 	const code = shownCode();
 	const lanPhone = link?.pairs.find((p) => p.id === link.lanFor);
 	const qr = $("qr");
 	const qrKey = code.url || (status === "offline" ? "offline" : "");
-	if (!connected && qrKey !== qrFor) {
+	if (qrKey !== qrFor) {
 		qrFor = qrKey;
-		qr.innerHTML = code.url ? renderSVG(code.url, {
-			ecc: code.kind === "lan" ? "L" : "M",
-			border: 1,
-			blackColor: "#0a0a0a",
-			whiteColor: "#ffffff"
-		}) : status === "offline" ? `<span class="qr-off">${LINK_ICONS.cloudOff}</span>` : "<span class=\"qr-wait\"></span>";
-		qr.classList.remove("sweep");
-		if (code.url) {
-			qr.offsetWidth;
-			qr.classList.add("sweep");
-		}
+		if (code.url) surface.setQr(brandedQrElement(code.url), qrDotPoints(code.url));
+		else if (status === "offline") {
+			const symbol = document.createElement("span");
+			symbol.className = "qr-off";
+			symbol.setAttribute("role", "img");
+			symbol.setAttribute("aria-label", "No internet. Pairing code unavailable.");
+			symbol.innerHTML = LINK_ICONS.cloudOff;
+			surface.setPlaceholder(symbol);
+		} else surface.loading();
 	}
 	qr.classList.toggle("off", !code.url && status === "offline");
 	qr.dataset.kind = code.kind;
@@ -1055,6 +803,7 @@ function render() {
 	const can = scriptable(cur?.url);
 	tabBtn.setAttribute("aria-checked", String(cur?.id !== void 0 && state.tab === cur.id));
 	tabBtn.setAttribute("aria-busy", String(state.busy));
+	dotLoading(tabBtn, state.busy, "Applying tab permission");
 	tabBtn.disabled = state.busy || !can;
 	$("tab-host").textContent = can ? hostOf(cur?.url) : "Not available on this page";
 	for (const c of chips) c.setAttribute("aria-checked", String(c.dataset.mode === state.mode));
@@ -1276,6 +1025,9 @@ function renderPc() {
 	ic.innerHTML = icon;
 	ic.dataset.tone = tone;
 	$("pc-title").textContent = title;
+	const waiting = view.kind === "connecting" || accessOf(state.answers, connectedPhone()?.key ?? "") === "ask";
+	$("pc-title").classList.toggle("dot-wait-label", waiting);
+	dotLoading($("pc-title").parentElement, waiting, title);
 	$("pc-sub").textContent = sub;
 	$("pc-kinds").hidden = !kinds;
 	renderHelper();

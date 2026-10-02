@@ -1,6 +1,6 @@
 import { $ as APP_NAME, A as typingToast, F as stickCurve, G as PadButton, H as phoneKeyOf, J as emptyPad, K as PadFlag, M as buttonValue, N as clamp$1, P as hysteresis, R as isPcAccess, Y as packetType, b as isIdleFrame, c as parseOffscreenRequest, et as DEFAULT_MODE, g as NATIVE_PORT_NAME, i as parseConfig, it as SERVICE, j as Accum, nt as PAGE_MODES, o as parseFromPage, ot as isTargetMode, p as HeldState, q as decodePad, v as buildNativeFrame, w as parseNativeText, y as heldSignature, z as noticeFor } from "./messages-CWZnFxhW.js";
-import { C as sdpSession, S as sdpFingerprint, _ as lanIceCredentials, b as readLocalIce, c as candidatesOf, d as encodePairing, f as equalBytes, g as lanContext, h as lanAnswerSdp, l as certFingerprint, m as importPairKey, o as b64url, p as fromB64url, r as sealSessionContext, s as bindMac, t as connectionSeal, u as encodeLanPairing, v as newSecret, x as roomIdFor, y as randomBytes } from "./seal-BUbx7ZQ6.js";
-import { t as communityMarker } from "./origin-fHVBxSre.js";
+import { i as DotLoader, n as DOT_LOADER_STYLE, t as communityMarker } from "./origin-BKT9Ocdt.js";
+import { C as sdpFingerprint, S as roomIdFor, T as sealShareTarget, _ as lanContext, b as randomBytes, c as bindMac, d as encodeLanPairing, f as encodePairing, g as lanAnswerSdp, h as importPairKey, l as candidatesOf, m as fromB64url, o as admissionFor, p as equalBytes, r as sealSessionContext, s as b64url, t as connectionSeal, u as certFingerprint, v as lanIceCredentials, w as sdpSession, x as readLocalIce, y as newSecret } from "./seal-BlqsjHPq.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -163,12 +163,18 @@ var SignalClient = class {
 		this.connectTimeout = connectTimeout;
 		this.onmessage = () => {};
 		this.onstatus = () => {};
+		this.onfull = () => {};
+		this.onremoved = () => {};
 		this.everOpened = false;
 		this.ws = null;
 		this.closed = false;
 		this.backoff = 400;
 		this.ping = null;
 		this.timer = null;
+	}
+	/** Update admission for the next reconnect without disturbing current channels. */
+	setUrl(url) {
+		this.url = url;
 	}
 	connect() {
 		if (this.closed) return;
@@ -199,11 +205,22 @@ var SignalClient = class {
 				this.onmessage(JSON.parse(e.data));
 			} catch {}
 		};
-		ws.onclose = () => {
+		ws.onclose = (e) => {
 			if (this.timer) clearTimeout(this.timer);
 			if (this.ping) clearInterval(this.ping);
 			if (this.ws !== ws) return;
 			this.ws = null;
+			if (this.closed) return;
+			if (e.code === 4008) {
+				this.closed = true;
+				this.onfull();
+				return;
+			}
+			if (e.code === 4009) {
+				this.closed = true;
+				this.onremoved();
+				return;
+			}
 			this.onstatus(false, opened);
 			this.retry();
 		};
@@ -1259,7 +1276,7 @@ var CONTROLLERS = {
 		controls: CONTROLS["face.keys"]
 	}
 };
-Object.keys(CONTROLLERS);
+var CONTROLLER_IDS = Object.keys(CONTROLLERS);
 var isControllerId = (x) => typeof x === "string" && Object.prototype.hasOwnProperty.call(CONTROLLERS, x);
 /**
 * The shape of any controller id on the wire: a kind, a dot and a name (`face.wii`, `bridge.gamepad`). Devices and hosts
@@ -1287,8 +1304,14 @@ var ahead = (ids, a, b) => {
 */
 function withControllers(layout) {
 	const ids = Array.isArray(layout.controllers) ? layout.controllers.filter(isControllerId) : [];
-	if (!ids.length) return layout;
+	if (!ids.length && !layout.universal) return layout;
 	const out = { ...layout };
+	if (layout.universal) {
+		if (!ids.length) out.controllers = layoutControllers(layout);
+		out.modes = [...new Set(CONTROLLER_IDS.flatMap((c) => CONTROLLERS[c].modes))];
+		out.utilities = [.../* @__PURE__ */ new Set([...Object.values(Utility), ...layout.utilities ?? []])];
+		if (!out.tray.some((c) => c.type === "keyboard")) out.tray = [...out.tray, KEYBOARD_CONTROL];
+	}
 	if (!out.modes) out.modes = [...new Set(ids.flatMap((c) => CONTROLLERS[c].modes))];
 	if (!out.point && ahead(ids, Controller.mouse, Controller.wii)) out.point = "mouse";
 	if (!out.profile && ahead(ids, Controller.wheel, Controller.gamepad)) out.profile = "driving";
@@ -1307,6 +1330,22 @@ function controllerOf(m, layout = {}) {
 		case Mode.pad: return Controller.trackpad;
 		default: return null;
 	}
+}
+/**
+* The controllers a layout offers, in its order (CATALOGUE §9.2): the known ones it names in `controllers`, else, from a
+* host that names none (every host before them), the faces of its modes, and the keyboard where its tray has one. No
+* modes at all is what devices show without them: the trackpad and the Wii remote.
+*/
+function layoutControllers(layout) {
+	const named = Array.isArray(layout.controllers) ? layout.controllers.filter(isControllerId) : [];
+	if (named.length) return [...new Set(named)];
+	const out = /* @__PURE__ */ new Set();
+	for (const m of layout.modes ?? [Mode.hold, Mode.point]) {
+		const c = controllerOf(m, layout);
+		if (c) out.add(c);
+	}
+	if (layout.tray?.some((c) => c.type === "keyboard")) out.add(Controller.keyboard);
+	return [...out];
 }
 /**
 * What a device's `mode{m, c?, p?}` says it uses (CATALOGUE §9.4): its controller (`c`, else the one its mode stands for
@@ -1329,8 +1368,39 @@ function validSimMessage(value) {
 	if (!m || m.t !== "sim" || m.v !== 1 || ![
 		"watch",
 		"input",
-		"frame"
+		"camera",
+		"drop",
+		"drops",
+		"frame",
+		"room",
+		"handover",
+		"seat",
+		"audience"
 	].includes(m.kind) || !Number.isSafeInteger(m.seq) || m.seq < 0) return false;
+	if ([
+		"audience",
+		"seat",
+		"handover"
+	].includes(m.kind)) {
+		if (!m.data || typeof m.data !== "object" || Array.isArray(m.data)) return false;
+		const d = m.data;
+		if (m.kind === "handover") return Object.keys(d).every((k) => ["op", "to"].includes(k)) && typeof d.op === "string" && [
+			"ask",
+			"cancel",
+			"accept",
+			"decline",
+			"give",
+			"demote"
+		].includes(d.op) && (d.to === void 0 || typeof d.to === "string" && d.to.length <= 64);
+		if (m.kind === "audience" && typeof d.op === "string" && ["join", "leave"].includes(d.op)) return Object.keys(d).length === 1;
+		return Object.keys(d).every((k) => (m.kind === "seat" ? [
+			"x",
+			"y",
+			"rx",
+			"ry",
+			"action"
+		] : ["x", "y"]).includes(k)) && ["x", "y"].every((k) => typeof d[k] === "number" && Number.isFinite(d[k]) && Math.abs(d[k]) <= 1) && ["rx", "ry"].every((k) => d[k] === void 0 || typeof d[k] === "number" && Number.isFinite(d[k]) && Math.abs(d[k]) <= 1) && (d.action === void 0 || m.kind === "seat" && typeof d.action === "string" && d.action.length <= 32);
+	}
 	let count = 0;
 	function valid(v, depth) {
 		if (++count > 16e3 || depth > 12) return false;
@@ -1522,6 +1592,11 @@ var Stream = class {
 	onBody(data) {
 		if (this.body.receive(data)) this.hooks.input();
 	}
+	/** Read-only activity for connection UI; never consumes or changes input accumulators. */
+	get inputActive() {
+		const now = performance.now(), state = this.latest, pad = this.padState;
+		return !!state && now - this.stateAt < 300 && (!!(state.flags & (Flag.touching | Flag.clutch)) || !!state.buttons || state.joy.some((value) => Math.abs(value) > .01) || state.tilt.some((value) => Math.abs(value) > .01)) || !!pad && now - this.padAt < PAD_STALE_MS && (!!pad.buttons || pad.axes.some((value) => Math.abs(value) > .01) || pad.triggers.some((value) => value > .01));
+	}
 	get padLive() {
 		return !!this.padState && performance.now() - this.padAt < 1500;
 	}
@@ -1641,6 +1716,32 @@ var Stream = class {
 		return frame;
 	}
 };
+//#endregion
+//#region ../packages/host/src/sharing.ts
+/** Tab-scoped secrets survive reload; the persistent certificate supplies the unchanged DTLS identity. */
+function shareSession(id) {
+	try {
+		const saved = JSON.parse(sessionStorage.getItem(`obpal.share:${id}`) ?? "null");
+		if (saved && [
+			"play",
+			"watch",
+			"owner"
+		].every((k) => /^[A-Za-z0-9_-]{22}$/.test(saved[k])) && typeof saved.playOpen === "boolean" && typeof saved.watchOpen === "boolean") return saved;
+	} catch {}
+	return {
+		play: b64url(newSecret()),
+		watch: b64url(newSecret()),
+		owner: b64url(newSecret()),
+		playOpen: true,
+		watchOpen: true
+	};
+}
+function keepShareSession(id, session) {
+	try {
+		sessionStorage.setItem(`obpal.share:${id}`, JSON.stringify(session));
+	} catch {}
+}
+var sessionKey = (s, key) => fromB64url(s[key]);
 //#endregion
 //#region \0vite/preload-helper.js
 var scriptRel = /* @__PURE__ */ (function detectScriptRel() {
@@ -1766,11 +1867,52 @@ var quiet = {
 };
 /** Host side of an ob-pal link, for any web page. */
 var Remote = class Remote {
+	/** A local source is created by the screen, never granted by a peer's claimed platform. */
+	isLocal(id) {
+		return this.peers.get(id)?.local === true;
+	}
+	localInputSource(name = "This phone") {
+		const id = `local-${crypto.randomUUID().slice(0, 8)}`;
+		const peer = this.addPeer(id, new RTCPeerConnection({ certificates: [this.cert] }), null);
+		peer.local = true;
+		peer.bound = true;
+		peer.capability = "play";
+		peer.name = name;
+		peer.since = Date.now();
+		peer.caps = {
+			tier: 0,
+			sensorApi: "none",
+			haptics: "none",
+			platform: "local-phone"
+		};
+		peer.color = this.freeColor(peer);
+		this.active = this.leadPhone();
+		this.emit("join", this.participant(peer));
+		this.sceneChanged();
+		return {
+			id,
+			pad: (data) => {
+				if (this.peers.has(id)) peer.stream.onPad(data);
+			},
+			state: (data) => {
+				if (this.peers.has(id)) peer.stream.onState(data);
+			},
+			control: (message) => {
+				if (this.peers.has(id)) this.onCtl(peer, JSON.stringify(message));
+			},
+			close: () => this.dropPeer(id)
+		};
+	}
 	constructor(opts) {
 		this.opts = opts;
+		this.sharing = null;
+		this.admissionQuery = "";
+		this.shareTarget = "";
+		this.blockedInputs = [];
 		this.status = "starting";
 		this.pairingUrl = "";
 		this.deviceName = null;
+		this.extraTray = [];
 		this.secret = newSecret();
 		this.fp = /* @__PURE__ */ new Uint8Array(32);
 		this.roomId = "";
@@ -1803,6 +1945,7 @@ var Remote = class Remote {
 		this.held = {};
 		this.scenePending = false;
 		this.handlers = {
+			blocked: [],
 			seal: [],
 			status: [],
 			connect: [],
@@ -1822,7 +1965,9 @@ var Remote = class Remote {
 			code: [],
 			invite: [],
 			sim: [],
-			attention: []
+			attention: [],
+			role: [],
+			scene: []
 		};
 		this.cards = [];
 		this.shortCode = null;
@@ -1853,11 +1998,18 @@ var Remote = class Remote {
 		return this.seats > 1;
 	}
 	async init() {
-		if (this.opts.remember) {
+		if (this.opts.session) {
+			this.sharing = shareSession(this.opts.session);
+			this.secret = sessionKey(this.sharing, "play");
+			this.sharing.room ??= await roomIdFor(this.secret);
+			keepShareSession(this.opts.session, this.sharing);
+			this.admissionQuery = `&owner=${this.sharing.owner}&play=${await admissionFor(this.secret)}&watch=${await admissionFor(sessionKey(this.sharing, "watch"))}&playOpen=${+this.sharing.playOpen}&watchOpen=${+this.sharing.watchOpen}`;
+		}
+		if (this.opts.remember || this.opts.session) {
 			const c = await loadCertificate("host");
 			this.cert = c.cert;
 			this.fp = c.fp;
-			this.pairs = await listPairs();
+			if (this.opts.remember) this.pairs = await listPairs();
 		} else {
 			this.cert = await RTCPeerConnection.generateCertificate({
 				name: "ECDSA",
@@ -1871,22 +2023,21 @@ var Remote = class Remote {
 	}
 	/** Join the signaling room of the current secret: the invite the pairing code carries. */
 	async openRoom() {
-		this.roomId = await roomIdFor(this.secret);
+		this.roomId = this.sharing?.room ?? await roomIdFor(this.secret);
 		this.joinRoom();
 	}
 	/** The current invite's room (its secret and room id are set): the pairing link, and this host's socket there. */
 	joinRoom() {
-		this.pairingUrl = `${this.service}/p/#${encodePairing({
-			secret: this.secret,
-			fp: this.fp
-		})}`;
-		this.sig = new SignalClient(roomSocketUrl(this.service, this.roomId, "host"));
+		this.pairingUrl = `${this.service}/p/#${this.inviteFragment()}`;
+		this.sig = new SignalClient(roomSocketUrl(this.service, this.roomId, "host") + this.admissionQuery);
 		this.sig.onmessage = (m) => this.onSignal(m);
 		this.sig.onstatus = (open) => {
 			if (open && this.status !== "connected") this.setStatus("ready");
 			if (!open && this.status !== "connected") this.setStatus("offline");
-			if (open) this.askCode();
-			else this.setCode(null);
+			if (open) {
+				this.askCode();
+				if (this.sharing?.pending) this.publishSharing();
+			} else this.setCode(null);
 		};
 		this.sig.connect();
 	}
@@ -1917,6 +2068,16 @@ var Remote = class Remote {
 	* finished connecting have to scan again.
 	*/
 	async resetInvite() {
+		if (this.sharing) {
+			await this.newShareLink("play");
+			return;
+		}
+		const connected = this.bound().find((peer) => !peer.room && !peer.lan);
+		if (connected) {
+			this.moveInvite(connected, this.sig);
+			await this.moving;
+			return;
+		}
 		const old = this.sig;
 		this.secret = newSecret();
 		old.onmessage = () => {};
@@ -1929,6 +2090,134 @@ var Remote = class Remote {
 		for (const c of this.cards) this.renderQr(c);
 		this.emit("invite");
 		this.renderCards();
+	}
+	/** Offer another phone a fresh short code without revoking the shared Play link or its connected phones. */
+	async inviteAnotherPhone() {
+		if (!this.sharing) {
+			await this.resetInvite();
+			return;
+		}
+		this.sig?.send({
+			t: "code",
+			op: "drop"
+		});
+		this.setCode(null);
+		this.askCode();
+	}
+	inviteFragment() {
+		return encodePairing({
+			secret: this.secret,
+			fp: this.fp,
+			...this.sharing ? {
+				room: this.roomId,
+				capability: "play"
+			} : {}
+		});
+	}
+	get watchFragment() {
+		return this.sharing ? encodePairing({
+			secret: sessionKey(this.sharing, "watch"),
+			fp: this.fp,
+			room: this.roomId,
+			capability: "watch"
+		}) : "";
+	}
+	sharingOpen(key) {
+		return this.sharing?.[key === "play" ? "playOpen" : "watchOpen"] ?? false;
+	}
+	/** The same short URL survives reloads; the service stores ciphertext, never either link key. */
+	shortShareUrl(key) {
+		return this.sharing ? `${this.service}/p/#s.${key === "watch" ? "w" : "p"}.${this.roomId}.${this.sharing[key]}` : "";
+	}
+	setShareTarget(url) {
+		const target = new URL(url);
+		this.shareTarget = target.pathname + target.search;
+		this.publishSharing();
+	}
+	async publishSharing() {
+		if (!this.sharing) return;
+		const s = this.sharing;
+		const revision = s.revision ?? 0, playOpen = s.playOpen, watchOpen = s.watchOpen;
+		const playKey = sessionKey(s, "play"), watchKey = sessionKey(s, "watch");
+		const [play, watch, links] = await Promise.all([
+			admissionFor(playKey),
+			admissionFor(watchKey),
+			this.shareTarget ? Promise.all([sealShareTarget(playKey, {
+				fp: b64url(this.fp),
+				path: this.shareTarget
+			}), sealShareTarget(watchKey, {
+				fp: b64url(this.fp),
+				path: this.shareTarget
+			})]).then(([play, watch]) => ({
+				play,
+				watch
+			})) : void 0
+		]);
+		if (revision !== (s.revision ?? 0)) return;
+		if (revision === (s.revision ?? 0)) {
+			this.admissionQuery = `&owner=${s.owner}&play=${play}&watch=${watch}&playOpen=${+playOpen}&watchOpen=${+watchOpen}`;
+			this.sig?.setUrl(roomSocketUrl(this.service, this.roomId, "host") + this.admissionQuery);
+		}
+		this.sig?.send({
+			t: "sharing",
+			play: playOpen ? play : null,
+			watch: watchOpen ? watch : null,
+			revision,
+			...links ? { links } : {}
+		});
+	}
+	async stopSharing(key) {
+		if (!this.sharing) return;
+		this.sharing[key === "play" ? "playOpen" : "watchOpen"] = false;
+		this.sharing.revision = (this.sharing.revision ?? 0) + 1;
+		this.sharing.pending = true;
+		if (key === "play") {
+			this.sig?.send({
+				t: "code",
+				op: "drop"
+			});
+			this.setCode(null);
+			this.spentCodes.clear();
+			this.recentCodes.clear();
+			this.codeBinds.clear();
+		}
+		keepShareSession(this.opts.session, this.sharing);
+		for (const p of [...this.peers.values()]) if (!p.local && (p.capability ?? "play") === key) {
+			this.send(p, {
+				t: "lock",
+				reason: "removed"
+			});
+			this.dropPeer(p.id);
+		}
+		await this.publishSharing();
+		this.emit("invite");
+	}
+	async newShareLink(key) {
+		if (!this.sharing) return;
+		await this.stopSharing(key);
+		this.sharing[key] = b64url(newSecret());
+		this.sharing[key === "play" ? "playOpen" : "watchOpen"] = true;
+		this.sharing.revision = (this.sharing.revision ?? 0) + 1;
+		this.sharing.pending = true;
+		if (key === "play") {
+			this.secret = sessionKey(this.sharing, "play");
+			this.pairingUrl = `${this.service}/p/#${this.inviteFragment()}`;
+			this.setCode(null);
+			this.askCode();
+		}
+		keepShareSession(this.opts.session, this.sharing);
+		await this.publishSharing();
+		for (const c of this.cards) this.renderQr(c);
+		this.emit("invite");
+	}
+	block(peer, type) {
+		const attempt = {
+			id: peer.id,
+			type
+		};
+		this.blockedInputs.push(attempt);
+		if (this.blockedInputs.length > 64) this.blockedInputs.shift();
+		this.emit("blocked", attempt);
 	}
 	/**
 	* The invite moves on once a device has paired through it (rotateInvite, spec/SECURITY.md §8, L2). The room it
@@ -2172,8 +2461,20 @@ var Remote = class Remote {
 	}
 	/** A message from the room service: in the current invite's room, or in a kept one (`room`). */
 	onSignal(m, room) {
+		const acknowledged = m.t === "sharing" && m.revision === (this.sharing?.revision ?? 0);
+		const welcome = m.t === "welcome" && m.sharing && !this.sharing?.pending;
+		if (this.sharing && (acknowledged || welcome)) {
+			const state = m.t === "sharing" ? m : m.t === "welcome" ? m.sharing : null;
+			if (!state || !this.sharing) return;
+			this.sharing.watchOpen = state.watch;
+			this.sharing.playOpen = state.play;
+			this.sharing.pending = false;
+			keepShareSession(this.opts.session, this.sharing);
+			this.emit("invite");
+		}
 		if (m.t === "peer" && m.ev === "leave") this.peerLeft(m.id, m.clean !== false, room);
-		if (m.t === "sig") this.onPayload(m.from, m.d, room);
+		if (m.t === "welcome" && this.shareTarget) this.publishSharing();
+		if (m.t === "sig") this.onPayload(m.from, m.d, room, m.capability);
 		if (m.t === "code" && !room) this.onCode(m);
 	}
 	/** The socket that talks to a peer: its kept room's, or the current invite's. */
@@ -2253,6 +2554,10 @@ var Remote = class Remote {
 		};
 		ctl.onmessage = (e) => void this.onCtl(peer, e.data);
 		st.onmessage = (e) => {
+			if (peer.bound && (peer.capability === "watch" || peer.demoted)) {
+				this.block(peer, "binary");
+				return;
+			}
 			if (!this.listening(peer) || peer.paused || !(e.data instanceof ArrayBuffer)) return;
 			const type = packetType(e.data);
 			if (type === 18) peer.stream.onPad(e.data);
@@ -2266,12 +2571,21 @@ var Remote = class Remote {
 	}
 	/** Whether a bound device's input counts: every participant in a shared scene, only the device in control otherwise. */
 	listening(peer) {
-		return peer.bound && (this.shared || this.active === peer);
+		return peer.bound && (peer.capability === "watch" || this.shared || this.active === peer);
 	}
-	async onPayload(id, d, room) {
+	async onPayload(id, d, room, admission) {
 		const sig = room?.sig ?? this.sig;
 		if ("offer" in d) {
 			const again = this.sameConnection(d.offer?.sdp, room);
+			if (again && admission && again.capability === "watch" !== (admission === "watcher")) {
+				this.block({ id }, "offer-capability");
+				sig.send({
+					t: "sig",
+					to: id,
+					d: { gone: true }
+				});
+				return;
+			}
 			if (again) return this.renegotiate(again, id, d.offer);
 			if (d.restart) {
 				sig.send({
@@ -2306,6 +2620,7 @@ var Remote = class Remote {
 				certificates: [this.cert]
 			});
 			const peer = this.addPeer(id, pc, fp);
+			peer.admission = admission;
 			peer.room = room;
 			peer.session = sdpSession(d.offer.sdp);
 			peer.cands.push(...early);
@@ -2390,8 +2705,20 @@ var Remote = class Remote {
 		} catch {
 			return;
 		}
+		if (m.t === "sim" && [
+			"seat",
+			"audience",
+			"handover"
+		].includes(m.kind) && data.length > 256) {
+			this.block(peer, m.kind);
+			return;
+		}
 		if (!peer.bound) {
 			if (m.t === "pake" || m.t === "hello" && "code" in m) {
+				if (peer.admission === "watcher") {
+					this.reject(peer);
+					return;
+				}
 				if (peer.room) {
 					this.reject(peer);
 					return;
@@ -2410,7 +2737,11 @@ var Remote = class Remote {
 					this.reject(peer);
 					return;
 				}
-				if (!equalBytes(new TextEncoder().encode(expected), new TextEncoder().encode(m.mac))) {
+				const incomingMac = m.mac;
+				const equalMac = (a) => equalBytes(new TextEncoder().encode(a), new TextEncoder().encode(incomingMac));
+				if (peer.admission !== "watcher" && equalMac(expected) && (!this.sharing || this.sharing.playOpen)) peer.capability = "play";
+				else if (this.sharing?.watchOpen && !peer.lan && !peer.room && equalMac(await bindMac(sessionKey(this.sharing, "watch"), peer.fp, this.fp, this.roomId))) peer.capability = "watch";
+				else {
 					this.reject(peer);
 					return;
 				}
@@ -2422,11 +2753,11 @@ var Remote = class Remote {
 			};
 			const sealNonce = b64url(randomBytes(16));
 			const context = peer.lan ? lanContext(peer.lan.nonce) : sealRoom.roomId;
-			const sealKey = peer.lan?.pair.key ?? sealRoom.secret;
+			const sealKey = peer.capability === "watch" ? sessionKey(this.sharing, "watch") : peer.lan?.pair.key ?? sealRoom.secret;
 			const [seal, sealProof] = await Promise.all([connectionSeal(peer.fp, this.fp, context, peer.lan?.pair.key, sealNonce), bindMac(sealKey, peer.fp, this.fp, sealSessionContext(context, sealNonce))]);
-			const minted = !peer.lan && this.opts.remember ? await this.mintKey() : null;
+			const minted = peer.capability !== "watch" && !peer.lan && this.opts.remember ? await this.mintKey() : null;
 			if (peer.bound || this.peers.get(peer.id) !== peer) return;
-			if (this.shared && this.bound().length >= this.seats) {
+			if (peer.capability === "watch" ? this.bound().filter((p) => p.capability === "watch").length >= 24 : this.shared && this.bound().filter((p) => p.capability !== "watch").length >= this.seats) {
 				this.send(peer, {
 					t: "lock",
 					reason: "full"
@@ -2440,9 +2771,9 @@ var Remote = class Remote {
 			peer.name = String(m.name || "Phone").slice(0, 40);
 			peer.caps = m.caps ?? null;
 			peer.since = Date.now();
-			if (this.shared) {
+			if (this.shared || peer.capability === "watch" || peer.caps?.platform === "scene") {
 				peer.color = this.freeColor(peer);
-				if (!this.active) this.active = peer;
+				this.active = this.leadPhone();
 			} else {
 				const prev = this.active;
 				if (prev && prev !== peer) {
@@ -2470,16 +2801,13 @@ var Remote = class Remote {
 				putPair(peer.lan.pair);
 			} else pair = this.rememberDevice(peer, peer.name, minted) ?? void 0;
 			peer.pair = peer.lan?.pair.id ?? pair?.id;
-			const invite = "code" in m ? encodePairing({
-				secret: this.secret,
-				fp: this.fp
-			}) : void 0;
+			const invite = "code" in m ? this.inviteFragment() : void 0;
 			const kind = this.opts.kind ?? (typeof location === "undefined" ? "site" : location.protocol === "chrome-extension:" ? "pc" : location.pathname.startsWith("/sim/") ? "sim" : location.pathname.startsWith("/view/") ? "viewer" : "site");
 			this.send(peer, {
 				t: "welcome",
 				sealNonce,
 				sealProof,
-				proto: 1,
+				proto: 2,
 				name: this.opts.appName,
 				layout: this.layout,
 				attention: true,
@@ -2495,7 +2823,7 @@ var Remote = class Remote {
 					color: peer.color
 				}
 			});
-			if (this.opts.rotateInvite && !peer.lan && !peer.room) this.moveInvite(peer, this.sig);
+			if (this.opts.rotateInvite && peer.capability !== "watch" && !peer.lan && !peer.room) this.moveInvite(peer, this.sig);
 			const first = this.status !== "connected";
 			this.setStatus("connected");
 			if (first || !this.shared) this.emit("connect", {
@@ -2528,12 +2856,53 @@ var Remote = class Remote {
 			peer.paused = paused;
 			const hadPad = !!peer.stream.pad;
 			peer.stream.reset();
+			peer.seatInput = void 0;
 			if (hadPad) this.emit("pad", false, this.participant(peer));
 			this.emit("attention", this.participant(peer));
 			this.renderCards();
 			return;
 		}
 		if (peer.paused && m.t !== "ping" && m.t !== "bye") return;
+		if (m.t === "sim" && m.kind === "seat") {
+			if (!peer.simSeat || !validSimMessage(m)) {
+				this.block(peer, "seat");
+				return;
+			}
+			const d = m.data, now = performance.now(), previous = peer.seatInput;
+			if (previous && (m.seq <= previous.seq || now - previous.at < 33 && (d.x || d.y || d.rx || d.ry || d.action))) return;
+			if (d.action && !this.layout.tray.some((t) => t.id === d.action && (!t.type || t.type === "button"))) return;
+			peer.seatInput = {
+				x: d.x,
+				y: d.y,
+				rx: d.rx ?? 0,
+				ry: d.ry ?? 0,
+				at: now,
+				seq: m.seq
+			};
+			this.emit("sim", m, this.participant(peer));
+			return;
+		}
+		if ((peer.capability === "watch" || peer.demoted) && ![
+			"ping",
+			"bye",
+			"seal-ready"
+		].includes(m.t)) {
+			if (m.t === "sim" && [
+				"watch",
+				"input",
+				"camera",
+				"drop",
+				"handover",
+				"audience"
+			].includes(m.kind) && validSimMessage(m)) {
+				if (["input", "camera"].includes(m.kind) && m.data && typeof m.data === "object" && !Array.isArray(m.data) && (m.data.grab === true || m.data.pad !== null)) {
+					this.block(peer, "sim-drive");
+					return;
+				}
+				this.emit("sim", m, this.participant(peer));
+			} else this.block(peer, m.t);
+			return;
+		}
 		const who = this.participant(peer);
 		switch (m.t) {
 			case "sim":
@@ -2624,6 +2993,7 @@ var Remote = class Remote {
 	* for one. A service that doesn't answer (an older one, or a lost message) is asked again later, less often each time.
 	*/
 	askCode(work) {
+		if (this.sharing && !this.sharing.playOpen) return;
 		if (!this.codeWant || !this.sig?.open) return;
 		if (this.codeTimer) {
 			clearTimeout(this.codeTimer);
@@ -2740,6 +3110,10 @@ var Remote = class Remote {
 	* the device's hello once the code is proven.
 	*/
 	async codeStep(peer, m) {
+		if (this.sharing && !this.sharing.playOpen) {
+			this.reject(peer);
+			return null;
+		}
 		if (m.t === "pake") {
 			const b = this.codeBinds.get(peer);
 			if (!b) return null;
@@ -2794,6 +3168,11 @@ var Remote = class Remote {
 	bound() {
 		return [...this.peers.values()].filter((p) => p.bound).sort((a, b) => a.since - b.since);
 	}
+	/** Scene visitors watch; the oldest controller phone holds the shared view. */
+	leadPhone() {
+		if (this.active?.bound && !this.active.demoted && this.active.capability !== "watch" && this.active.caps?.platform !== "scene") return this.active;
+		return this.bound().find((p) => !p.demoted && p.capability !== "watch" && p.caps?.platform !== "scene") ?? null;
+	}
 	participant(p) {
 		return {
 			id: p.id,
@@ -2802,6 +3181,12 @@ var Remote = class Remote {
 			lead: p === this.active,
 			since: p.since,
 			caps: p.caps,
+			capability: p.capability ?? "play",
+			role: p.simSeat || p.capability !== "watch" && !p.demoted ? "play" : "watch",
+			...p.simSeat ? {
+				simSeat: p.simSeat,
+				simOnly: true
+			} : {},
 			...p.controller ? { controller: p.controller } : {},
 			...p.profile ? { profile: p.profile } : {},
 			...p.pair ? { pair: p.pair } : {},
@@ -2809,9 +3194,54 @@ var Remote = class Remote {
 			...p.paused ? { paused: true } : {}
 		};
 	}
-	/** Everyone controlling the scene, oldest (the lead) first. */
+	/** Everyone in the scene, oldest first; visitors never hold the lead. */
 	get participants() {
 		return this.bound().map((p) => this.participant(p));
+	}
+	get sceneSnapshot() {
+		return {
+			nodes: this.nodes.map((n) => ({ ...n })),
+			held: { ...this.held }
+		};
+	}
+	/** Only a scene host issues this grant. It carries no Play key and never changes raw input authority. */
+	setSimSeat(who, seat) {
+		const p = this.peers.get(who);
+		if (!p?.bound || seat !== null && (!seat || seat.length > 64)) return false;
+		const releasedSeat = p.simSeat ?? Object.entries(this.held).find(([, holder]) => holder === who)?.[0];
+		p.stream.reset();
+		p.seatInput = void 0;
+		p.demoted = true;
+		p.simSeat = seat ?? void 0;
+		if (this.active === p) this.active = this.leadPhone();
+		this.deviceName = this.active?.name ?? null;
+		this.emit("role", {
+			...this.participant(p),
+			...releasedSeat ? { releasedSeat } : {}
+		});
+		this.sceneChanged();
+		return true;
+	}
+	/** Sim-only grants use this bounded pad; raw consumeOf/padOf stay neutral for watchers. */
+	simPadOf(who, now = performance.now()) {
+		const p = this.peers.get(who), input = p?.seatInput;
+		return p?.bound && !p.paused && p.simSeat && input && now - input.at < 250 ? {
+			flags: 0,
+			seq: input.seq & 65535,
+			t: now * 1e3,
+			axes: [
+				input.x,
+				input.y,
+				input.rx,
+				input.ry
+			],
+			buttons: 0,
+			triggers: [0, 0]
+		} : null;
+	}
+	canDriveHardware(who) {
+		const p = this.peers.get(who);
+		return !!p?.bound && p.capability !== "watch" && !p.demoted && !p.simSeat;
 	}
 	/** Current verified seals, without waiting for network statistics. */
 	get seals() {
@@ -2851,6 +3281,11 @@ var Remote = class Remote {
 	get pointer() {
 		return this.active?.stream.pointer ?? null;
 	}
+	/** Activity without consuming a participant's input; neutral heartbeats do not count. */
+	inputActive(who) {
+		const peer = this.peers.get(who);
+		return !!peer?.bound && peer.capability !== "watch" && !peer.demoted && !peer.paused && peer.stream.inputActive;
+	}
 	/** Read the device in control's (the lead's) input for this frame. Call once per rendered frame. */
 	consume(now = performance.now()) {
 		return (this.active?.stream ?? this.idle).consume(now, this.status === "connected" && !this.active?.paused);
@@ -2858,15 +3293,15 @@ var Remote = class Remote {
 	/** One participant's gamepad state, pointer and frame (shared scenes). */
 	padOf(who) {
 		const p = this.peers.get(who);
-		return p?.bound ? p.stream.pad : null;
+		return p?.bound && p.capability !== "watch" && !p.demoted ? p.stream.pad : null;
 	}
 	pointerOf(who) {
 		const p = this.peers.get(who);
-		return p?.bound ? p.stream.pointer : null;
+		return p?.bound && p.capability !== "watch" && !p.demoted ? p.stream.pointer : null;
 	}
 	consumeOf(who, now = performance.now()) {
 		const p = this.peers.get(who);
-		return (p?.bound ? p.stream : this.idle).consume(now, !!p?.bound && !p.paused);
+		return (p?.bound && p.capability !== "watch" && !p.demoted ? p.stream : this.idle).consume(now, !!p?.bound && p.capability !== "watch" && !p.demoted && !p.paused);
 	}
 	/** Vibrate a device (Gamepad API dual-rumble semantics): `who`, else the device in control. */
 	rumble(strong, weak, ms, who) {
@@ -2880,12 +3315,26 @@ var Remote = class Remote {
 	}
 	/** The tray and modes (or controllers, filled in as withControllers does): for `who`, else for everyone. */
 	setLayout(layout, who) {
-		const full = withControllers(layout);
+		const extras = this.extraTray ?? [], ids = new Set(extras.map((c) => c.id));
+		const full = withControllers({
+			...layout,
+			tray: [...layout.tray.filter((c) => !ids.has(c.id)), ...extras]
+		});
 		if (!who) this.layout = full;
 		for (const p of this.targets(who)) this.send(p, {
 			t: "layout",
 			layout: full
 		});
+	}
+	/** Scene actions survive controller and seat layout changes. */
+	extendTray(controls) {
+		this.extraTray = controls;
+		this.setLayout(this.layout);
+	}
+	/** This targeted value contains the Play key, so it never enters the room's public values. */
+	offerScene(url, who) {
+		const p = this.peers.get(who);
+		if (p?.bound && p.capability === "play") this.setValues({ "play.scene": url }, who);
 	}
 	/** Sync toggle/label state shown on devices: for `who`, else for everyone. */
 	setValues(values, who) {
@@ -2926,6 +3375,8 @@ var Remote = class Remote {
 			this.nodesVersion++;
 		}
 		this.held = { ...s.held };
+		for (const p of this.bound()) if (p.simSeat && (!this.nodes.some((n) => n.id === p.simSeat) || this.held[p.simSeat] !== p.id)) this.setSimSeat(p.id, null);
+		this.emit("scene");
 		this.sceneChanged();
 	}
 	sceneChanged() {
@@ -2933,12 +3384,27 @@ var Remote = class Remote {
 		this.scenePending = true;
 		queueMicrotask(() => {
 			this.scenePending = false;
-			const people = [this.host, ...this.bound().map((p) => ({
+			const people = [{
+				...this.host,
+				role: "play"
+			}, ...this.bound().map((p) => ({
 				id: p.id,
 				name: p.name,
 				color: p.color,
+				role: this.participant(p).role,
+				...p.simSeat ? {
+					seat: p.simSeat,
+					simOnly: true
+				} : {},
 				...p === this.active ? { lead: true } : {}
 			}))];
+			if (Object.values(this.held).includes("audience")) people.push({
+				id: "audience",
+				name: "Audience",
+				color: this.host.color,
+				role: "play",
+				simOnly: true
+			});
 			for (const p of this.bound()) {
 				const m = {
 					t: "scene",
@@ -2981,7 +3447,11 @@ var Remote = class Remote {
 		for (const id of [...this.peers.keys()]) this.dropPeer(id);
 		this.sig?.close();
 		for (const r of this.kept.splice(0)) r.sig.close();
-		for (const c of this.cards) c.el.remove();
+		for (const c of this.cards) {
+			c.loader.destroy();
+			c.qrLoader.destroy();
+			c.el.remove();
+		}
 		this.cards = [];
 	}
 	send(peer, m) {
@@ -3020,7 +3490,7 @@ var Remote = class Remote {
 		const who = this.participant(p);
 		p.bound = false;
 		for (const [node, holder] of Object.entries(this.held)) if (holder === id) delete this.held[node];
-		if (this.active === p) this.active = this.shared ? this.bound()[0] ?? null : null;
+		if (this.active === p) this.active = this.shared ? this.leadPhone() : null;
 		this.deviceName = this.active?.name ?? null;
 		this.emit("leave", who);
 		this.renderCards();
@@ -3095,7 +3565,12 @@ var Remote = class Remote {
 			status: card.querySelector(".obpal-status"),
 			qr: card.querySelector(".obpal-qr"),
 			link: card.querySelector(".obpal-link"),
-			compact
+			compact,
+			loader: new DotLoader({ size: 24 }),
+			qrLoader: new DotLoader({
+				size: 48,
+				label: "Making a QR code"
+			})
 		};
 		this.cards.push(entry);
 		this.renderQr(entry);
@@ -3105,11 +3580,17 @@ var Remote = class Remote {
 	renderQr(c) {
 		const url = this.pairingUrl;
 		if (c.link) c.link.href = url;
+		c.qrLoader.start();
+		c.qr.replaceChildren(c.qrLoader.el);
 		__vitePreload(async () => {
-			const { plainQrElement } = await import("./qr-B4n4DSjF.js");
+			const { plainQrElement } = await import("./qr-BJ9kwVUy.js").then((n) => n.r);
 			return { plainQrElement };
 		}, []).then(({ plainQrElement }) => {
-			if (url === this.pairingUrl) c.qr.replaceChildren(plainQrElement(url));
+			if (url === this.pairingUrl) {
+				c.qrLoader.finish();
+				c.qr.replaceChildren(plainQrElement(url));
+				this.renderCards();
+			}
 		});
 	}
 	renderCards() {
@@ -3131,6 +3612,16 @@ var Remote = class Remote {
 		for (const c of this.cards) {
 			c.status.textContent = this.bound().length && this.bound().every((p) => p.paused) ? "Phone paused" : (c.compact ? short : text)[this.status];
 			c.status.dataset.s = this.status;
+			const waiting = this.status !== "connected";
+			c.status.setAttribute("aria-label", (c.compact ? short : text)[this.status]);
+			c.status.dataset.waiting = String(waiting);
+			if (waiting) {
+				c.status.textContent = "";
+				c.loader.el.setAttribute("aria-label", text[this.status]);
+				c.status.append(c.loader.el);
+				if (c.qr.contains(c.qrLoader.el)) c.loader.finish();
+				else c.loader.start();
+			} else c.loader.finish();
 		}
 	}
 };
@@ -3140,11 +3631,12 @@ function injectStyles() {
 	styled = true;
 	const s = document.createElement("style");
 	s.id = "obpal-style";
-	s.textContent = `
+	s.textContent = DOT_LOADER_STYLE + `
 .obpal-card{--_bg:var(--obpal-bg,rgb(var(--surface-rgb, 13 20 33) / .82));--_ink:var(--obpal-ink,#e6edf7);--_muted:var(--obpal-muted,#a3b1c5);--_line:var(--obpal-line,#293548);--_accent:var(--obpal-accent,#a78bfa);
  display:flex;gap:20px;align-items:center;padding:18px;border-radius:22px;background:var(--_bg);color:var(--_ink);border:1px solid var(--_line);
  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);font:15px/1.5 var(--obpal-font,'Plus Jakarta Sans',system-ui,sans-serif);box-shadow:0 24px 60px rgba(0,0,0,.35)}
-.obpal-qr{flex:none;width:168px;height:168px;background:#fff;border-radius:14px;padding:6px;box-sizing:border-box}
+.obpal-qr{flex:none;width:168px;height:168px;background:#fff;color:#141923;display:grid;place-items:center;border-radius:14px;padding:6px;box-sizing:border-box}
+.obpal-qr .dot-loader{color:#141923}
 .obpal-qr svg{width:100%;height:100%;display:block}
 .obpal-title{font-weight:700;font-size:18px;letter-spacing:-.02em;margin-bottom:6px}
 .obpal-steps{margin:0 0 10px;padding-left:20px;color:var(--_muted)}
@@ -3152,7 +3644,7 @@ function injectStyles() {
 .obpal-steps b{color:var(--_ink)}
 .obpal-status{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
 .obpal-status::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--_muted)}
-.obpal-status[data-s=ready]::before{background:var(--_accent);animation:obpal-pulse 1.6s ease-in-out infinite}
+.obpal-status[data-waiting=true]::before{display:none}
 .obpal-status[data-s=connecting]::before{background:#fcd34d}
 .obpal-status[data-s=connected]::before{background:#6ee7b7}
 .obpal-status[data-s=offline]::before{background:#fb7185}
@@ -4446,6 +4938,7 @@ function post(l, m) {
 	}
 }
 var lastTick = 0;
+var sealActivityAt = -Infinity;
 var lastPtr = null;
 var relRate = [0, 0];
 var relAt = 0;
@@ -4474,6 +4967,13 @@ function tick() {
 	const f = r.consume(now);
 	const pad = r.pad;
 	const ptr = r.pointer;
+	if (f.connected && (f.touching || !!pad?.buttons || f.aim.some(Boolean) || f.pad1.some(Boolean) || f.pad2.some(Boolean) || !!f.zoom || !!f.twist) && now - sealActivityAt > 700) {
+		sealActivityAt = now;
+		chrome.runtime.sendMessage({
+			to: "seal-ui",
+			type: "activity"
+		}).catch(() => {});
+	}
 	if (onPc()) pcTick(f, pad, ptr, now);
 	else if (config.mode === "pc" && (f.touching || !!pad?.buttons)) heldBack();
 	if (config.tabId === null || !links.size) {

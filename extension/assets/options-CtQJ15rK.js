@@ -1,5 +1,5 @@
 import { B as parseAnswers, L as askFor, T as parsePcState, V as parsePhone, _ as PC_PAGE_PORT_NAME, d as DESKTOP_URL, et as DEFAULT_MODE, f as EMPTY_PC, m as MAC_ACCESSIBILITY, ot as isTargetMode, s as parseLink } from "./messages-CWZnFxhW.js";
-import { a as mountLook, d as showAsk, f as ICONS, i as mountLogo, n as lightCards, o as settle, p as LOGO_WORD, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-DxjiK1Tk.js";
+import { a as mountLook, d as showAsk, h as LINK_LOGO, i as mountLogo, m as ICONS, n as lightCards, o as settle, p as dotLoading, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-CtH5l-hq.js";
 //#region src/options/options.ts
 startLook();
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
@@ -17,8 +17,7 @@ var answers = {};
 var notify = false;
 app.innerHTML = `
   <header class="top rise">
-    <span class="logo" aria-label="ob.Pal"><span class="mark-slot" data-mark></span>${LOGO_WORD}</span>
-    <span class="tag">Link</span>
+    <span class="logo" aria-label="ob.Pal Link">${LINK_LOGO}</span>
     <span class="ver" id="ver"></span>
   </header>
   <section class="hero rise" style="--i:1" aria-labelledby="title">
@@ -252,13 +251,17 @@ function render() {
 	showAsk(askEl, askFor(mode, linked ? phone : null, answers, permission), () => $("title").focus());
 	const note = $("note");
 	const notice = noticeFor();
+	dotLoading(note, false);
 	note.hidden = !notice;
 	note.replaceChildren();
 	if (notice) {
+		const waiting = pc.link === "off" || pc.link === "connecting";
 		note.insertAdjacentHTML("afterbegin", LINK_ICONS.info);
 		const t = document.createElement("span");
 		t.textContent = notice.text;
+		t.classList.toggle("dot-wait-label", waiting);
 		note.append(t);
+		dotLoading(note, waiting, notice.text);
 		if (notice.action) {
 			const b = document.createElement("button");
 			b.type = "button";

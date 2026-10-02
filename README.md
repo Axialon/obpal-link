@@ -13,7 +13,16 @@ It works in Chrome, Edge, Brave and Vivaldi (Chromium 120 or later). Other Chrom
 
 Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Source: [github.com/Axialon/obpal](https://github.com/Axialon/obpal) (this repository carries the releases)
 
-## What's new in 1.7.0
+## What's new in 1.8.0
+
+- **The QR becomes the seal.** When your phone connects, the QR code gathers into the connection seal in the same spot and stays there while you're connected, so you can check the symbols match at any time. It stays legible and keeps clear of the page's own controls.
+- **One look everywhere.** The toolbar icon, popup and options use the same ob.Pal mark as the website and the store listing.
+- **Calmer waiting.** Pairing and loading show a soft moving dot wave instead of spinners. When no QR code can be made (for example, while offline), Link says so with a clear symbol.
+- **Steadier reconnects.** A phone that reconnects keeps its place, and the seal follows it.
+
+**Updating from 1.7:** from the Chrome Web Store, it updates by itself. From this repository, replace the folder and reload, as below. Remembered phones carry over.
+
+## New in 1.7.0
 
 - **Pair, enable, try.** The popup walks you through the three steps, and **Try** opens a dot demo: turn on **This tab** there, choose **Controller**, and the dots follow your phone's left stick. A quick check before you open a game.
 - **The connection seal.** When your phone connects, Link and the phone show the same three symbols. Check they match, and you know it's your phone that paired.

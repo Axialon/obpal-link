@@ -31,7 +31,33 @@ function equalBytes(a, b) {
 var newSecret = () => crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(16));
 var randomBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
 function encodePairing(p) {
+	if (p.room) return `3.${p.capability === "watch" ? "w" : "p"}.${p.room}.${b64url(p.secret)}.${b64url(p.fp)}`;
 	return `1.${b64url(p.secret)}.${b64url(p.fp)}`;
+}
+/** A signaling admission verifier, separate from the DTLS binding MAC. It reveals neither key. */
+async function admissionFor(secret) {
+	return b64url(await hkdf(secret, enc.encode("obpal admission v2"), "room admission", 32));
+}
+/** Short links encrypt only scene metadata; the capability secret stays in the browser's URL fragment. */
+async function sealShareTarget(secret, target) {
+	const key = await shareTargetKey(secret), iv = randomBytes(12);
+	const encrypted = await crypto.subtle.encrypt({
+		name: "AES-GCM",
+		iv
+	}, key, enc.encode(JSON.stringify(target)));
+	return b64url(concat(iv, new Uint8Array(encrypted)));
+}
+async function shareTargetKey(secret) {
+	const base = await hkdfKey(secret, "deriveKey");
+	return crypto.subtle.deriveKey({
+		name: "HKDF",
+		hash: "SHA-256",
+		salt: enc.encode("obpal short link v2"),
+		info: enc.encode("scene metadata")
+	}, base, {
+		name: "AES-GCM",
+		length: 256
+	}, false, ["encrypt", "decrypt"]);
 }
 /** Public room id: a hash of the secret, so the room service never learns the secret. */
 async function roomIdFor(secret) {
@@ -309,4 +335,4 @@ function sealSessionContext(context, nonce) {
 }
 var sealNames = (seal) => seal.map((i) => SEAL_GLYPHS[i].name).join(", ");
 //#endregion
-export { sdpSession as C, sdpFingerprint as S, lanIceCredentials as _, glyphDots as a, readLocalIce as b, candidatesOf as c, encodePairing as d, equalBytes as f, lanContext as g, lanAnswerSdp as h, SEAL_GLYPHS as i, certFingerprint as l, importPairKey as m, sealNames as n, b64url as o, fromB64url as p, sealSessionContext as r, bindMac as s, connectionSeal as t, encodeLanPairing as u, newSecret as v, roomIdFor as x, randomBytes as y };
+export { sdpFingerprint as C, roomIdFor as S, sealShareTarget as T, lanContext as _, glyphDots as a, randomBytes as b, bindMac as c, encodeLanPairing as d, encodePairing as f, lanAnswerSdp as g, importPairKey as h, SEAL_GLYPHS as i, candidatesOf as l, fromB64url as m, sealNames as n, admissionFor as o, equalBytes as p, sealSessionContext as r, b64url as s, connectionSeal as t, certFingerprint as u, lanIceCredentials as v, sdpSession as w, readLocalIce as x, newSecret as y };

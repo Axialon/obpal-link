@@ -1,4 +1,4 @@
-import { t as communityMarker } from "./origin-fHVBxSre.js";
+import { i as DotLoader, n as DOT_LOADER_STYLE, t as communityMarker } from "./origin-BKT9Ocdt.js";
 //#endregion
 //#region ../src/ui/markup.ts
 /** Code-owned templates. Values become text, attributes or nested DOM, never input to the HTML policy. */
@@ -131,8 +131,6 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg>\n      <div class=\"bt-srcobpal-slot-0-endobpal-slot-1-endobpal-slot-2-end\" data-src=\"obpal-slot-3-end\">\n        <span class=\"bt-src-ic\">obpal-slot-4-end</span>\n        <span class=\"bt-src-t\"><b>obpal-slot-5-end</b><small>obpal-slot-6-end</small></span>\n        obpal-slot-7-end\n      </div></svg>",
 	"<input type=\"checkbox\" data-sw=\"obpal-slot-0-end\" aria-label=\"obpal-slot-1-end\" checked=\"obpal-slot-2-end\" disabled=\"obpal-slot-3-end\">",
 	"<svg><input type=\"checkbox\" data-sw=\"obpal-slot-0-end\" aria-label=\"obpal-slot-1-end\" checked=\"obpal-slot-2-end\" disabled=\"obpal-slot-3-end\"></svg>",
-	"obpal-slot-0-end<span>obpal-slot-1-end</span>",
-	"<svg>obpal-slot-0-end<span>obpal-slot-1-end</span></svg>",
 	"<div class=\"music-heading\"><b>Drums</b><span class=\"music-part\">Your instrument</span></div>\n      <div class=\"music-options\"><label>Layout<select aria-label=\"Drum layout\"><option value=\"kit\">Kit</option><option value=\"hand\">Hand drums</option></select></label><button type=\"button\" class=\"music-toggle\" aria-pressed=\"false\">Strike mode</button></div>\n      <div class=\"drum-pads\"></div><button type=\"button\" class=\"strike-pad\" hidden><b>Hold to play</b><svg class=\"strike-map\" viewBox=\"-100 -100 200 200\" aria-hidden=\"true\"></svg><span>Point to aim · flick down to strike</span><small>Keep a secure grip · flick down gently</small></button><p class=\"music-hint\">Centre hits harder · play with both hands</p>",
 	"<svg><div class=\"music-heading\"><b>Drums</b><span class=\"music-part\">Your instrument</span></div>\n      <div class=\"music-options\"><label>Layout<select aria-label=\"Drum layout\"><option value=\"kit\">Kit</option><option value=\"hand\">Hand drums</option></select></label><button type=\"button\" class=\"music-toggle\" aria-pressed=\"false\">Strike mode</button></div>\n      <div class=\"drum-pads\"></div><button type=\"button\" class=\"strike-pad\" hidden><b>Hold to play</b><svg class=\"strike-map\" viewBox=\"-100 -100 200 200\" aria-hidden=\"true\"></svg><span>Point to aim · flick down to strike</span><small>Keep a secure grip · flick down gently</small></button><p class=\"music-hint\">Centre hits harder · play with both hands</p></svg>",
 	"<i aria-hidden=\"true\"></i><span>obpal-slot-0-end</span>",
@@ -147,10 +145,14 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><button class=\"gp-f\" data-k=\"obpal-slot-0-end\" data-b=\"obpal-slot-1-end\" aria-label=\"obpal-slot-2-end\">obpal-slot-3-end</button></svg>",
 	"<i data-dir=\"obpal-slot-0-end\" data-bit=\"obpal-slot-1-end\">obpal-slot-2-end</i>",
 	"<svg><i data-dir=\"obpal-slot-0-end\" data-bit=\"obpal-slot-1-end\">obpal-slot-2-end</i></svg>",
-	"<div class=\"gp-stick\" data-stick=\"obpal-slot-0-end\" role=\"group\" aria-label=\"obpal-slot-1-end stick, tap to click\"><i class=\"gp-base\"><i class=\"gp-knob\"></i></i></div>",
-	"<svg><div class=\"gp-stick\" data-stick=\"obpal-slot-0-end\" role=\"group\" aria-label=\"obpal-slot-1-end stick, tap to click\"><i class=\"gp-base\"><i class=\"gp-knob\"></i></i></div></svg>",
-	"\n    <div class=\"gp\" hidden role=\"application\" aria-label=\"Gamepad\">\n      <div class=\"gp-sh l\">obpal-slot-0-endobpal-slot-1-end</div>\n      <div class=\"gp-top\">\n        <div class=\"gp-sys l\"><button class=\"gp-mini\" data-act=\"exit\" aria-label=\"Back\">obpal-slot-2-end</button><button class=\"gp-mini\" data-act=\"controllers\" aria-haspopup=\"dialog\" aria-label=\"All controllers\">obpal-slot-3-end</button></div>\n        obpal-slot-4-end\n        <div class=\"gp-sys r\"><button class=\"gp-mini\" data-act=\"settings\" aria-label=\"Settings\">obpal-slot-5-end</button></div>\n      </div>\n      <div class=\"gp-sh r\">obpal-slot-6-endobpal-slot-7-end</div>\n      <div class=\"gp-cue\" role=\"img\" aria-label=\"Turn your phone sideways for the full controller\">obpal-slot-8-end</div>\n      <div class=\"gp-side l\">\n        obpal-slot-9-end\n        <div class=\"gp-dpad\" role=\"group\" aria-label=\"D-pad\">obpal-slot-10-endobpal-slot-11-endobpal-slot-12-endobpal-slot-13-end</div>\n      </div>\n      <div class=\"gp-mid\">\n        <div class=\"gp-center\">obpal-slot-14-end<div class=\"gp-wheel\" aria-hidden=\"true\"><i>obpal-slot-15-end</i></div>obpal-slot-16-end</div>\n        <button class=\"gp-scope\" data-act=\"scope\" type=\"button\" aria-label=\"Scene scope\" hidden><i class=\"gp-scope-ic\">obpal-slot-17-end</i><span>Object</span><small hidden></small></button>\n        <div class=\"gp-motion\" role=\"group\" aria-label=\"Motion\">\n          <div class=\"gp-chips\"></div>\n          <div class=\"gp-tools\">\n            <button class=\"gp-chip gp-prof\" data-act=\"profile\" aria-haspopup=\"dialog\" aria-label=\"Profile\"></button>\n            <button class=\"gp-chip gp-centre\" data-act=\"centre\" aria-label=\"Centre here\" hidden>obpal-slot-18-end</button>\n          </div>\n        </div>\n      </div>\n      <div class=\"gp-side r\">\n        obpal-slot-19-end\n        <div class=\"gp-face\">obpal-slot-20-endobpal-slot-21-endobpal-slot-22-endobpal-slot-23-end</div>\n      </div>\n    </div>",
-	"<svg>\n    <div class=\"gp\" hidden role=\"application\" aria-label=\"Gamepad\">\n      <div class=\"gp-sh l\">obpal-slot-0-endobpal-slot-1-end</div>\n      <div class=\"gp-top\">\n        <div class=\"gp-sys l\"><button class=\"gp-mini\" data-act=\"exit\" aria-label=\"Back\">obpal-slot-2-end</button><button class=\"gp-mini\" data-act=\"controllers\" aria-haspopup=\"dialog\" aria-label=\"All controllers\">obpal-slot-3-end</button></div>\n        obpal-slot-4-end\n        <div class=\"gp-sys r\"><button class=\"gp-mini\" data-act=\"settings\" aria-label=\"Settings\">obpal-slot-5-end</button></div>\n      </div>\n      <div class=\"gp-sh r\">obpal-slot-6-endobpal-slot-7-end</div>\n      <div class=\"gp-cue\" role=\"img\" aria-label=\"Turn your phone sideways for the full controller\">obpal-slot-8-end</div>\n      <div class=\"gp-side l\">\n        obpal-slot-9-end\n        <div class=\"gp-dpad\" role=\"group\" aria-label=\"D-pad\">obpal-slot-10-endobpal-slot-11-endobpal-slot-12-endobpal-slot-13-end</div>\n      </div>\n      <div class=\"gp-mid\">\n        <div class=\"gp-center\">obpal-slot-14-end<div class=\"gp-wheel\" aria-hidden=\"true\"><i>obpal-slot-15-end</i></div>obpal-slot-16-end</div>\n        <button class=\"gp-scope\" data-act=\"scope\" type=\"button\" aria-label=\"Scene scope\" hidden><i class=\"gp-scope-ic\">obpal-slot-17-end</i><span>Object</span><small hidden></small></button>\n        <div class=\"gp-motion\" role=\"group\" aria-label=\"Motion\">\n          <div class=\"gp-chips\"></div>\n          <div class=\"gp-tools\">\n            <button class=\"gp-chip gp-prof\" data-act=\"profile\" aria-haspopup=\"dialog\" aria-label=\"Profile\"></button>\n            <button class=\"gp-chip gp-centre\" data-act=\"centre\" aria-label=\"Centre here\" hidden>obpal-slot-18-end</button>\n          </div>\n        </div>\n      </div>\n      <div class=\"gp-side r\">\n        obpal-slot-19-end\n        <div class=\"gp-face\">obpal-slot-20-endobpal-slot-21-endobpal-slot-22-endobpal-slot-23-end</div>\n      </div>\n    </div></svg>",
+	"<div class=\"gp-stick\" data-stick=\"obpal-slot-0-end\" role=\"group\" aria-label=\"obpal-slot-1-end stick, tap to click\"><i class=\"gp-base\"><i class=\"gp-knob\"></i></i>obpal-slot-2-end</div>",
+	"<svg><div class=\"gp-stick\" data-stick=\"obpal-slot-0-end\" role=\"group\" aria-label=\"obpal-slot-1-end stick, tap to click\"><i class=\"gp-base\"><i class=\"gp-knob\"></i></i>obpal-slot-2-end</div></svg>",
+	"\n    <div class=\"gp\" hidden role=\"application\" aria-label=\"Gamepad\">\n      <div class=\"gp-sh l\">obpal-slot-0-endobpal-slot-1-end</div>\n      <div class=\"gp-top\">\n        <div class=\"gp-sys l\"><button class=\"gp-mini\" data-act=\"exit\" aria-label=\"Back\">obpal-slot-2-end</button><button class=\"gp-mini\" data-act=\"controllers\" aria-haspopup=\"dialog\" aria-label=\"All controllers\">obpal-slot-3-end</button></div>\n        obpal-slot-4-end\n        <div class=\"gp-sys r\"><button class=\"gp-mini\" data-act=\"settings\" aria-label=\"Settings\">obpal-slot-5-end</button></div>\n      </div>\n      <div class=\"gp-sh r\">obpal-slot-6-endobpal-slot-7-end</div>\n      <div class=\"gp-cue\" role=\"img\" aria-label=\"Turn your phone sideways for the full controller\">obpal-slot-8-end</div>\n      <div class=\"gp-side l\">\n        obpal-slot-9-end\n      </div>\n      <div class=\"gp-mid\">\n        <div class=\"gp-center\">obpal-slot-10-end<div class=\"gp-wheel\" aria-hidden=\"true\"><i>obpal-slot-11-end</i></div>obpal-slot-12-end</div>\n        <button class=\"gp-scope\" data-act=\"scope\" type=\"button\" aria-label=\"Scene scope\" hidden><i class=\"gp-scope-ic\">obpal-slot-13-end</i><span>Object</span><small hidden></small></button>\n        <div class=\"gp-motion\" role=\"group\" aria-label=\"Motion\">\n          <div class=\"gp-chips\"></div>\n          <div class=\"gp-tools\">\n            <button class=\"gp-chip gp-prof\" data-act=\"profile\" aria-haspopup=\"dialog\" aria-label=\"Profile\"></button>\n            <button class=\"gp-chip gp-centre\" data-act=\"centre\" aria-label=\"Centre here\" hidden>obpal-slot-14-end</button>\n          </div>\n        </div>\n      </div>\n      <div class=\"gp-side r\">\n        obpal-slot-15-end\n      </div>\n    </div>",
+	"<svg>\n    <div class=\"gp\" hidden role=\"application\" aria-label=\"Gamepad\">\n      <div class=\"gp-sh l\">obpal-slot-0-endobpal-slot-1-end</div>\n      <div class=\"gp-top\">\n        <div class=\"gp-sys l\"><button class=\"gp-mini\" data-act=\"exit\" aria-label=\"Back\">obpal-slot-2-end</button><button class=\"gp-mini\" data-act=\"controllers\" aria-haspopup=\"dialog\" aria-label=\"All controllers\">obpal-slot-3-end</button></div>\n        obpal-slot-4-end\n        <div class=\"gp-sys r\"><button class=\"gp-mini\" data-act=\"settings\" aria-label=\"Settings\">obpal-slot-5-end</button></div>\n      </div>\n      <div class=\"gp-sh r\">obpal-slot-6-endobpal-slot-7-end</div>\n      <div class=\"gp-cue\" role=\"img\" aria-label=\"Turn your phone sideways for the full controller\">obpal-slot-8-end</div>\n      <div class=\"gp-side l\">\n        obpal-slot-9-end\n      </div>\n      <div class=\"gp-mid\">\n        <div class=\"gp-center\">obpal-slot-10-end<div class=\"gp-wheel\" aria-hidden=\"true\"><i>obpal-slot-11-end</i></div>obpal-slot-12-end</div>\n        <button class=\"gp-scope\" data-act=\"scope\" type=\"button\" aria-label=\"Scene scope\" hidden><i class=\"gp-scope-ic\">obpal-slot-13-end</i><span>Object</span><small hidden></small></button>\n        <div class=\"gp-motion\" role=\"group\" aria-label=\"Motion\">\n          <div class=\"gp-chips\"></div>\n          <div class=\"gp-tools\">\n            <button class=\"gp-chip gp-prof\" data-act=\"profile\" aria-haspopup=\"dialog\" aria-label=\"Profile\"></button>\n            <button class=\"gp-chip gp-centre\" data-act=\"centre\" aria-label=\"Centre here\" hidden>obpal-slot-14-end</button>\n          </div>\n        </div>\n      </div>\n      <div class=\"gp-side r\">\n        obpal-slot-15-end\n      </div>\n    </div></svg>",
+	"<div class=\"gp-dpad\" role=\"group\" aria-label=\"D-pad\">obpal-slot-0-endobpal-slot-1-endobpal-slot-2-endobpal-slot-3-end</div>",
+	"<svg><div class=\"gp-dpad\" role=\"group\" aria-label=\"D-pad\">obpal-slot-0-endobpal-slot-1-endobpal-slot-2-endobpal-slot-3-end</div></svg>",
+	"<div class=\"gp-face\">obpal-slot-0-endobpal-slot-1-endobpal-slot-2-endobpal-slot-3-end</div>",
+	"<svg><div class=\"gp-face\">obpal-slot-0-endobpal-slot-1-endobpal-slot-2-endobpal-slot-3-end</div></svg>",
 	"<button class=\"gp-chip\" data-chip=\"obpal-slot-0-end\" aria-pressed=\"false\" aria-haspopup=\"dialog\" title=\"obpal-slot-1-end\"><i class=\"gp-chip-ic\"></i><span>obpal-slot-2-end</span></button>",
 	"<svg><button class=\"gp-chip\" data-chip=\"obpal-slot-0-end\" aria-pressed=\"false\" aria-haspopup=\"dialog\" title=\"obpal-slot-1-end\"><i class=\"gp-chip-ic\"></i><span>obpal-slot-2-end</span></button></svg>",
 	"obpal-slot-0-end<span>obpal-slot-1-endobpal-slot-2-endobpal-slot-3-end</span>",
@@ -189,10 +191,10 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><small>obpal-slot-0-end</small><span>obpal-slot-1-end</span></svg>",
 	"<div class=\"aurora\" aria-hidden=\"true\"><i></i><i></i><i></i></div>",
 	"<svg><div class=\"aurora\" aria-hidden=\"true\"><i></i><i></i><i></i></div></svg>",
-	"\n    <main class=\"msg\">\n      <div class=\"logo\">obpal-slot-0-end</div>\n      <div class=\"msg-card glass\">\n        obpal-slot-1-end\n        <h1>obpal-slot-2-end</h1>\n        <p>obpal-slot-3-end</p>\n        obpal-slot-4-end\n      </div>\n    </main>",
-	"<svg>\n    <main class=\"msg\">\n      <div class=\"logo\">obpal-slot-0-end</div>\n      <div class=\"msg-card glass\">\n        obpal-slot-1-end\n        <h1>obpal-slot-2-end</h1>\n        <p>obpal-slot-3-end</p>\n        obpal-slot-4-end\n      </div>\n    </main></svg>",
-	"<div class=\"spinner\" aria-hidden=\"true\"></div>",
-	"<svg><div class=\"spinner\" aria-hidden=\"true\"></div></svg>",
+	"\n    <main class=\"msg\">\n      <div class=\"logo\">obpal-slot-0-end</div>\n      <div class=\"msg-card glass\">\n        obpal-slot-1-end\n        <h1 class=\"obpal-slot-2-end\">obpal-slot-3-end</h1>\n        <p>obpal-slot-4-end</p>\n        obpal-slot-5-end\n      </div>\n    </main>",
+	"<svg>\n    <main class=\"msg\">\n      <div class=\"logo\">obpal-slot-0-end</div>\n      <div class=\"msg-card glass\">\n        obpal-slot-1-end\n        <h1 class=\"obpal-slot-2-end\">obpal-slot-3-end</h1>\n        <p>obpal-slot-4-end</p>\n        obpal-slot-5-end\n      </div>\n    </main></svg>",
+	"<div class=\"dot-loading-slot\" data-dot-loading=\"true\" data-dot-size=\"48\" data-dot-label=\"obpal-slot-0-end\"></div>",
+	"<svg><div class=\"dot-loading-slot\" data-dot-loading=\"true\" data-dot-size=\"48\" data-dot-label=\"obpal-slot-0-end\"></div></svg>",
 	"<div class=\"msg-art\">obpal-slot-0-end</div>",
 	"<svg><div class=\"msg-art\">obpal-slot-0-end</div></svg>",
 	"<button class=\"btn primary\" id=\"act\">obpal-slot-0-end</button>",
@@ -201,12 +203,12 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg>\n    <form class=\"code-form\" id=\"code-form\" novalidate>\n      <label class=\"sr\" for=\"code-in\">Code from your screen</label>\n      <input class=\"code-in\" id=\"code-in\" type=\"text\" inputmode=\"numeric\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"characters\"\n        spellcheck=\"false\" enterkeyhint=\"go\" placeholder=\"000 000 0000\" maxlength=\"24\" aria-describedby=\"code-say\" />\n      <button class=\"btn primary big\" id=\"code-go\" type=\"submit\" disabled>Connect</button>\n      <p class=\"code-say\" id=\"code-say\" role=\"status\"></p>\n    </form>\n    <p id=\"pack-arrival\" class=\"start-foot\" role=\"status\" hidden></p>\n    <p class=\"start-foot\">Nothing on the screen yet? Open <b>obpal-slot-0-end/view</b> there.</p></svg>",
 	"\n      <div class=\"gate\" id=\"gate\">\n        <div class=\"gate-card glass\">\n          <div class=\"gate-art\" aria-hidden=\"true\">obpal-slot-0-end</div>\n          <h1>Tap to start</h1>\n          <p>Your phone's motion steers the view. Nothing is recorded.</p>\n          <button class=\"btn primary big\" id=\"start\">Start</button>\n        </div>\n      </div>",
 	"<svg>\n      <div class=\"gate\" id=\"gate\">\n        <div class=\"gate-card glass\">\n          <div class=\"gate-art\" aria-hidden=\"true\">obpal-slot-0-end</div>\n          <h1>Tap to start</h1>\n          <p>Your phone's motion steers the view. Nothing is recorded.</p>\n          <button class=\"btn primary big\" id=\"start\">Start</button>\n        </div>\n      </div></svg>",
-	"\n      <div class=\"surfaceobpal-slot-0-end\" id=\"surface\">\n        <header class=\"bar\">\n          <span class=\"host-ic\">obpal-slot-1-end</span>\n          <button class=\"host-name connection-title\" aria-label=\"Connections\"><span class=\"host-t\"></span>obpal-slot-2-end</button>\n          <span id=\"link-badge\"></span>\n          <button class=\"bar-btn lock-btn\" id=\"lock\" aria-label=\"Lock screen rotation\" aria-pressed=\"false\">obpal-slot-3-end</button>\n          <button class=\"bar-btn\" id=\"gear\" aria-label=\"Settings\">obpal-slot-4-end</button>\n        </header>\n        <div class=\"banner glass\" id=\"banner\" hidden></div>\n        obpal-slot-5-end\n        <div class=\"pad glass\" id=\"pad\" aria-label=\"Trackpad\">\n          <div class=\"pad-part glass\" id=\"pad-part\" hidden><span class=\"pp-dot\"></span><span class=\"pp-name\"></span><span class=\"pp-tag\"></span><button class=\"pp-x\" aria-label=\"Release part\">obpal-slot-6-end</button></div>\n          <div class=\"gestures\" id=\"gestures\" aria-hidden=\"true\"></div>\n          <div class=\"pad-wheel\" id=\"pad-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn it to scroll\" hidden></div>\n          <div class=\"level\" id=\"level\" aria-hidden=\"true\"><div class=\"level-ring\"></div><div class=\"level-dot\" id=\"level-dot\"></div></div>\n          <div class=\"hold-spot\" id=\"hold-spot\" aria-hidden=\"true\" hidden><i>obpal-slot-7-end</i></div>\n          <button class=\"track-start glass\" id=\"track-start\" hidden>obpal-slot-8-end<b>Start 3D</b><small></small></button>\n          <button class=\"glow-end\" id=\"glow-end\" hidden aria-label=\"Stop glowing\">obpal-slot-9-end</button>\n          <button class=\"glow-stop\" id=\"glow-stop\" hidden>Stop</button>\n          obpal-slot-10-end\n        </div>\n        <div class=\"wii\" id=\"wii\" hidden>\n          <div class=\"wii-part\" id=\"wii-part\" hidden><span class=\"pp-dot\"></span><span class=\"wii-part-name\"></span><span class=\"wii-part-value\"></span></div>\n          <button class=\"wii-a\" id=\"wii-a\" aria-label=\"A: select\">A</button>\n          <div class=\"wii-row\">\n            <button class=\"wii-round\" id=\"wii-minus\" aria-label=\"Zoom out\">−</button>\n            <button class=\"wii-round home\" id=\"wii-home\" aria-label=\"Centre the pointer\">obpal-slot-11-end</button>\n            <button class=\"wii-round\" id=\"wii-plus\" aria-label=\"Zoom in\">+</button>\n          </div>\n          <button class=\"wii-b\" id=\"wii-b\" aria-label=\"B: hold to grab\"><b>B</b><span>hold to grab</span></button>\n        </div>\n        <div class=\"mouse\" id=\"mouse\" hidden>obpal-slot-12-end</div>\n        <div class=\"tray\" id=\"tray\"></div>\n        <div class=\"dock\">\n          <button class=\"gyro glass\" id=\"gyro\" aria-pressed=\"false\"><span class=\"gyro-ic\">obpal-slot-13-end</span><span class=\"gyro-label\">Motion</span><span class=\"gyro-sw\" aria-hidden=\"true\"><i></i></span></button>\n          <span id=\"styles-slot\"></span>\n          <button class=\"icon-btn square glass\" id=\"center\" aria-label=\"Recenter\">obpal-slot-14-end<span class=\"center-t\">Set position</span></button>\n        </div>\n      </div>\n      obpal-slot-15-end\n      <div class=\"toast glass\" id=\"toast\" role=\"status\" aria-live=\"polite\"></div>\n      <div class=\"rest\" id=\"rest\" aria-hidden=\"true\"><span>Resting to keep your phone cool · touch to wake</span></div>",
-	"<svg>\n      <div class=\"surfaceobpal-slot-0-end\" id=\"surface\">\n        <header class=\"bar\">\n          <span class=\"host-ic\">obpal-slot-1-end</span>\n          <button class=\"host-name connection-title\" aria-label=\"Connections\"><span class=\"host-t\"></span>obpal-slot-2-end</button>\n          <span id=\"link-badge\"></span>\n          <button class=\"bar-btn lock-btn\" id=\"lock\" aria-label=\"Lock screen rotation\" aria-pressed=\"false\">obpal-slot-3-end</button>\n          <button class=\"bar-btn\" id=\"gear\" aria-label=\"Settings\">obpal-slot-4-end</button>\n        </header>\n        <div class=\"banner glass\" id=\"banner\" hidden></div>\n        obpal-slot-5-end\n        <div class=\"pad glass\" id=\"pad\" aria-label=\"Trackpad\">\n          <div class=\"pad-part glass\" id=\"pad-part\" hidden><span class=\"pp-dot\"></span><span class=\"pp-name\"></span><span class=\"pp-tag\"></span><button class=\"pp-x\" aria-label=\"Release part\">obpal-slot-6-end</button></div>\n          <div class=\"gestures\" id=\"gestures\" aria-hidden=\"true\"></div>\n          <div class=\"pad-wheel\" id=\"pad-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn it to scroll\" hidden></div>\n          <div class=\"level\" id=\"level\" aria-hidden=\"true\"><div class=\"level-ring\"></div><div class=\"level-dot\" id=\"level-dot\"></div></div>\n          <div class=\"hold-spot\" id=\"hold-spot\" aria-hidden=\"true\" hidden><i>obpal-slot-7-end</i></div>\n          <button class=\"track-start glass\" id=\"track-start\" hidden>obpal-slot-8-end<b>Start 3D</b><small></small></button>\n          <button class=\"glow-end\" id=\"glow-end\" hidden aria-label=\"Stop glowing\">obpal-slot-9-end</button>\n          <button class=\"glow-stop\" id=\"glow-stop\" hidden>Stop</button>\n          obpal-slot-10-end\n        </div>\n        <div class=\"wii\" id=\"wii\" hidden>\n          <div class=\"wii-part\" id=\"wii-part\" hidden><span class=\"pp-dot\"></span><span class=\"wii-part-name\"></span><span class=\"wii-part-value\"></span></div>\n          <button class=\"wii-a\" id=\"wii-a\" aria-label=\"A: select\">A</button>\n          <div class=\"wii-row\">\n            <button class=\"wii-round\" id=\"wii-minus\" aria-label=\"Zoom out\">−</button>\n            <button class=\"wii-round home\" id=\"wii-home\" aria-label=\"Centre the pointer\">obpal-slot-11-end</button>\n            <button class=\"wii-round\" id=\"wii-plus\" aria-label=\"Zoom in\">+</button>\n          </div>\n          <button class=\"wii-b\" id=\"wii-b\" aria-label=\"B: hold to grab\"><b>B</b><span>hold to grab</span></button>\n        </div>\n        <div class=\"mouse\" id=\"mouse\" hidden>obpal-slot-12-end</div>\n        <div class=\"tray\" id=\"tray\"></div>\n        <div class=\"dock\">\n          <button class=\"gyro glass\" id=\"gyro\" aria-pressed=\"false\"><span class=\"gyro-ic\">obpal-slot-13-end</span><span class=\"gyro-label\">Motion</span><span class=\"gyro-sw\" aria-hidden=\"true\"><i></i></span></button>\n          <span id=\"styles-slot\"></span>\n          <button class=\"icon-btn square glass\" id=\"center\" aria-label=\"Recenter\">obpal-slot-14-end<span class=\"center-t\">Set position</span></button>\n        </div>\n      </div>\n      obpal-slot-15-end\n      <div class=\"toast glass\" id=\"toast\" role=\"status\" aria-live=\"polite\"></div>\n      <div class=\"rest\" id=\"rest\" aria-hidden=\"true\"><span>Resting to keep your phone cool · touch to wake</span></div></svg>",
+	"\n      <div class=\"surfaceobpal-slot-0-end\" id=\"surface\">\n        <header class=\"bar\">\n          <span class=\"host-ic\">obpal-slot-1-end</span>\n          <button class=\"host-name connection-title\" aria-label=\"Connections\"><span class=\"host-t\"></span>obpal-slot-2-end</button>\n          <span id=\"link-badge\"></span>\n          <button class=\"bar-btn lock-btn\" id=\"lock\" aria-label=\"Lock screen rotation\" aria-pressed=\"false\">obpal-slot-3-end</button>\n          <button class=\"bar-btn\" id=\"gear\" aria-label=\"Settings\">obpal-slot-4-end</button>\n        </header>\n        <div class=\"banner glass\" id=\"banner\" hidden></div>\n        obpal-slot-5-end\n        <div class=\"pad glass\" id=\"pad\" aria-label=\"Trackpad\">\n          <div class=\"pad-part glass\" id=\"pad-part\" hidden><span class=\"pp-dot\"></span><span class=\"pp-name\"></span><span class=\"pp-tag\"></span><button class=\"pp-x\" aria-label=\"Release part\">obpal-slot-6-end</button></div>\n          <div class=\"gestures\" id=\"gestures\" aria-hidden=\"true\"></div>\n          <button class=\"thumb-settings\" aria-label=\"Settings\" hidden>obpal-slot-7-end</button>\n          <p class=\"thumb-pad-hint\" hidden>Tap to click · hold for right click</p>\n          <div class=\"pad-wheel\" id=\"pad-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn it to scroll\" hidden></div>\n          <div class=\"level\" id=\"level\" aria-hidden=\"true\"><div class=\"level-ring\"></div><div class=\"level-dot\" id=\"level-dot\"></div></div>\n          <div class=\"hold-spot\" id=\"hold-spot\" aria-hidden=\"true\" hidden><i>obpal-slot-8-end</i></div>\n          <button class=\"track-start glass\" id=\"track-start\" hidden>obpal-slot-9-end<b>Start 3D</b><small></small></button>\n          <button class=\"glow-end\" id=\"glow-end\" hidden aria-label=\"Stop glowing\">obpal-slot-10-end</button>\n          <button class=\"glow-stop\" id=\"glow-stop\" hidden>Stop</button>\n          obpal-slot-11-end\n        </div>\n        <div class=\"wii\" id=\"wii\" hidden>\n          <div class=\"wii-part\" id=\"wii-part\" hidden><span class=\"pp-dot\"></span><span class=\"wii-part-name\"></span><span class=\"wii-part-value\"></span></div>\n          <button class=\"wii-a\" id=\"wii-a\" aria-label=\"A: select\">A</button>\n          <div class=\"wii-row\">\n            <button class=\"wii-round\" id=\"wii-minus\" aria-label=\"Zoom out\">−</button>\n            <button class=\"wii-round home\" id=\"wii-home\" aria-label=\"Centre the pointer\">obpal-slot-12-end</button>\n            <button class=\"wii-round\" id=\"wii-plus\" aria-label=\"Zoom in\">+</button>\n            <button class=\"thumb-settings\" aria-label=\"Settings\" hidden>obpal-slot-13-end</button>\n          </div>\n          <button class=\"wii-b\" id=\"wii-b\" aria-label=\"B: hold to grab\"><b>B</b><span>hold to grab</span></button>\n          <button class=\"wii-right\" id=\"wii-right\" aria-label=\"Right click\" hidden>obpal-slot-14-end</button>\n          <div class=\"wii-wheel mouse-wheel\" id=\"wii-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn to scroll\" hidden></div>\n          <p class=\"thumb-hint\" hidden>A selects · B grabs</p>\n        </div>\n        <div class=\"mouse\" id=\"mouse\" hidden>obpal-slot-15-end</div>\n        <div class=\"tray\" id=\"tray\"></div>\n        <div class=\"dock\">\n          <button class=\"gyro glass\" id=\"gyro\" aria-pressed=\"false\"><span class=\"gyro-ic\">obpal-slot-16-end</span><span class=\"gyro-label\">Motion</span><span class=\"gyro-sw\" aria-hidden=\"true\"><i></i></span></button>\n          <span id=\"styles-slot\"></span>\n          <button class=\"icon-btn square glass\" id=\"center\" aria-label=\"Recenter\">obpal-slot-17-end<span class=\"center-t\">Set position</span></button>\n        </div>\n      </div>\n      obpal-slot-18-end\n      <div class=\"toast glass\" id=\"toast\" role=\"status\" aria-live=\"polite\"></div>\n      <div class=\"rest\" id=\"rest\" aria-hidden=\"true\"><span>Resting to keep your phone cool · touch to wake</span></div>",
+	"<svg>\n      <div class=\"surfaceobpal-slot-0-end\" id=\"surface\">\n        <header class=\"bar\">\n          <span class=\"host-ic\">obpal-slot-1-end</span>\n          <button class=\"host-name connection-title\" aria-label=\"Connections\"><span class=\"host-t\"></span>obpal-slot-2-end</button>\n          <span id=\"link-badge\"></span>\n          <button class=\"bar-btn lock-btn\" id=\"lock\" aria-label=\"Lock screen rotation\" aria-pressed=\"false\">obpal-slot-3-end</button>\n          <button class=\"bar-btn\" id=\"gear\" aria-label=\"Settings\">obpal-slot-4-end</button>\n        </header>\n        <div class=\"banner glass\" id=\"banner\" hidden></div>\n        obpal-slot-5-end\n        <div class=\"pad glass\" id=\"pad\" aria-label=\"Trackpad\">\n          <div class=\"pad-part glass\" id=\"pad-part\" hidden><span class=\"pp-dot\"></span><span class=\"pp-name\"></span><span class=\"pp-tag\"></span><button class=\"pp-x\" aria-label=\"Release part\">obpal-slot-6-end</button></div>\n          <div class=\"gestures\" id=\"gestures\" aria-hidden=\"true\"></div>\n          <button class=\"thumb-settings\" aria-label=\"Settings\" hidden>obpal-slot-7-end</button>\n          <p class=\"thumb-pad-hint\" hidden>Tap to click · hold for right click</p>\n          <div class=\"pad-wheel\" id=\"pad-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn it to scroll\" hidden></div>\n          <div class=\"level\" id=\"level\" aria-hidden=\"true\"><div class=\"level-ring\"></div><div class=\"level-dot\" id=\"level-dot\"></div></div>\n          <div class=\"hold-spot\" id=\"hold-spot\" aria-hidden=\"true\" hidden><i>obpal-slot-8-end</i></div>\n          <button class=\"track-start glass\" id=\"track-start\" hidden>obpal-slot-9-end<b>Start 3D</b><small></small></button>\n          <button class=\"glow-end\" id=\"glow-end\" hidden aria-label=\"Stop glowing\">obpal-slot-10-end</button>\n          <button class=\"glow-stop\" id=\"glow-stop\" hidden>Stop</button>\n          obpal-slot-11-end\n        </div>\n        <div class=\"wii\" id=\"wii\" hidden>\n          <div class=\"wii-part\" id=\"wii-part\" hidden><span class=\"pp-dot\"></span><span class=\"wii-part-name\"></span><span class=\"wii-part-value\"></span></div>\n          <button class=\"wii-a\" id=\"wii-a\" aria-label=\"A: select\">A</button>\n          <div class=\"wii-row\">\n            <button class=\"wii-round\" id=\"wii-minus\" aria-label=\"Zoom out\">−</button>\n            <button class=\"wii-round home\" id=\"wii-home\" aria-label=\"Centre the pointer\">obpal-slot-12-end</button>\n            <button class=\"wii-round\" id=\"wii-plus\" aria-label=\"Zoom in\">+</button>\n            <button class=\"thumb-settings\" aria-label=\"Settings\" hidden>obpal-slot-13-end</button>\n          </div>\n          <button class=\"wii-b\" id=\"wii-b\" aria-label=\"B: hold to grab\"><b>B</b><span>hold to grab</span></button>\n          <button class=\"wii-right\" id=\"wii-right\" aria-label=\"Right click\" hidden>obpal-slot-14-end</button>\n          <div class=\"wii-wheel mouse-wheel\" id=\"wii-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn to scroll\" hidden></div>\n          <p class=\"thumb-hint\" hidden>A selects · B grabs</p>\n        </div>\n        <div class=\"mouse\" id=\"mouse\" hidden>obpal-slot-15-end</div>\n        <div class=\"tray\" id=\"tray\"></div>\n        <div class=\"dock\">\n          <button class=\"gyro glass\" id=\"gyro\" aria-pressed=\"false\"><span class=\"gyro-ic\">obpal-slot-16-end</span><span class=\"gyro-label\">Motion</span><span class=\"gyro-sw\" aria-hidden=\"true\"><i></i></span></button>\n          <span id=\"styles-slot\"></span>\n          <button class=\"icon-btn square glass\" id=\"center\" aria-label=\"Recenter\">obpal-slot-17-end<span class=\"center-t\">Set position</span></button>\n        </div>\n      </div>\n      obpal-slot-18-end\n      <div class=\"toast glass\" id=\"toast\" role=\"status\" aria-live=\"polite\"></div>\n      <div class=\"rest\" id=\"rest\" aria-hidden=\"true\"><span>Resting to keep your phone cool · touch to wake</span></div></svg>",
 	"<span>obpal-slot-0-end<b>obpal-slot-1-end</b></span>",
 	"<svg><span>obpal-slot-0-end<b>obpal-slot-1-end</b></span></svg>",
-	"<img src=\"obpal-slot-0-end\" alt=\"\" loading=\"lazy\" decoding=\"async\">",
-	"<svg><img src=\"obpal-slot-0-end\" alt=\"\" loading=\"lazy\" decoding=\"async\"></svg>",
+	"<img src=\"obpal-slot-0-end\" alt=\"\" loading=\"lazy\" decoding=\"async\" data-dot-thumbnail=\"Opening obpal-slot-1-end preview\">",
+	"<svg><img src=\"obpal-slot-0-end\" alt=\"\" loading=\"lazy\" decoding=\"async\" data-dot-thumbnail=\"Opening obpal-slot-1-end preview\"></svg>",
 	"<span style=\"color:obpal-slot-0-end\">obpal-slot-1-end</span>",
 	"<svg><span style=\"color:obpal-slot-0-end\">obpal-slot-1-end</span></svg>",
 	"obpal-slot-0-end<span class=\"tray-label\"></span>",
@@ -221,8 +223,8 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><div class=\"sheet picker glass\" role=\"dialog\"><div class=\"grip\" aria-hidden=\"true\"></div><div class=\"picker-head\"><h2></h2><button class=\"icon-btn glass\" id=\"pick-close\" aria-label=\"Close\">obpal-slot-0-end</button></div><div class=\"picker-list\"></div></div></svg>",
 	"<span class=\"pick-art\">obpal-slot-0-end</span><span class=\"pick-name\"></span>",
 	"<svg><span class=\"pick-art\">obpal-slot-0-end</span><span class=\"pick-name\"></span></svg>",
-	"\n      <div class=\"sheet settings glass\" role=\"dialog\" aria-label=\"Settings\">\n        <div class=\"sheet-head\"><div class=\"grip\" aria-hidden=\"true\"></div><button class=\"icon-btn glass sheet-x\" id=\"set-close\" aria-label=\"Close\">obpal-slot-0-end</button></div>\n        <button class=\"set-row set-cam glass\" id=\"scan-open\">obpal-slot-1-end<span>Scan a code<small>Connect another screen</small></span>obpal-slot-2-end</button>\n        obpal-slot-3-end\n        obpal-slot-4-end\n        <p class=\"sheet-k\"><b>01</b>Feel</p>\n        <label class=\"bb-field\"><span>Sensitivity</span><output id=\"gv\"></output><input class=\"bb-range\" type=\"range\" id=\"gain\" min=\"0.5\" max=\"3\" step=\"0.1\"></label>\n        <label class=\"bb-field\"><span>Steadiness</span><output id=\"sv\"></output><input class=\"bb-range\" type=\"range\" id=\"smooth\" min=\"0\" max=\"1\" step=\"0.05\"></label>\n        <p class=\"meta\">These adjust tilt and aiming. 1:1 turn follows your phone exactly.</p>\n        <label class=\"row sw-row\"><span>Feedback on phone and gamepad</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"feedback\"></label>\n        <p class=\"sheet-k\"><b>02</b>Surface</p>\n        <div class=\"theme-row\" role=\"radiogroup\" aria-label=\"Surface\">obpal-slot-5-end</div>\n        <p class=\"sheet-k\"><b>03</b>Colourobpal-slot-6-end</p>\n        <div class=\"accent-row\" role=\"radiogroup\" aria-label=\"Colour\">obpal-slot-7-end</div>\n        <p class=\"sheet-k\"><b>04</b>Holding it</p>\n        <label class=\"row sw-row\"><span>Left-handed</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"left\"></label>\n        <label class=\"row sw-row\"><span>Lock rotation while motion steers</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"lockgyro\"></label>\n        <div class=\"row track3d\" role=\"radiogroup\" aria-label=\"3D position comes from\"><span>3D position comes from</span>obpal-slot-8-endobpal-slot-9-end</div>\n        <p class=\"sheet-k\"><b>05</b>More</p>\n        <button class=\"set-row glass\" id=\"buttons-open\">obpal-slot-10-end<span>Buttons<small>Headset, remote, clicker, pad</small></span><span class=\"set-srcs\">obpal-slot-11-end</span>obpal-slot-12-end</button>\n        <button class=\"set-row glass\" id=\"connections-open\">obpal-slot-13-end<span>Connections<small>Switch, rename or forget a screen</small></span>obpal-slot-14-end</button>\n        <button class=\"set-row glass\" id=\"connection-details\">obpal-slot-15-end<span>Connection details<small>Compare the seal and see what this shares</small></span>obpal-slot-16-end</button>\n        <a class=\"support-link\" href=\"/sponsor/\" target=\"_blank\" rel=\"noopener\">obpal-slot-17-end<span>Support ob.Pal</span></a>\n        <div class=\"actions\"><button class=\"btn\" id=\"disc\">Disconnect</button><button class=\"btn primary\" id=\"done\">Done</button></div>\n      </div>",
-	"<svg>\n      <div class=\"sheet settings glass\" role=\"dialog\" aria-label=\"Settings\">\n        <div class=\"sheet-head\"><div class=\"grip\" aria-hidden=\"true\"></div><button class=\"icon-btn glass sheet-x\" id=\"set-close\" aria-label=\"Close\">obpal-slot-0-end</button></div>\n        <button class=\"set-row set-cam glass\" id=\"scan-open\">obpal-slot-1-end<span>Scan a code<small>Connect another screen</small></span>obpal-slot-2-end</button>\n        obpal-slot-3-end\n        obpal-slot-4-end\n        <p class=\"sheet-k\"><b>01</b>Feel</p>\n        <label class=\"bb-field\"><span>Sensitivity</span><output id=\"gv\"></output><input class=\"bb-range\" type=\"range\" id=\"gain\" min=\"0.5\" max=\"3\" step=\"0.1\"></label>\n        <label class=\"bb-field\"><span>Steadiness</span><output id=\"sv\"></output><input class=\"bb-range\" type=\"range\" id=\"smooth\" min=\"0\" max=\"1\" step=\"0.05\"></label>\n        <p class=\"meta\">These adjust tilt and aiming. 1:1 turn follows your phone exactly.</p>\n        <label class=\"row sw-row\"><span>Feedback on phone and gamepad</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"feedback\"></label>\n        <p class=\"sheet-k\"><b>02</b>Surface</p>\n        <div class=\"theme-row\" role=\"radiogroup\" aria-label=\"Surface\">obpal-slot-5-end</div>\n        <p class=\"sheet-k\"><b>03</b>Colourobpal-slot-6-end</p>\n        <div class=\"accent-row\" role=\"radiogroup\" aria-label=\"Colour\">obpal-slot-7-end</div>\n        <p class=\"sheet-k\"><b>04</b>Holding it</p>\n        <label class=\"row sw-row\"><span>Left-handed</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"left\"></label>\n        <label class=\"row sw-row\"><span>Lock rotation while motion steers</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"lockgyro\"></label>\n        <div class=\"row track3d\" role=\"radiogroup\" aria-label=\"3D position comes from\"><span>3D position comes from</span>obpal-slot-8-endobpal-slot-9-end</div>\n        <p class=\"sheet-k\"><b>05</b>More</p>\n        <button class=\"set-row glass\" id=\"buttons-open\">obpal-slot-10-end<span>Buttons<small>Headset, remote, clicker, pad</small></span><span class=\"set-srcs\">obpal-slot-11-end</span>obpal-slot-12-end</button>\n        <button class=\"set-row glass\" id=\"connections-open\">obpal-slot-13-end<span>Connections<small>Switch, rename or forget a screen</small></span>obpal-slot-14-end</button>\n        <button class=\"set-row glass\" id=\"connection-details\">obpal-slot-15-end<span>Connection details<small>Compare the seal and see what this shares</small></span>obpal-slot-16-end</button>\n        <a class=\"support-link\" href=\"/sponsor/\" target=\"_blank\" rel=\"noopener\">obpal-slot-17-end<span>Support ob.Pal</span></a>\n        <div class=\"actions\"><button class=\"btn\" id=\"disc\">Disconnect</button><button class=\"btn primary\" id=\"done\">Done</button></div>\n      </div></svg>",
+	"\n      <div class=\"sheet settings glass\" role=\"dialog\" aria-label=\"Settings\">\n        <div class=\"sheet-head\"><div class=\"grip\" aria-hidden=\"true\"></div><button class=\"icon-btn glass sheet-x\" id=\"set-close\" aria-label=\"Close\">obpal-slot-0-end</button></div>\n        <button class=\"set-row set-cam glass\" id=\"scan-open\">obpal-slot-1-end<span>Scan a code<small>Connect another screen</small></span>obpal-slot-2-end</button>\n        obpal-slot-3-end\n        obpal-slot-4-end\n        <p class=\"sheet-k\"><b>01</b>Feel</p>\n        <label class=\"bb-field\"><span>Sensitivity</span><output id=\"gv\"></output><input class=\"bb-range\" type=\"range\" id=\"gain\" min=\"0.5\" max=\"3\" step=\"0.1\"></label>\n        <label class=\"bb-field\"><span>Steadiness</span><output id=\"sv\"></output><input class=\"bb-range\" type=\"range\" id=\"smooth\" min=\"0\" max=\"1\" step=\"0.05\"></label>\n        <p class=\"meta\">These adjust tilt and aiming. 1:1 turn follows your phone exactly.</p>\n        <label class=\"row sw-row\"><span>Feedback on phone and gamepad</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"feedback\"></label>\n        <p class=\"sheet-k\"><b>02</b>Surface</p>\n        <div class=\"theme-row\" role=\"radiogroup\" aria-label=\"Surface\">obpal-slot-5-end</div>\n        <p class=\"sheet-k\"><b>03</b>Colourobpal-slot-6-end</p>\n        <div class=\"accent-row\" role=\"radiogroup\" aria-label=\"Colour\">obpal-slot-7-end</div>\n        <p class=\"sheet-k\"><b>04</b>Holding it</p>\n        obpal-slot-8-end\n        <label class=\"row sw-row\"><span>Left-handed</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"left\"></label>\n        <label class=\"row sw-row\"><span>Lock rotation while motion steers</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"lockgyro\"></label>\n        <div class=\"row track3d\" role=\"radiogroup\" aria-label=\"3D position comes from\"><span>3D position comes from</span>obpal-slot-9-endobpal-slot-10-end</div>\n        <p class=\"sheet-k\"><b>05</b>More</p>\n        <button class=\"set-row glass\" id=\"buttons-open\">obpal-slot-11-end<span>Buttons<small>Headset, remote, clicker, pad</small></span><span class=\"set-srcs\">obpal-slot-12-end</span>obpal-slot-13-end</button>\n        <button class=\"set-row glass\" id=\"connections-open\">obpal-slot-14-end<span>Connections<small>Switch, rename or forget a screen</small></span>obpal-slot-15-end</button>\n        <button class=\"set-row glass\" id=\"connection-details\">obpal-slot-16-end<span>Connection details<small>Compare the seal and see what this shares</small></span>obpal-slot-17-end</button>\n        <a class=\"support-link\" href=\"/sponsor/\" target=\"_blank\" rel=\"noopener\">obpal-slot-18-end<span>Support ob.Pal</span></a>\n        <div class=\"actions\"><button class=\"btn\" id=\"disc\">Disconnect</button><button class=\"btn primary\" id=\"done\">Done</button></div>\n      </div>",
+	"<svg>\n      <div class=\"sheet settings glass\" role=\"dialog\" aria-label=\"Settings\">\n        <div class=\"sheet-head\"><div class=\"grip\" aria-hidden=\"true\"></div><button class=\"icon-btn glass sheet-x\" id=\"set-close\" aria-label=\"Close\">obpal-slot-0-end</button></div>\n        <button class=\"set-row set-cam glass\" id=\"scan-open\">obpal-slot-1-end<span>Scan a code<small>Connect another screen</small></span>obpal-slot-2-end</button>\n        obpal-slot-3-end\n        obpal-slot-4-end\n        <p class=\"sheet-k\"><b>01</b>Feel</p>\n        <label class=\"bb-field\"><span>Sensitivity</span><output id=\"gv\"></output><input class=\"bb-range\" type=\"range\" id=\"gain\" min=\"0.5\" max=\"3\" step=\"0.1\"></label>\n        <label class=\"bb-field\"><span>Steadiness</span><output id=\"sv\"></output><input class=\"bb-range\" type=\"range\" id=\"smooth\" min=\"0\" max=\"1\" step=\"0.05\"></label>\n        <p class=\"meta\">These adjust tilt and aiming. 1:1 turn follows your phone exactly.</p>\n        <label class=\"row sw-row\"><span>Feedback on phone and gamepad</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"feedback\"></label>\n        <p class=\"sheet-k\"><b>02</b>Surface</p>\n        <div class=\"theme-row\" role=\"radiogroup\" aria-label=\"Surface\">obpal-slot-5-end</div>\n        <p class=\"sheet-k\"><b>03</b>Colourobpal-slot-6-end</p>\n        <div class=\"accent-row\" role=\"radiogroup\" aria-label=\"Colour\">obpal-slot-7-end</div>\n        <p class=\"sheet-k\"><b>04</b>Holding it</p>\n        obpal-slot-8-end\n        <label class=\"row sw-row\"><span>Left-handed</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"left\"></label>\n        <label class=\"row sw-row\"><span>Lock rotation while motion steers</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"lockgyro\"></label>\n        <div class=\"row track3d\" role=\"radiogroup\" aria-label=\"3D position comes from\"><span>3D position comes from</span>obpal-slot-9-endobpal-slot-10-end</div>\n        <p class=\"sheet-k\"><b>05</b>More</p>\n        <button class=\"set-row glass\" id=\"buttons-open\">obpal-slot-11-end<span>Buttons<small>Headset, remote, clicker, pad</small></span><span class=\"set-srcs\">obpal-slot-12-end</span>obpal-slot-13-end</button>\n        <button class=\"set-row glass\" id=\"connections-open\">obpal-slot-14-end<span>Connections<small>Switch, rename or forget a screen</small></span>obpal-slot-15-end</button>\n        <button class=\"set-row glass\" id=\"connection-details\">obpal-slot-16-end<span>Connection details<small>Compare the seal and see what this shares</small></span>obpal-slot-17-end</button>\n        <a class=\"support-link\" href=\"/sponsor/\" target=\"_blank\" rel=\"noopener\">obpal-slot-18-end<span>Support ob.Pal</span></a>\n        <div class=\"actions\"><button class=\"btn\" id=\"disc\">Disconnect</button><button class=\"btn primary\" id=\"done\">Done</button></div>\n      </div></svg>",
 	"<button class=\"set-row glass\" id=\"hand-settings\">obpal-slot-0-end<span>Hand camera<small>Control with your other hand</small></span>obpal-slot-1-end</button>",
 	"<svg><button class=\"set-row glass\" id=\"hand-settings\">obpal-slot-0-end<span>Hand camera<small>Control with your other hand</small></span>obpal-slot-1-end</button></svg>",
 	"<button class=\"set-row glass\" id=\"body-settings\">obpal-slot-0-end<span>Body camera<small>Prop the phone facing you</small></span>obpal-slot-1-end</button>",
@@ -233,14 +235,18 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><small> · yours in this scene</small></svg>",
 	"<button class=\"bb-accentobpal-slot-0-end\" role=\"radio\" data-accent=\"obpal-slot-1-end\" aria-checked=\"obpal-slot-2-end\" aria-label=\"obpal-slot-3-end\" style=\"--sw:obpal-slot-4-end\">obpal-slot-5-end</button>",
 	"<svg><button class=\"bb-accentobpal-slot-0-end\" role=\"radio\" data-accent=\"obpal-slot-1-end\" aria-checked=\"obpal-slot-2-end\" aria-label=\"obpal-slot-3-end\" style=\"--sw:obpal-slot-4-end\">obpal-slot-5-end</button></svg>",
+	"\n          <label class=\"row sw-row\"><span>One hand</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"one-hand\"></label>\n          <p class=\"meta\">Controls low, under your thumb · remembered for this controller.</p>\n          obpal-slot-0-end",
+	"<svg>\n          <label class=\"row sw-row\"><span>One hand</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"one-hand\"></label>\n          <p class=\"meta\">Controls low, under your thumb · remembered for this controller.</p>\n          obpal-slot-0-end</svg>",
+	"\n            <label class=\"row sw-row\"><span>Thumb motion</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"thumb-motion\"></label>\n            <p class=\"meta\">Fast arcs travel farther. Rest at an edge after moving to keep going. Tap to click; two fingers or hold for right click.</p>\n            <label class=\"row sw-row\"><span>Thumb scroll strip</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"thumb-scroll\"></label>",
+	"<svg>\n            <label class=\"row sw-row\"><span>Thumb motion</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"thumb-motion\"></label>\n            <p class=\"meta\">Fast arcs travel farther. Rest at an edge after moving to keep going. Tap to click; two fingers or hold for right click.</p>\n            <label class=\"row sw-row\"><span>Thumb scroll strip</span><input type=\"checkbox\" class=\"kit-switch\" role=\"switch\" id=\"thumb-scroll\"></label></svg>",
 	"<button class=\"way-opt\" role=\"radio\" data-way=\"obpal-slot-0-end\" aria-checked=\"obpal-slot-1-end\" aria-disabled=\"obpal-slot-2-end\" title=\"obpal-slot-3-end\">obpal-slot-4-end<span>obpal-slot-5-end</span></button>",
 	"<svg><button class=\"way-opt\" role=\"radio\" data-way=\"obpal-slot-0-end\" aria-checked=\"obpal-slot-1-end\" aria-disabled=\"obpal-slot-2-end\" title=\"obpal-slot-3-end\">obpal-slot-4-end<span>obpal-slot-5-end</span></button></svg>",
 	"<small class=\"way-why\">obpal-slot-0-end</small>",
 	"<svg><small class=\"way-why\">obpal-slot-0-end</small></svg>",
 	"You left <b>obpal-slot-0-end</b>. Reconnect, or scan another code.",
 	"<svg>You left <b>obpal-slot-0-end</b>. Reconnect, or scan another code.</svg>",
-	"\n      <div class=\"mouse-top\">\n        <button class=\"mouse-round\" id=\"mouse-zoom-out\" aria-label=\"Zoom out\">obpal-slot-0-end</button>\n        <button class=\"mouse-round home\" id=\"mouse-home\" aria-label=\"Centre the pointer\">obpal-slot-1-end</button>\n        <button class=\"mouse-round\" id=\"mouse-zoom-in\" aria-label=\"Zoom in\">obpal-slot-2-end</button>\n      </div>\n      <div class=\"mouse-shell\">\n        <button class=\"mouse-btn left\" id=\"mouse-left\" aria-label=\"Left click · hold and aim to drag\">obpal-slot-3-end</button>\n        <div class=\"mouse-seam\">\n          <div class=\"mouse-wheel\" id=\"mouse-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn it to scroll, tap to middle-click, hold and aim to scroll\"></div>\n        </div>\n        <button class=\"mouse-btn right\" id=\"mouse-right\" aria-label=\"Right click\">obpal-slot-4-end</button>\n        <div class=\"mouse-auto\" aria-hidden=\"true\">obpal-slot-5-end<span>Aim to scroll</span></div>\n      </div>",
-	"<svg>\n      <div class=\"mouse-top\">\n        <button class=\"mouse-round\" id=\"mouse-zoom-out\" aria-label=\"Zoom out\">obpal-slot-0-end</button>\n        <button class=\"mouse-round home\" id=\"mouse-home\" aria-label=\"Centre the pointer\">obpal-slot-1-end</button>\n        <button class=\"mouse-round\" id=\"mouse-zoom-in\" aria-label=\"Zoom in\">obpal-slot-2-end</button>\n      </div>\n      <div class=\"mouse-shell\">\n        <button class=\"mouse-btn left\" id=\"mouse-left\" aria-label=\"Left click · hold and aim to drag\">obpal-slot-3-end</button>\n        <div class=\"mouse-seam\">\n          <div class=\"mouse-wheel\" id=\"mouse-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn it to scroll, tap to middle-click, hold and aim to scroll\"></div>\n        </div>\n        <button class=\"mouse-btn right\" id=\"mouse-right\" aria-label=\"Right click\">obpal-slot-4-end</button>\n        <div class=\"mouse-auto\" aria-hidden=\"true\">obpal-slot-5-end<span>Aim to scroll</span></div>\n      </div></svg>",
+	"\n      <div class=\"mouse-top\">\n        <button class=\"mouse-round\" id=\"mouse-zoom-out\" aria-label=\"Zoom out\">obpal-slot-0-end</button>\n        <button class=\"mouse-round home\" id=\"mouse-home\" aria-label=\"Centre the pointer\">obpal-slot-1-end</button>\n        <button class=\"mouse-round\" id=\"mouse-zoom-in\" aria-label=\"Zoom in\">obpal-slot-2-end</button>\n        <button class=\"thumb-settings\" aria-label=\"Settings\" hidden>obpal-slot-3-end</button>\n      </div>\n      <div class=\"mouse-shell\">\n        <button class=\"mouse-btn left\" id=\"mouse-left\" aria-label=\"Left click · hold and aim to drag\">obpal-slot-4-end</button>\n        <div class=\"mouse-seam\">\n          <div class=\"mouse-wheel\" id=\"mouse-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn it to scroll, tap to middle-click, hold and aim to scroll\"></div>\n        </div>\n        <button class=\"mouse-btn right\" id=\"mouse-right\" aria-label=\"Right click\">obpal-slot-5-end</button>\n        <div class=\"mouse-auto\" aria-hidden=\"true\">obpal-slot-6-end<span>Aim to scroll</span></div>\n      </div>",
+	"<svg>\n      <div class=\"mouse-top\">\n        <button class=\"mouse-round\" id=\"mouse-zoom-out\" aria-label=\"Zoom out\">obpal-slot-0-end</button>\n        <button class=\"mouse-round home\" id=\"mouse-home\" aria-label=\"Centre the pointer\">obpal-slot-1-end</button>\n        <button class=\"mouse-round\" id=\"mouse-zoom-in\" aria-label=\"Zoom in\">obpal-slot-2-end</button>\n        <button class=\"thumb-settings\" aria-label=\"Settings\" hidden>obpal-slot-3-end</button>\n      </div>\n      <div class=\"mouse-shell\">\n        <button class=\"mouse-btn left\" id=\"mouse-left\" aria-label=\"Left click · hold and aim to drag\">obpal-slot-4-end</button>\n        <div class=\"mouse-seam\">\n          <div class=\"mouse-wheel\" id=\"mouse-wheel\" role=\"button\" aria-label=\"Scroll wheel · turn it to scroll, tap to middle-click, hold and aim to scroll\"></div>\n        </div>\n        <button class=\"mouse-btn right\" id=\"mouse-right\" aria-label=\"Right click\">obpal-slot-5-end</button>\n        <div class=\"mouse-auto\" aria-hidden=\"true\">obpal-slot-6-end<span>Aim to scroll</span></div>\n      </div></svg>",
 	"<div class=\"nstrip\" id=\"nstrip\" role=\"toolbar\" aria-label=\"What the trackpad moves\" aria-orientation=\"vertical\" hidden><div class=\"ns-list\"></div></div><div class=\"ns-tag glass\" id=\"ns-tag\" aria-hidden=\"true\"></div>",
 	"<svg><div class=\"nstrip\" id=\"nstrip\" role=\"toolbar\" aria-label=\"What the trackpad moves\" aria-orientation=\"vertical\" hidden><div class=\"ns-list\"></div></div><div class=\"ns-tag glass\" id=\"ns-tag\" aria-hidden=\"true\"></div></svg>",
 	"<b class=\"ns-mono\">obpal-slot-0-end</b>",
@@ -273,16 +279,20 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><span class=\"ctl-tab-ic\">obpal-slot-0-end</span><span class=\"ctl-tab-t\">Hand</span></svg>",
 	"<span class=\"ctl-tab-ic\">obpal-slot-0-end</span><span class=\"ctl-tab-t\">Body</span>",
 	"<svg><span class=\"ctl-tab-ic\">obpal-slot-0-end</span><span class=\"ctl-tab-t\">Body</span></svg>",
-	"<div class=\"sheet ctl-sheet glass\" role=\"dialog\" aria-label=\"Controllers\">\n      <div class=\"sheet-head\"><div class=\"grip\" aria-hidden=\"true\"></div><button type=\"button\" class=\"icon-btn sheet-x\" data-act=\"close\" aria-label=\"Close\">obpal-slot-0-end</button></div>\n      <header class=\"ctl-head\"><h2>Controllers</h2><p class=\"ctl-for\"><i></i><span></span></p></header>\n      <div class=\"ctl-list\" role=\"radiogroup\" aria-label=\"Controllers\"></div>\n      <footer class=\"ctl-legend\" aria-hidden=\"true\">\n        <span><i class=\"ctl-mark ctl-best\">obpal-slot-1-end</i>Best</span>\n        <span>obpal-slot-2-endFit</span>\n        <span class=\"ctl-legend-need\"><i class=\"ctl-mark ctl-need\">obpal-slot-3-end</i>Motion</span>\n        <span><i class=\"ctl-mark ctl-no\">obpal-slot-4-end</i>Not here</span>\n      </footer>\n      <p class=\"ctl-tip\" role=\"status\" aria-live=\"polite\" hidden></p>\n    </div>",
-	"<svg><div class=\"sheet ctl-sheet glass\" role=\"dialog\" aria-label=\"Controllers\">\n      <div class=\"sheet-head\"><div class=\"grip\" aria-hidden=\"true\"></div><button type=\"button\" class=\"icon-btn sheet-x\" data-act=\"close\" aria-label=\"Close\">obpal-slot-0-end</button></div>\n      <header class=\"ctl-head\"><h2>Controllers</h2><p class=\"ctl-for\"><i></i><span></span></p></header>\n      <div class=\"ctl-list\" role=\"radiogroup\" aria-label=\"Controllers\"></div>\n      <footer class=\"ctl-legend\" aria-hidden=\"true\">\n        <span><i class=\"ctl-mark ctl-best\">obpal-slot-1-end</i>Best</span>\n        <span>obpal-slot-2-endFit</span>\n        <span class=\"ctl-legend-need\"><i class=\"ctl-mark ctl-need\">obpal-slot-3-end</i>Motion</span>\n        <span><i class=\"ctl-mark ctl-no\">obpal-slot-4-end</i>Not here</span>\n      </footer>\n      <p class=\"ctl-tip\" role=\"status\" aria-live=\"polite\" hidden></p>\n    </div></svg>",
+	"<div class=\"sheet ctl-sheet glass\" role=\"dialog\" aria-label=\"Controllers\">\n      <div class=\"sheet-head\"><div class=\"grip\" aria-hidden=\"true\"></div><button type=\"button\" class=\"icon-btn sheet-x\" data-act=\"close\" aria-label=\"Close\">obpal-slot-0-end</button></div>\n      <header class=\"ctl-head\"><h2>Controllers</h2><p class=\"ctl-for\"><i></i><span></span></p></header>\n      <div class=\"ctl-list\" role=\"radiogroup\" aria-label=\"Controllers\"></div>\n      <footer class=\"ctl-legend\" aria-hidden=\"true\">\n        <span><i class=\"ctl-mark ctl-best\">obpal-slot-1-end</i>Best</span>\n        <span>obpal-slot-2-endGood</span>\n        <span>obpal-slot-3-endWorks</span>\n        <span class=\"ctl-legend-need\"><i class=\"ctl-mark ctl-need\">obpal-slot-4-end</i>Motion</span>\n        <span class=\"ctl-legend-no\"><i class=\"ctl-mark ctl-no\">obpal-slot-5-end</i>Not here</span>\n      </footer>\n      <p class=\"ctl-tip\" role=\"status\" aria-live=\"polite\" hidden></p>\n    </div>",
+	"<svg><div class=\"sheet ctl-sheet glass\" role=\"dialog\" aria-label=\"Controllers\">\n      <div class=\"sheet-head\"><div class=\"grip\" aria-hidden=\"true\"></div><button type=\"button\" class=\"icon-btn sheet-x\" data-act=\"close\" aria-label=\"Close\">obpal-slot-0-end</button></div>\n      <header class=\"ctl-head\"><h2>Controllers</h2><p class=\"ctl-for\"><i></i><span></span></p></header>\n      <div class=\"ctl-list\" role=\"radiogroup\" aria-label=\"Controllers\"></div>\n      <footer class=\"ctl-legend\" aria-hidden=\"true\">\n        <span><i class=\"ctl-mark ctl-best\">obpal-slot-1-end</i>Best</span>\n        <span>obpal-slot-2-endGood</span>\n        <span>obpal-slot-3-endWorks</span>\n        <span class=\"ctl-legend-need\"><i class=\"ctl-mark ctl-need\">obpal-slot-4-end</i>Motion</span>\n        <span class=\"ctl-legend-no\"><i class=\"ctl-mark ctl-no\">obpal-slot-5-end</i>Not here</span>\n      </footer>\n      <p class=\"ctl-tip\" role=\"status\" aria-live=\"polite\" hidden></p>\n    </div></svg>",
 	"<button type=\"button\" class=\"ctl-card\" role=\"radio\" data-c=\"obpal-slot-0-end\" data-fit=\"obpal-slot-1-end\" aria-checked=\"false\" aria-disabled=\"obpal-slot-2-end\">obpal-slot-3-end<span class=\"ctl-name\">obpal-slot-4-end</span></button>",
 	"<svg><button type=\"button\" class=\"ctl-card\" role=\"radio\" data-c=\"obpal-slot-0-end\" data-fit=\"obpal-slot-1-end\" aria-checked=\"false\" aria-disabled=\"obpal-slot-2-end\">obpal-slot-3-end<span class=\"ctl-name\">obpal-slot-4-end</span></button></svg>",
 	"<p class=\"ctl-k\"><b>01</b>Ready here</p>",
 	"<svg><p class=\"ctl-k\"><b>01</b>Ready here</p></svg>",
-	"<div class=\"ctl-grid\">obpal-slot-0-end</div>",
-	"<svg><div class=\"ctl-grid\">obpal-slot-0-end</div></svg>",
+	"<div class=\"ctl-grid\">obpal-slot-0-endobpal-slot-1-end</div>",
+	"<svg><div class=\"ctl-grid\">obpal-slot-0-endobpal-slot-1-end</div></svg>",
+	"<button type=\"button\" class=\"ctl-card\" data-extra=\"obpal-slot-0-end\" data-fit=\"1\" aria-label=\"obpal-slot-1-end. Works on obpal-slot-2-end\"><span class=\"ctl-gauge\" aria-hidden=\"true\">obpal-slot-3-end<span class=\"ctl-disc\">obpal-slot-4-end</span></span><span class=\"ctl-name\">obpal-slot-5-end</span></button>",
+	"<svg><button type=\"button\" class=\"ctl-card\" data-extra=\"obpal-slot-0-end\" data-fit=\"1\" aria-label=\"obpal-slot-1-end. Works on obpal-slot-2-end\"><span class=\"ctl-gauge\" aria-hidden=\"true\">obpal-slot-3-end<span class=\"ctl-disc\">obpal-slot-4-end</span></span><span class=\"ctl-name\">obpal-slot-5-end</span></button></svg>",
 	"<p class=\"ctl-k\"><b>02</b>Not on this screen</p>",
 	"<svg><p class=\"ctl-k\"><b>02</b>Not on this screen</p></svg>",
+	"<div class=\"ctl-grid\">obpal-slot-0-end</div>",
+	"<svg><div class=\"ctl-grid\">obpal-slot-0-end</div></svg>",
 	"<b></b><span></span>",
 	"<svg><b></b><span></span></svg>",
 	"<i></i><b></b><small></small>",
@@ -341,6 +351,8 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><b><span class=\"ptz-rec\"></span><span class=\"ptz-name\"></span></b><i></i><span class=\"ptz-flash\"></span></svg>",
 	"<header class=\"kit-card-head\"><span class=\"kit-card-n\"></span><h2 class=\"kit-card-title\" id=\"studio-audio-h\">Sound</h2><span class=\"kit-card-aside\"><button type=\"button\" class=\"kit-action\" id=\"studio-start\">Start sound</button></span></header><small role=\"status\">Tap here to hear the room. Start with your speakers low.</small>",
 	"<svg><header class=\"kit-card-head\"><span class=\"kit-card-n\"></span><h2 class=\"kit-card-title\" id=\"studio-audio-h\">Sound</h2><span class=\"kit-card-aside\"><button type=\"button\" class=\"kit-action\" id=\"studio-start\">Start sound</button></span></header><small role=\"status\">Tap here to hear the room. Start with your speakers low.</small></svg>",
+	"obpal-slot-0-end<span>obpal-slot-1-end</span>",
+	"<svg>obpal-slot-0-end<span>obpal-slot-1-end</span></svg>",
 	"<span class=\"dcard-ph\">obpal-slot-0-end</span><canvas></canvas><span class=\"dcard-kind\">obpal-slot-1-end<span>obpal-slot-2-end</span></span>",
 	"<svg><span class=\"dcard-ph\">obpal-slot-0-end</span><canvas></canvas><span class=\"dcard-kind\">obpal-slot-1-end<span>obpal-slot-2-end</span></span></svg>",
 	"<h2>obpal-slot-0-end</h2><p>obpal-slot-1-end</p><ul class=\"dcard-faces\" aria-label=\"Controllers that suit it\"></ul><div class=\"dcard-foot\"><a class=\"dcard-go\" href=\"obpal-slot-2-end\" aria-label=\"Try the obpal-slot-3-end\"><span>Try it</span>obpal-slot-4-end</a></div>",
@@ -361,10 +373,24 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><thead>\n            <tr>\n              <th>Joint</th>\n              <th>Wire / index</th>\n              <th>Limits</th>\n            </tr>\n          </thead>\n          <tbody>\n            obpal-slot-0-end\n          </tbody></svg>",
 	"<tr>\n                  <td>obpal-slot-0-end</td>\n                  <td>obpal-slot-1-end / obpal-slot-2-end</td>\n                  <td>obpal-slot-3-end</td>\n                </tr>",
 	"<svg><tr>\n                  <td>obpal-slot-0-end</td>\n                  <td>obpal-slot-1-end / obpal-slot-2-end</td>\n                  <td>obpal-slot-3-end</td>\n                </tr></svg>",
+	"<div class=\"local-choices\"></div><label class=\"local-unit\"><span>Local unit</span></label><div class=\"local-actions\"></div>",
+	"<svg><div class=\"local-choices\"></div><label class=\"local-unit\"><span>Local unit</span></label><div class=\"local-actions\"></div></svg>",
+	"<kbd>obpal-slot-0-end</kbd><span>obpal-slot-1-end</span>",
+	"<svg><kbd>obpal-slot-0-end</kbd><span>obpal-slot-1-end</span></svg>",
+	"<span>obpal-slot-0-end</span>obpal-slot-1-end",
+	"<svg><span>obpal-slot-0-end</span>obpal-slot-1-end</svg>",
+	"<kbd>obpal-slot-0-end</kbd>",
+	"<svg><kbd>obpal-slot-0-end</kbd></svg>",
+	"<span>obpal-slot-0-end</span><kbd>obpal-slot-1-end</kbd>",
+	"<svg><span>obpal-slot-0-end</span><kbd>obpal-slot-1-end</kbd></svg>",
+	"obpal-slot-0-end<span>Drag · move / aim</span><kbd>Wheel</kbd><span>Zoom / value</span><kbd>?</kbd><kbd>Esc</kbd><kbd>Tab</kbd>",
+	"<svg>obpal-slot-0-end<span>Drag · move / aim</span><kbd>Wheel</kbd><span>Zoom / value</span><kbd>?</kbd><kbd>Esc</kbd><kbd>Tab</kbd></svg>",
 	"<time></time><i></i><span></span>",
 	"<svg><time></time><i></i><span></span></svg>",
 	"<span class=\"person\"></span><span class=\"pp-text\"><b></b><small></small></span>",
 	"<svg><span class=\"person\"></span><span class=\"pp-text\"><b></b><small></small></span></svg>",
+	"obpal-slot-0-end<span>Watching</span><i class=\"guest-dot\" aria-hidden=\"true\"></i><span class=\"guest-state\"></span>",
+	"<svg>obpal-slot-0-end<span>Watching</span><i class=\"guest-dot\" aria-hidden=\"true\"></i><span class=\"guest-state\"></span></svg>",
 	"\n      <li>\n        <span class=\"gb-bar\" style=\"--w:obpal-slot-0-end%\"></span>\n        <div class=\"gb-row\">\n          <span class=\"gb-name\"><a href=\"obpal-slot-1-end\" rel=\"noopener\">obpal-slot-2-end</a><small>obpal-slot-3-end · obpal-slot-4-end · obpal-slot-5-end</small></span>\n          <span class=\"gb-share\">obpal-slot-6-end%</span>\n          <a class=\"gb-give\" href=\"obpal-slot-7-end\" target=\"_blank\" rel=\"noopener\">Give obpal-slot-8-end</a>\n        </div>\n      </li>",
 	"<svg>\n      <li>\n        <span class=\"gb-bar\" style=\"--w:obpal-slot-0-end%\"></span>\n        <div class=\"gb-row\">\n          <span class=\"gb-name\"><a href=\"obpal-slot-1-end\" rel=\"noopener\">obpal-slot-2-end</a><small>obpal-slot-3-end · obpal-slot-4-end · obpal-slot-5-end</small></span>\n          <span class=\"gb-share\">obpal-slot-6-end%</span>\n          <a class=\"gb-give\" href=\"obpal-slot-7-end\" target=\"_blank\" rel=\"noopener\">Give obpal-slot-8-end</a>\n        </div>\n      </li></svg>",
 	"<li><b>obpal-slot-0-end</b> <span>obpal-slot-1-end: obpal-slot-2-end</span></li>",
@@ -383,8 +409,15 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><li><span>obpal-slot-0-end</span><b>obpal-slot-1-end</b></li></svg>",
 	"<li class=\"empty\">Be the first supporter.</li>",
 	"<svg><li class=\"empty\">Be the first supporter.</li></svg>",
+	"<img class=\"brand-lockup\" data-brand-link=\"obpal-slot-0-end\" src=\"obpal-slot-1-end\" alt=\"\" width=\"obpal-slot-2-end\" height=\"40\">",
+	"<svg><img class=\"brand-lockup\" data-brand-link=\"obpal-slot-0-end\" src=\"obpal-slot-1-end\" alt=\"\" width=\"obpal-slot-2-end\" height=\"40\"></svg>",
+	"<img class=\"mark\" src=\"obpal-slot-0-end\" alt=\"\">",
+	"<svg><img class=\"mark\" src=\"obpal-slot-0-end\" alt=\"\"></svg>",
 	"<span class=\"hint-text\"></span><button class=\"hint-x\" aria-label=\"Dismiss hint\">obpal-slot-0-end</button>",
 	"<svg><span class=\"hint-text\"></span><button class=\"hint-x\" aria-label=\"Dismiss hint\">obpal-slot-0-end</button></svg>",
+	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"6\" cy=\"12\" r=\"2.5\"/><circle cx=\"18\" cy=\"5\" r=\"2.5\"/><circle cx=\"18\" cy=\"19\" r=\"2.5\"/><path d=\"m8 10.8 7.8-4.6M8 13.2l7.8 4.6\"/></svg>",
+	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"8\" y=\"8\" width=\"12\" height=\"12\" rx=\"2\"/><path d=\"M15 5V4H4v11h1\"/></svg>",
+	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8 5 3 10l5 5M3 10h10a7 7 0 0 1 7 7v2\"/></svg>",
 	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m8 4 12 8-12 8Z\"/></svg>",
 	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8 5v14M16 5v14\"/></svg>",
 	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"6\" fill=\"currentColor\"/></svg>",
@@ -504,13 +537,6 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"2.6\"/><path d=\"M12 3.5V8M12 16v4.5M9.5 6 12 3.5 14.5 6M9.5 18l2.5 2.5 2.5-2.5\"/></svg>",
 	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"7.5\" cy=\"12\" r=\"2.2\"/><circle cx=\"12.5\" cy=\"12\" r=\"2.2\"/><path d=\"M19 4.5v15M16.8 6.7 19 4.5l2.2 2.2M16.8 17.3l2.2 2.2 2.2-2.2\"/></svg>",
 	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"9.5\" cy=\"7.5\" r=\"2.2\"/><circle cx=\"14.5\" cy=\"7.5\" r=\"2.2\"/><path d=\"M4.5 16h15M6.7 13.8 4.5 16l2.2 2.2M17.3 13.8l2.2 2.2-2.2 2.2\"/></svg>",
-	"<g><animateMotion dur=\"7.5s\" repeatCount=\"indefinite\" calcMode=\"linear\"><mpath href=\"#obpal-slot-0-end-orbit\"/></animateMotion>obpal-slot-1-end<circle r=\"3.7\" style=\"fill:obpal-slot-2-end\"/><circle r=\"1.4\" fill=\"#fff\"/></g>",
-	"<svg><g><animateMotion dur=\"7.5s\" repeatCount=\"indefinite\" calcMode=\"linear\"><mpath href=\"#obpal-slot-0-end-orbit\"/></animateMotion>obpal-slot-1-end<circle r=\"3.7\" style=\"fill:obpal-slot-2-end\"/><circle r=\"1.4\" fill=\"#fff\"/></g></svg>",
-	"<circle r=\"6.5\" style=\"fill:obpal-slot-0-end\" opacity=\".45\" filter=\"url(#obpal-slot-1-end-soft)\"/>",
-	"<svg><circle r=\"6.5\" style=\"fill:obpal-slot-0-end\" opacity=\".45\" filter=\"url(#obpal-slot-1-end-soft)\"/></svg>",
-	"<svg class=\"mark\" viewBox=\"0 0 100 100\" aria-hidden=\"true\" focusable=\"false\" shape-rendering=\"geometricPrecision\">\n  <defs>\n    <linearGradient id=\"obpal-slot-0-end-top\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#4b4b4b\"/><stop offset=\".35\" stop-color=\"#262626\"/><stop offset=\".75\" stop-color=\"#131313\"/><stop offset=\"1\" stop-color=\"#050505\"/></linearGradient>\n    <linearGradient id=\"obpal-slot-1-end-left\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#1b1b1b\"/><stop offset=\".45\" stop-color=\"#0a0a0a\"/><stop offset=\"1\" stop-color=\"#000\"/></linearGradient>\n    <linearGradient id=\"obpal-slot-2-end-right\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#2c2c2c\"/><stop offset=\".5\" stop-color=\"#121212\"/><stop offset=\"1\" stop-color=\"#040404\"/></linearGradient>\n    <linearGradient id=\"obpal-slot-3-end-ring\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\"><stop offset=\"0\" style=\"stop-color:obpal-slot-4-end;stop-opacity:.6\"/><stop offset=\".55\" style=\"stop-color:obpal-slot-5-end\"/><stop offset=\"1\" style=\"stop-color:var(--accent-soft, #E6FFA3)\"/></linearGradient>\n    <linearGradient id=\"obpal-slot-6-end-spill\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\".42\" style=\"stop-color:obpal-slot-7-end;stop-opacity:0\"/><stop offset=\"1\" style=\"stop-color:obpal-slot-8-end;stop-opacity:.5\"/></linearGradient>\n    <clipPath id=\"obpal-slot-9-end-box\"><polygon points=\"50,19 78,34.4 78,65.2 50,80.6 22,65.2 22,34.4\"/></clipPath>\n    <clipPath id=\"obpal-slot-10-end-front\"><polygon points=\"0,69.47 100,44.53 100,100 0,100\"/></clipPath>\n    <path id=\"obpal-slot-11-end-orbit\" d=\"obpal-slot-12-end\"/>\n    <filter id=\"obpal-slot-13-end-soft\" filterUnits=\"userSpaceOnUse\" x=\"-20\" y=\"-20\" width=\"140\" height=\"140\"><feGaussianBlur stdDeviation=\"2.4\"/></filter>\n  </defs>\n  <ellipse cx=\"50\" cy=\"57\" rx=\"47\" ry=\"15\" transform=\"rotate(-14 50 57)\" fill=\"none\" style=\"stroke:obpal-slot-14-end\" stroke-width=\"1.8\" opacity=\".3\"/>\n  <g opacity=\".8\">obpal-slot-15-end</g>\n  <polygon points=\"50,19 78,34.4 78,65.2 50,80.6 22,65.2 22,34.4\" fill=\"#000\"/>\n  <polygon points=\"50,19 78,34.4 50,49.8 22,34.4\" fill=\"url(#obpal-slot-16-end-top)\"/>\n  <polygon points=\"22,34.4 50,49.8 50,80.6 22,65.2\" fill=\"url(#obpal-slot-17-end-left)\"/>\n  <polygon points=\"50,49.8 78,34.4 78,65.2 50,80.6\" fill=\"url(#obpal-slot-18-end-right)\"/>\n  <polygon points=\"22,34.4 50,49.8 50,80.6 22,65.2\" fill=\"url(#obpal-slot-19-end-spill)\" opacity=\".7\"/>\n  <polygon points=\"50,49.8 78,34.4 78,65.2 50,80.6\" fill=\"url(#obpal-slot-20-end-spill)\"/>\n  <g clip-path=\"url(#obpal-slot-21-end-box)\"><g class=\"mark-scan\"><line x1=\"0\" y1=\"24\" x2=\"100\" y2=\"24\" style=\"stroke:obpal-slot-22-end\" stroke-width=\"6\" filter=\"url(#obpal-slot-23-end-soft)\" opacity=\".8\"/><line x1=\"0\" y1=\"24\" x2=\"100\" y2=\"24\" stroke=\"#fff\" stroke-width=\"1.4\"/></g></g>\n  <polygon points=\"50,19 78,34.4 78,65.2 50,80.6 22,65.2 22,34.4\" fill=\"none\" stroke=\"rgba(255,255,255,.38)\" stroke-width=\"1.2\" stroke-linejoin=\"round\"/>\n  <path d=\"M50,49.8 L50,80.6\" fill=\"none\" stroke=\"rgba(255,255,255,.3)\" stroke-width=\"1.2\"/>\n  <path d=\"M22,34.4 L50,49.8 L78,34.4\" fill=\"none\" style=\"stroke:obpal-slot-24-end\" stroke-width=\"2.4\" stroke-linejoin=\"round\"/>\n  <line x1=\"50\" y1=\"19\" x2=\"78\" y2=\"34.4\" stroke=\"rgba(255,255,255,.66)\" stroke-width=\"1.1\" stroke-linecap=\"round\"/>\n  <line x1=\"50\" y1=\"19\" x2=\"78\" y2=\"34.4\" style=\"stroke:obpal-slot-25-end\" stroke-width=\"1.3\" opacity=\".55\" stroke-linecap=\"round\"/>\n  <path d=\"obpal-slot-26-end\" fill=\"none\" style=\"stroke:obpal-slot-27-end\" stroke-width=\"6\" stroke-linecap=\"round\" opacity=\".35\" filter=\"url(#obpal-slot-28-end-soft)\"/>\n  <path d=\"obpal-slot-29-end\" fill=\"none\" stroke=\"url(#obpal-slot-30-end-ring)\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>\n  <g clip-path=\"url(#obpal-slot-31-end-front)\">obpal-slot-32-end</g>\n</svg>",
-	"<svg><svg class=\"mark\" viewBox=\"0 0 100 100\" aria-hidden=\"true\" focusable=\"false\" shape-rendering=\"geometricPrecision\">\n  <defs>\n    <linearGradient id=\"obpal-slot-0-end-top\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#4b4b4b\"/><stop offset=\".35\" stop-color=\"#262626\"/><stop offset=\".75\" stop-color=\"#131313\"/><stop offset=\"1\" stop-color=\"#050505\"/></linearGradient>\n    <linearGradient id=\"obpal-slot-1-end-left\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#1b1b1b\"/><stop offset=\".45\" stop-color=\"#0a0a0a\"/><stop offset=\"1\" stop-color=\"#000\"/></linearGradient>\n    <linearGradient id=\"obpal-slot-2-end-right\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#2c2c2c\"/><stop offset=\".5\" stop-color=\"#121212\"/><stop offset=\"1\" stop-color=\"#040404\"/></linearGradient>\n    <linearGradient id=\"obpal-slot-3-end-ring\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\"><stop offset=\"0\" style=\"stop-color:obpal-slot-4-end;stop-opacity:.6\"/><stop offset=\".55\" style=\"stop-color:obpal-slot-5-end\"/><stop offset=\"1\" style=\"stop-color:var(--accent-soft, #E6FFA3)\"/></linearGradient>\n    <linearGradient id=\"obpal-slot-6-end-spill\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\".42\" style=\"stop-color:obpal-slot-7-end;stop-opacity:0\"/><stop offset=\"1\" style=\"stop-color:obpal-slot-8-end;stop-opacity:.5\"/></linearGradient>\n    <clipPath id=\"obpal-slot-9-end-box\"><polygon points=\"50,19 78,34.4 78,65.2 50,80.6 22,65.2 22,34.4\"/></clipPath>\n    <clipPath id=\"obpal-slot-10-end-front\"><polygon points=\"0,69.47 100,44.53 100,100 0,100\"/></clipPath>\n    <path id=\"obpal-slot-11-end-orbit\" d=\"obpal-slot-12-end\"/>\n    <filter id=\"obpal-slot-13-end-soft\" filterUnits=\"userSpaceOnUse\" x=\"-20\" y=\"-20\" width=\"140\" height=\"140\"><feGaussianBlur stdDeviation=\"2.4\"/></filter>\n  </defs>\n  <ellipse cx=\"50\" cy=\"57\" rx=\"47\" ry=\"15\" transform=\"rotate(-14 50 57)\" fill=\"none\" style=\"stroke:obpal-slot-14-end\" stroke-width=\"1.8\" opacity=\".3\"/>\n  <g opacity=\".8\">obpal-slot-15-end</g>\n  <polygon points=\"50,19 78,34.4 78,65.2 50,80.6 22,65.2 22,34.4\" fill=\"#000\"/>\n  <polygon points=\"50,19 78,34.4 50,49.8 22,34.4\" fill=\"url(#obpal-slot-16-end-top)\"/>\n  <polygon points=\"22,34.4 50,49.8 50,80.6 22,65.2\" fill=\"url(#obpal-slot-17-end-left)\"/>\n  <polygon points=\"50,49.8 78,34.4 78,65.2 50,80.6\" fill=\"url(#obpal-slot-18-end-right)\"/>\n  <polygon points=\"22,34.4 50,49.8 50,80.6 22,65.2\" fill=\"url(#obpal-slot-19-end-spill)\" opacity=\".7\"/>\n  <polygon points=\"50,49.8 78,34.4 78,65.2 50,80.6\" fill=\"url(#obpal-slot-20-end-spill)\"/>\n  <g clip-path=\"url(#obpal-slot-21-end-box)\"><g class=\"mark-scan\"><line x1=\"0\" y1=\"24\" x2=\"100\" y2=\"24\" style=\"stroke:obpal-slot-22-end\" stroke-width=\"6\" filter=\"url(#obpal-slot-23-end-soft)\" opacity=\".8\"/><line x1=\"0\" y1=\"24\" x2=\"100\" y2=\"24\" stroke=\"#fff\" stroke-width=\"1.4\"/></g></g>\n  <polygon points=\"50,19 78,34.4 78,65.2 50,80.6 22,65.2 22,34.4\" fill=\"none\" stroke=\"rgba(255,255,255,.38)\" stroke-width=\"1.2\" stroke-linejoin=\"round\"/>\n  <path d=\"M50,49.8 L50,80.6\" fill=\"none\" stroke=\"rgba(255,255,255,.3)\" stroke-width=\"1.2\"/>\n  <path d=\"M22,34.4 L50,49.8 L78,34.4\" fill=\"none\" style=\"stroke:obpal-slot-24-end\" stroke-width=\"2.4\" stroke-linejoin=\"round\"/>\n  <line x1=\"50\" y1=\"19\" x2=\"78\" y2=\"34.4\" stroke=\"rgba(255,255,255,.66)\" stroke-width=\"1.1\" stroke-linecap=\"round\"/>\n  <line x1=\"50\" y1=\"19\" x2=\"78\" y2=\"34.4\" style=\"stroke:obpal-slot-25-end\" stroke-width=\"1.3\" opacity=\".55\" stroke-linecap=\"round\"/>\n  <path d=\"obpal-slot-26-end\" fill=\"none\" style=\"stroke:obpal-slot-27-end\" stroke-width=\"6\" stroke-linecap=\"round\" opacity=\".35\" filter=\"url(#obpal-slot-28-end-soft)\"/>\n  <path d=\"obpal-slot-29-end\" fill=\"none\" stroke=\"url(#obpal-slot-30-end-ring)\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>\n  <g clip-path=\"url(#obpal-slot-31-end-front)\">obpal-slot-32-end</g>\n</svg></svg>",
-	"<span class=\"word\"><span class=\"ob\">ob</span><span class=\"pt\">.</span><b>Pal</b></span>",
 	"<div class=\"kit-side-body\"><p class=\"kit-side-label\"><b>02</b> Categories</p><ul class=\"kit-side-list\">obpal-slot-0-end</ul></div>",
 	"<svg><div class=\"kit-side-body\"><p class=\"kit-side-label\"><b>02</b> Categories</p><ul class=\"kit-side-list\">obpal-slot-0-end</ul></div></svg>",
 	"<li><button type=\"button\" class=\"kit-side-item\" aria-pressed=\"obpal-slot-0-end\"><span class=\"kit-side-ic\" aria-hidden=\"true\">obpal-slot-1-end</span><span class=\"kit-side-text\">obpal-slot-2-end</span><span class=\"kit-side-n\">obpal-slot-3-end</span></button></li>",
@@ -549,8 +575,8 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><i>obpal-slot-0-end</i></svg>",
 	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 7.2a1.7 1.7 0 0 1 1.7-1.7H9l1.9 2h7.9a1.7 1.7 0 0 1 1.7 1.7v8.1a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7Z\"/><path d=\"M12 11.3v5M9.5 13.8h5\"/></svg>",
 	"<svg><svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 7.2a1.7 1.7 0 0 1 1.7-1.7H9l1.9 2h7.9a1.7 1.7 0 0 1 1.7 1.7v8.1a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7Z\"/><path d=\"M12 11.3v5M9.5 13.8h5\"/></svg></svg>",
-	"<span class=\"lf-art\"><i class=\"lf-ring\"></i></span><span class=\"lf-title\"></span><span class=\"lf-sub\"></span>",
-	"<svg><span class=\"lf-art\"><i class=\"lf-ring\"></i></span><span class=\"lf-title\"></span><span class=\"lf-sub\"></span></svg>",
+	"<span class=\"lf-art\"></span><span class=\"lf-title\"></span><span class=\"lf-sub\"></span>",
+	"<svg><span class=\"lf-art\"></span><span class=\"lf-title\"></span><span class=\"lf-sub\"></span></svg>",
 	"<span class=\"lf-art\">obpal-slot-0-end</span><span class=\"lf-title\">Reconnect</span><span class=\"lf-name\"></span>",
 	"<svg><span class=\"lf-art\">obpal-slot-0-end</span><span class=\"lf-title\">Reconnect</span><span class=\"lf-name\"></span></svg>",
 	"<span class=\"lf-art\">obpal-slot-0-end</span><span class=\"lf-title\">Connect a folder</span>obpal-slot-1-end",
@@ -559,6 +585,8 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><span class=\"lf-art\">obpal-slot-0-end</span><span>No 3D files here</span>obpal-slot-1-end</svg>",
 	"<span>obpal-slot-0-end</span><output></output><input class=\"bb-range\" type=\"range\" min=\"obpal-slot-1-end\" max=\"obpal-slot-2-end\" step=\"obpal-slot-3-end\" data-key=\"obpal-slot-4-end\">",
 	"<svg><span>obpal-slot-0-end</span><output></output><input class=\"bb-range\" type=\"range\" min=\"obpal-slot-1-end\" max=\"obpal-slot-2-end\" step=\"obpal-slot-3-end\" data-key=\"obpal-slot-4-end\"></svg>",
+	"<img src=\"obpal-slot-0-end\" alt=\"\" loading=\"lazy\" decoding=\"async\">",
+	"<svg><img src=\"obpal-slot-0-end\" alt=\"\" loading=\"lazy\" decoding=\"async\"></svg>",
 	"<span class=\"tile-art\">obpal-slot-0-end</span><span class=\"tile-name\"></span>",
 	"<svg><span class=\"tile-art\">obpal-slot-0-end</span><span class=\"tile-name\"></span></svg>",
 	"<button class=\"sc-pick\"><span class=\"sc-dot\"></span><span class=\"sc-name\"></span></button><button class=\"sc-x\">obpal-slot-0-end</button>",
@@ -662,6 +690,308 @@ function fragment(value, svg = false) {
 }
 function setMarkup(el, value) {
 	el.replaceChildren(fragment(value, el.namespaceURI === svgNS));
+}
+//#endregion
+//#region ../src/ui/brand.ts
+/** The same standalone vector assets on the site, controller, Link and store surfaces. */
+var BRAND_MARK = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%20shape-rendering='geometricPrecision'%3e%3cdefs%3e%3clinearGradient%20id='t'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3e%3cstop%20offset='0'%20stop-color='%23565656'/%3e%3cstop%20offset='.35'%20stop-color='%232a2a2a'/%3e%3cstop%20offset='.75'%20stop-color='%23141414'/%3e%3cstop%20offset='1'%20stop-color='%23050505'/%3e%3c/linearGradient%3e%3clinearGradient%20id='l'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3e%3cstop%20offset='0'%20stop-color='%231d1d1d'/%3e%3cstop%20offset='.45'%20stop-color='%230a0a0a'/%3e%3cstop%20offset='1'%20stop-color='%23000'/%3e%3c/linearGradient%3e%3clinearGradient%20id='r'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3e%3cstop%20offset='0'%20stop-color='%23313131'/%3e%3cstop%20offset='.5'%20stop-color='%23141414'/%3e%3cstop%20offset='1'%20stop-color='%23050505'/%3e%3c/linearGradient%3e%3clinearGradient%20id='s'%20x1='0'%20y1='0'%20x2='0'%20y2='1'%3e%3cstop%20offset='.42'%20stop-color='%23C6FF34'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23C6FF34'%20stop-opacity='.5'/%3e%3c/linearGradient%3e%3c/defs%3e%3cellipse%20cx='50'%20cy='57'%20rx='47'%20ry='15'%20transform='rotate(-14%2050%2057)'%20fill='none'%20stroke='%23C6FF34'%20stroke-width='3'%20opacity='.32'/%3e%3cpolygon%20points='50,19%2078,34.4%2078,65.2%2050,80.6%2022,65.2%2022,34.4'%20fill='%23000'/%3e%3cpolygon%20points='50,19%2078,34.4%2050,49.8%2022,34.4'%20fill='url(%23t)'/%3e%3cpolygon%20points='22,34.4%2050,49.8%2050,80.6%2022,65.2'%20fill='url(%23l)'/%3e%3cpolygon%20points='50,49.8%2078,34.4%2078,65.2%2050,80.6'%20fill='url(%23r)'/%3e%3cpolygon%20points='22,34.4%2050,49.8%2050,80.6%2022,65.2'%20fill='url(%23s)'%20opacity='.7'/%3e%3cpolygon%20points='50,49.8%2078,34.4%2078,65.2%2050,80.6'%20fill='url(%23s)'/%3e%3cpolygon%20points='50,19%2078,34.4%2078,65.2%2050,80.6%2022,65.2%2022,34.4'%20fill='none'%20stroke='rgba(255,255,255,.4)'%20stroke-width='1.3'%20stroke-linejoin='round'/%3e%3cpath%20d='M50,49.8%20L50,80.6'%20fill='none'%20stroke='rgba(255,255,255,.3)'%20stroke-width='1.3'/%3e%3cpath%20d='M22,34.4%20L50,49.8%20L78,34.4'%20fill='none'%20stroke='%23C6FF34'%20stroke-width='2.4'%20stroke-linejoin='round'/%3e%3cline%20x1='50'%20y1='19'%20x2='78'%20y2='34.4'%20stroke='rgba(255,255,255,.72)'%20stroke-width='1.3'/%3e%3cline%20x1='50'%20y1='19'%20x2='78'%20y2='34.4'%20stroke='%23C6FF34'%20stroke-width='1.3'%20opacity='.55'/%3e%3cpath%20d='M95.6%2045.63%20A47%2015%20-14%200%201%204.4%2068.37'%20fill='none'%20stroke='%23C6FF34'%20stroke-width='3.8'%20stroke-linecap='round'/%3e%3ccircle%20cx='82.1'%20cy='60.8'%20r='4.8'%20fill='%23C6FF34'/%3e%3ccircle%20cx='82.1'%20cy='60.8'%20r='1.8'%20fill='%23fff'/%3e%3c/svg%3e", "" + import.meta.url).href;
+var BRAND_LOCKUP = new URL("/assets/obpal-link-lockup-BPDaakLk.svg", "" + import.meta.url).href;
+/** Native string templates in the extension reference exactly the same vector asset. */
+var LINK_LOGO = `<img class="brand-lockup" data-brand-link="true" src="${BRAND_LOCKUP}" alt="" width="172.5216" height="40">`;
+var watching = false;
+var light = () => document.documentElement?.dataset.bbTheme === "light";
+var source = (link) => BRAND_LOCKUP + (link ? light() ? "#light" : "" : light() ? "#base-light" : "#base");
+/** Keep the wordmark legible on the visitor's surface; the mark and lime pill keep their brand colours. */
+function syncBrand(root = document) {
+	watchBrand();
+	for (const image of root.querySelectorAll("img.brand-lockup")) image.src = source(image.dataset.brandLink === "true");
+}
+function watchBrand() {
+	if (watching || typeof MutationObserver === "undefined" || !document.documentElement) return;
+	watching = true;
+	new MutationObserver(() => syncBrand()).observe(document.documentElement, {
+		attributes: true,
+		attributeFilter: ["data-bb-theme"]
+	});
+}
+function brandLockup(link = false) {
+	watchBrand();
+	return html`<img class="brand-lockup" data-brand-link="${link}" src="${source(link)}" alt="" width="${link ? 172.5216 : 114.903}" height="40">`;
+}
+var brandMark = () => html`<img class="mark" src="${BRAND_MARK}" alt="">`;
+//#endregion
+//#region ../src/ui/icons.ts
+/** Stroke icon set shared by the phone controller and the viewer. Names double as the protocol's standard tray icon vocabulary. */
+var s$1 = (d) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+var ICONS = {
+	share: s$1("<circle cx=\"6\" cy=\"12\" r=\"2.5\"/><circle cx=\"18\" cy=\"5\" r=\"2.5\"/><circle cx=\"18\" cy=\"19\" r=\"2.5\"/><path d=\"m8 10.8 7.8-4.6M8 13.2l7.8 4.6\"/>"),
+	copy: s$1("<rect x=\"8\" y=\"8\" width=\"12\" height=\"12\" rx=\"2\"/><path d=\"M15 5V4H4v11h1\"/>"),
+	undo: s$1("<path d=\"M8 5 3 10l5 5M3 10h10a7 7 0 0 1 7 7v2\"/>"),
+	play: s$1("<path d=\"m8 4 12 8-12 8Z\"/>"),
+	pause: s$1("<path d=\"M8 5v14M16 5v14\"/>"),
+	record: s$1("<circle cx=\"12\" cy=\"12\" r=\"6\" fill=\"currentColor\"/>"),
+	home: s$1("<path d=\"m3 10 9-7 9 7M5.5 8.2V20h5v-6h3v6h5V8.2\"/>"),
+	position: s$1("<path d=\"M19 9c0 5-7 12-7 12S5 14 5 9a7 7 0 0 1 14 0Z\"/><circle cx=\"12\" cy=\"9\" r=\"2.5\"/>"),
+	speed: s$1("<path d=\"M4 18a9 9 0 1 1 16 0M12 13l4-5\"/><circle cx=\"12\" cy=\"13\" r=\"1.4\"/>"),
+	help: s$1("<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M9 8.5a3 3 0 0 1 6 0c0 2-3 2-3 4.5M12 16.5v.1\"/>"),
+	"grip-open": s$1("<path d=\"M12 3v5M6 8h12M6 8l-3 5v7h4v-4M18 8l3 5v7h-4v-4\"/>"),
+	"grip-close": s$1("<path d=\"M12 3v5M6 8h12M6 8v5l3 7h2v-4M18 8v5l-3 7h-2v-4\"/>"),
+	stop: s$1("<rect x=\"5\" y=\"5\" width=\"14\" height=\"14\" rx=\"3\"/>"),
+	link: s$1("<path d=\"m9 15 6-6M8 16l-1 1a3.5 3.5 0 0 1-5-5l4-4a3.5 3.5 0 0 1 5 0M16 8l1-1a3.5 3.5 0 0 1 5 5l-4 4a3.5 3.5 0 0 1-5 0\"/>"),
+	rotate: s$1("<path d=\"M19.5 12a7.5 7.5 0 1 1-2.2-5.3\"/><path d=\"M19.5 4.5v4h-4\"/>"),
+	lock: s$1("<rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2.6\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5\"/><path d=\"M12 14.4v2\" stroke-width=\"2.2\"/>"),
+	unlock: s$1("<rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2.6\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 6.6-1.6\"/><path d=\"M12 14.4v2\" stroke-width=\"2.2\"/>"),
+	point: s$1("<circle cx=\"12\" cy=\"12\" r=\"7.5\"/><circle cx=\"12\" cy=\"12\" r=\"2.4\"/><path d=\"M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3\"/>"),
+	tilt: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><circle cx=\"12\" cy=\"12\" r=\"2.2\"/><path d=\"M3.6 10.6h6.2M14.2 10.6h6.2M12 14.2v6.3\"/>"),
+	match: s$1("<path d=\"M12 3.2 19.8 7.6v8.8L12 20.8 4.2 16.4V7.6L12 3.2Z\"/><path d=\"M4.2 7.6 12 12l7.8-4.4M12 12v8.8\"/>"),
+	gyro: s$1("<circle cx=\"12\" cy=\"12\" r=\"2.6\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\"/><ellipse cx=\"12\" cy=\"12\" rx=\"3.6\" ry=\"9\"/>"),
+	center: s$1("<circle cx=\"12\" cy=\"12\" r=\"7\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/><path d=\"M12 2.5v3.2M12 18.3v3.2M2.5 12h3.2M18.3 12h3.2\"/>"),
+	settings: s$1("<path d=\"M4 7.5h9M17 7.5h3M4 16.5h3M11 16.5h9\"/><circle cx=\"15\" cy=\"7.5\" r=\"2.2\"/><circle cx=\"9\" cy=\"16.5\" r=\"2.2\"/>"),
+	models: s$1("<rect x=\"3.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"3.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/>"),
+	reset: s$1("<path d=\"M4.5 12a7.5 7.5 0 1 0 2.2-5.3\"/><path d=\"M4.5 4.5v4h4\"/>"),
+	grip: s$1("<path d=\"M12 3v5M6 8h12M6 8l-3 5v7h4v-4M18 8l3 5v7h-4v-4\"/>"),
+	frame: s$1("<path d=\"M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15\"/>"),
+	fullscreen: s$1("<path d=\"M4 9.5V4h5.5M4 4l5.5 5.5M20 9.5V4h-5.5M20 4l-5.5 5.5M4 14.5V20h5.5M4 20l5.5-5.5M20 14.5V20h-5.5M20 20l-5.5-5.5\"/>"),
+	"fullscreen-exit": s$1("<path d=\"M9.5 4v5.5H4M9.5 9.5 4 4M14.5 4v5.5H20M14.5 9.5 20 4M9.5 20v-5.5H4M9.5 14.5 4 20M14.5 20v-5.5H20M14.5 14.5 20 20\"/>"),
+	spin: s$1("<path d=\"M12 5.5c4.4 0 8 1.6 8 3.5s-3.6 3.5-8 3.5-8-1.6-8-3.5\"/><path d=\"M4 9v5c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5V9\"/><path d=\"M7.5 3.8 4 5.5l1.8 3.3\"/>"),
+	grid: s$1("<rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"3\"/><path d=\"M3.5 9.5h17M3.5 14.5h17M9.5 3.5v17M14.5 3.5v17\"/>"),
+	glow: s$1("<path d=\"M11 3.5l1.7 4.8 4.8 1.7-4.8 1.7L11 16.5l-1.7-4.8L4.5 10l4.8-1.7Z\"/><path d=\"M18 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8Z\"/>"),
+	upload: s$1("<path d=\"M12 15.5V4.5M7.5 9 12 4.5 16.5 9M5 19.5h14\"/>"),
+	close: s$1("<path d=\"M6.5 6.5l11 11M17.5 6.5l-11 11\"/>"),
+	skip: s$1("<path d=\"m6 5 9 7-9 7Z\"/><path d=\"M18 5v14\"/>"),
+	plus: s$1("<path d=\"M12 5.5v13M5.5 12h13\"/>"),
+	arrange: s$1("<rect x=\"2.8\" y=\"8\" width=\"5\" height=\"8\" rx=\"1.6\"/><rect x=\"9.5\" y=\"8\" width=\"5\" height=\"8\" rx=\"1.6\"/><rect x=\"16.2\" y=\"8\" width=\"5\" height=\"8\" rx=\"1.6\"/>"),
+	solo: s$1("<rect x=\"8\" y=\"6.5\" width=\"8\" height=\"11\" rx=\"2.2\"/><path d=\"M3.6 9v6M20.4 9v6\" stroke-dasharray=\"1.6 2.2\"/>"),
+	chevron: s$1("<path d=\"M7 10l5 5 5-5\"/>"),
+	left: s$1("<path d=\"M14.5 6.5 9 12l5.5 5.5\"/>"),
+	right: s$1("<path d=\"M9.5 6.5 15 12l-5.5 5.5\"/>"),
+	phone: s$1("<rect x=\"7\" y=\"2.8\" width=\"10\" height=\"18.4\" rx=\"2.8\"/><path d=\"M10.5 18h3\"/>"),
+	more: s$1("<circle cx=\"5.5\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/><circle cx=\"18.5\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/>"),
+	open: s$1("<path d=\"M14 4.5h5.5V10M19.5 4.5 11 13M18 14v4a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 18V8a1.5 1.5 0 0 1 1.5-1.5h4\"/>"),
+	orbit: s$1("<circle cx=\"12\" cy=\"12\" r=\"3\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9.5\" ry=\"4\" transform=\"rotate(-25 12 12)\"/>"),
+	diamond: s$1("<path d=\"M7 4h10l4 5-9 11L3 9l4-5Z\"/><path d=\"M3 9h18M9.5 4 8 9l4 11 4-11-1.5-5\"/>"),
+	matrix: s$1("<rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"3\"/><path d=\"M8 8h.01M12 8h.01M16 8h.01M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01\" stroke-width=\"2.6\"/>"),
+	cube: s$1("<path d=\"M12 3.2 19.8 7.6v8.8L12 20.8 4.2 16.4V7.6L12 3.2Z\"/><path d=\"M4.2 7.6 12 12l7.8-4.4M12 12v8.8\"/>"),
+	folder: s$1("<path d=\"M3.5 7.2a1.7 1.7 0 0 1 1.7-1.7H9l1.9 2h7.9a1.7 1.7 0 0 1 1.7 1.7v8.1a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7Z\"/><path d=\"M3.5 10.5h17\"/>"),
+	drag: s$1("<circle cx=\"9\" cy=\"12\" r=\"2.6\"/><path d=\"M13.5 12h7M18 9l3 3-3 3\"/>"),
+	pan: s$1("<circle cx=\"6.5\" cy=\"12\" r=\"2.2\"/><circle cx=\"11.5\" cy=\"12\" r=\"2.2\"/><path d=\"M15.5 12h5M18 9.5l2.5 2.5-2.5 2.5\"/>"),
+	pinch: s$1("<path d=\"M4 4l5 5M4 4v4M4 4h4M20 20l-5-5M20 20v-4M20 20h-4\"/>"),
+	twist: s$1("<path d=\"M18.5 8.5A7.5 7.5 0 1 0 19.5 13\"/><path d=\"M19.5 4.5v4h-4\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/>"),
+	sun: s$1("<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6\"/>"),
+	heart: s$1("<path d=\"M12 20.2s-7.3-4.4-8.9-9A4.9 4.9 0 0 1 12 6.4a4.9 4.9 0 0 1 8.9 4.8c-1.6 4.6-8.9 9-8.9 9Z\"/>"),
+	palette: s$1("<path d=\"M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 1.9-.8 1.9-1.7 0-1.2-1-1.6-1-2.7 0-1 .8-1.6 1.8-1.6h2.1a3.7 3.7 0 0 0 3.7-3.7C20.5 6.9 16.7 3.5 12 3.5Z\"/><circle cx=\"7.8\" cy=\"11\" r=\"1.1\" fill=\"currentColor\"/><circle cx=\"10.5\" cy=\"7.4\" r=\"1.1\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"7.6\" r=\"1.1\" fill=\"currentColor\"/>"),
+	tap: s$1("<circle cx=\"12\" cy=\"9\" r=\"3\"/><path d=\"M12 14v6M7.5 6.5a6 6 0 0 1 9 0\"/>"),
+	gamepad: s$1("<path d=\"M7.2 6.8h9.6c2 0 3.7 1.4 4.1 3.3l1 4.9c.4 1.9-1 3.6-2.9 3.6-.9 0-1.7-.4-2.3-1.1L15.3 16H8.7l-1.4 1.5c-.6.7-1.4 1.1-2.3 1.1-1.9 0-3.3-1.7-2.9-3.6l1-4.9c.4-1.9 2.1-3.3 4.1-3.3Z\"/><path d=\"M7.6 9.9v3.6M5.8 11.7h3.6\"/><circle cx=\"15.6\" cy=\"10.6\" r=\".9\" fill=\"currentColor\"/><circle cx=\"17.5\" cy=\"12.7\" r=\".9\" fill=\"currentColor\"/>"),
+	view: s$1("<rect x=\"3.5\" y=\"5.5\" width=\"11\" height=\"9\" rx=\"2\"/><path d=\"M17.5 9.5h1a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-.5\"/>"),
+	menu: s$1("<path d=\"M5 7.5h14M5 12h14M5 16.5h14\"/>"),
+	guide: s$1("<path d=\"M4.5 11.2 12 4.8l7.5 6.4\"/><path d=\"M6.8 9.6v8.2A1.2 1.2 0 0 0 8 19h8a1.2 1.2 0 0 0 1.2-1.2V9.6\"/><path d=\"M10.2 19v-4.2h3.6V19\"/>"),
+	plane: s$1("<path d=\"M3.5 12.2 20.2 4.4l-4.4 15.4-4.2-6.3-8.1-1.3Z\"/><path d=\"M11.6 13.5 20.2 4.4\"/>"),
+	wheel: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><circle cx=\"12\" cy=\"12\" r=\"2.6\"/><path d=\"M12 3.5v5.9M4.7 15.3l5-2.3M19.3 15.3l-5-2.3\"/>"),
+	cursor: s$1("<path d=\"M6 4.2 18.4 12.6l-5.3 1.1 2.7 5.4-2.5 1.2-2.7-5.4L6.6 18.6Z\"/>"),
+	sound: s$1("<path d=\"M4.5 9.6h3.1L12 6v12l-4.4-3.6H4.5Z\"/><path d=\"M15.2 9.3a3.8 3.8 0 0 1 0 5.4M17.8 6.8a7.4 7.4 0 0 1 0 10.4\"/>"),
+	mute: s$1("<path d=\"M4.5 9.6h3.1L12 6v12l-4.4-3.6H4.5Z\"/><path d=\"M15.5 9.7l4.6 4.6M20.1 9.7l-4.6 4.6\"/>"),
+	"mouse-left": s$1("<rect x=\"6\" y=\"2.8\" width=\"12\" height=\"18.4\" rx=\"6\"/><path d=\"M12 2.8v7M6 9.8h12\"/><path d=\"M12 2.8A6 6 0 0 0 6 8.8v1h6Z\" fill=\"currentColor\"/>"),
+	"mouse-right": s$1("<rect x=\"6\" y=\"2.8\" width=\"12\" height=\"18.4\" rx=\"6\"/><path d=\"M12 2.8v7M6 9.8h12\"/><path d=\"M12 2.8a6 6 0 0 1 6 6v1h-6Z\" fill=\"currentColor\"/>"),
+	autoscroll: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.6\"/><circle cx=\"12\" cy=\"12\" r=\"1.5\" fill=\"currentColor\"/><path d=\"M9.9 8.4 12 5.9l2.1 2.5ZM9.9 15.6l2.1 2.5 2.1-2.5Z\" fill=\"currentColor\"/>"),
+	"zoom-in": s$1("<circle cx=\"10.5\" cy=\"10.5\" r=\"6.3\"/><path d=\"M15.1 15.1 20 20M7.8 10.5h5.4M10.5 7.8v5.4\"/>"),
+	"zoom-out": s$1("<circle cx=\"10.5\" cy=\"10.5\" r=\"6.3\"/><path d=\"M15.1 15.1 20 20M7.8 10.5h5.4\"/>"),
+	mouse: s$1("<rect x=\"7\" y=\"3.5\" width=\"10\" height=\"17\" rx=\"5\"/><path d=\"M12 3.5v6.2M7 9.7h10\"/>"),
+	stick: s$1("<circle cx=\"12\" cy=\"7.8\" r=\"3.8\"/><path d=\"M12 11.6v4.6M5.5 19.5h13M8.2 16.2h7.6\"/>"),
+	stickL: s$1("<circle cx=\"12\" cy=\"7.8\" r=\"3.8\"/><path d=\"M12 11.6v4.6M5.5 19.5h13M8.2 16.2h7.6\"/><path d=\"M3.5 4.5v6h3.6\" stroke-width=\"2\"/>"),
+	stickR: s$1("<circle cx=\"12\" cy=\"7.8\" r=\"3.8\"/><path d=\"M12 11.6v4.6M5.5 19.5h13M8.2 16.2h7.6\"/><path d=\"M17.2 10.5v-6h2.2a1.6 1.6 0 0 1 0 3.2h-2.2l2.8 2.8\" stroke-width=\"2\"/>"),
+	fly: s$1("<path d=\"M4 15.5c2.2-1.6 5-2.5 8-2.5s5.8.9 8 2.5\"/><path d=\"M12 13V7.5M9.5 9.2 12 6.5l2.5 2.7\"/><path d=\"M4.5 19h15\"/>"),
+	keyboard: s$1("<rect x=\"2.6\" y=\"5.6\" width=\"18.8\" height=\"12.8\" rx=\"2.8\"/><path d=\"M6.2 9.4h.01M9.1 9.4h.01M12 9.4h.01M14.9 9.4h.01M17.8 9.4h.01M7.65 12.2h.01M10.55 12.2h.01M13.45 12.2h.01M16.35 12.2h.01\" stroke-width=\"2.2\"/><path d=\"M8.4 15.2h7.2\"/>"),
+	"kb-hide": s$1("<rect x=\"3\" y=\"3.2\" width=\"18\" height=\"11.4\" rx=\"2.6\"/><path d=\"M7 6.9h.01M10.3 6.9h.01M13.7 6.9h.01M17 6.9h.01\" stroke-width=\"2.2\"/><path d=\"M8.6 10.7h6.8\"/><path d=\"M8.6 17.9 12 21l3.4-3.1\"/>"),
+	backspace: s$1("<path d=\"M9.3 5.8h9.5a2 2 0 0 1 2 2v8.4a2 2 0 0 1-2 2H9.3L3.4 12Z\"/><path d=\"M11.8 9.7l4.6 4.6M16.4 9.7l-4.6 4.6\"/>"),
+	enter: s$1("<path d=\"M19.4 5.2v6a2.6 2.6 0 0 1-2.6 2.6H5.4\"/><path d=\"M9.4 9.8 5.4 13.8l4 4\"/>"),
+	"arrow-left": s$1("<path d=\"M19 12H5.4M11 6.4 5.4 12l5.6 5.6\"/>"),
+	"arrow-right": s$1("<path d=\"M5 12h13.6M13 6.4l5.6 5.6-5.6 5.6\"/>"),
+	"arrow-up": s$1("<path d=\"M12 19V5.4M6.4 11 12 5.4l5.6 5.6\"/>"),
+	"arrow-down": s$1("<path d=\"M12 5v13.6M6.4 13l5.6 5.6 5.6-5.6\"/>"),
+	search: s$1("<circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\"/><path d=\"m16 16 4 4\"/>"),
+	check: s$1("<path d=\"m5.5 12.5 4.2 4.2 8.8-9.4\"/>"),
+	sidebar: s$1("<rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"15\" rx=\"3.2\"/><path d=\"M9.5 4.5v15\"/><path class=\"ic-flip\" d=\"m15.4 9.6-2.4 2.4 2.4 2.4\"/>"),
+	star: s$1("<path d=\"m12 3.8 2.45 5 5.5.8-3.98 3.88.94 5.47L12 16.37l-4.91 2.58.94-5.47L4.05 9.6l5.5-.8Z\"/>"),
+	arm: s$1("<path d=\"M4.5 20.5h10\"/><path d=\"M6.8 20.5v-2.1a1.4 1.4 0 0 1 1.4-1.4h2.6a1.4 1.4 0 0 1 1.4 1.4v2.1\"/><path d=\"m9.6 17 3.5-8.1\"/><circle cx=\"14\" cy=\"6.9\" r=\"2.1\"/><path d=\"m16 7.8 3.4 3.3\"/><path d=\"m17.4 14.2 1.9-2.9 2.2 1.6\"/>"),
+	car: s$1("<path d=\"M3.8 16.2V13a1.8 1.8 0 0 1 1.3-1.7l2-.6 2.3-3.2a1.9 1.9 0 0 1 1.5-.8h2.7a1.9 1.9 0 0 1 1.5.7l2.7 3.3 1.3.4a1.8 1.8 0 0 1 1.3 1.7v3.4\"/><path d=\"M5.3 16.2h.5M9.6 16.2h4.8M18.2 16.2h.5\"/><circle cx=\"7.7\" cy=\"16.4\" r=\"1.9\"/><circle cx=\"16.3\" cy=\"16.4\" r=\"1.9\"/><path d=\"M7.3 10.8h10\"/>"),
+	drone: s$1("<rect x=\"9.6\" y=\"9.6\" width=\"4.8\" height=\"4.8\" rx=\"1.4\"/><path d=\"M9.7 9.7 7.6 7.6M14.3 9.7l2.1-2.1M9.7 14.3l-2.1 2.1M14.3 14.3l2.1 2.1\"/><circle cx=\"5.9\" cy=\"5.9\" r=\"2.4\"/><circle cx=\"18.1\" cy=\"5.9\" r=\"2.4\"/><circle cx=\"5.9\" cy=\"18.1\" r=\"2.4\"/><circle cx=\"18.1\" cy=\"18.1\" r=\"2.4\"/>"),
+	camera: s$1("<path d=\"M4.8 8.2h2.7l1.5-2h6l1.5 2h2.7a1.6 1.6 0 0 1 1.6 1.6v7.6a1.6 1.6 0 0 1-1.6 1.6H4.8a1.6 1.6 0 0 1-1.6-1.6V9.8a1.6 1.6 0 0 1 1.6-1.6Z\"/><circle cx=\"12\" cy=\"13.2\" r=\"3.3\"/>"),
+	factory: s$1("<path d=\"M3.5 20.5h17\"/><path d=\"M4.6 20.5V11.2l4.8 3.1v-3.1l4.8 3.1V5.8h4v14.7\"/><path d=\"M7.6 17.4h1.8M11.9 17.4h1.8\"/>"),
+	note: s$1("<path d=\"M9 17.4V6l10-2.2v11.6\"/><path d=\"M9 9.3l10-2.2\"/><circle cx=\"6.8\" cy=\"17.4\" r=\"2.3\"/><circle cx=\"16.8\" cy=\"15.4\" r=\"2.3\"/>"),
+	piano: s$1("<rect x=\"3.5\" y=\"5\" width=\"17\" height=\"14\" rx=\"2.4\"/><path d=\"M12 5v14M8.1 12.6V19M15.9 12.6V19\"/><path d=\"M7 5h2.2v7.6H7ZM14.8 5H17v7.6h-2.2Z\" fill=\"currentColor\"/>"),
+	drum: s$1("<ellipse cx=\"12\" cy=\"10.2\" rx=\"7.6\" ry=\"2.9\"/><path d=\"M4.4 10.2v5.6c0 1.6 3.4 2.9 7.6 2.9s7.6-1.3 7.6-2.9v-5.6\"/><path d=\"M7.6 12.7v5.1M12 13.1v5.6M16.4 12.7v5.1\"/><path d=\"m9.2 3.6 3.2 4.9M18.4 4.2l-4.9 4.4\"/>"),
+	trackpad: s$1("<rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"15\" rx=\"3\"/><path d=\"M3.5 15.3h17M12 15.3v4.2\"/><circle cx=\"11.4\" cy=\"9.7\" r=\"1.7\" fill=\"currentColor\"/>"),
+	remote: s$1("<rect x=\"8.4\" y=\"5.2\" width=\"7.2\" height=\"16.3\" rx=\"2.6\"/><path d=\"M12 8.2v3.2M10.4 9.8h3.2\"/><circle cx=\"12\" cy=\"15.4\" r=\"1.4\"/><path d=\"M12 1.6v1.5M8.5 2.6l.9 1M15.5 2.6l-.9 1\"/>"),
+	hand: s$1("<path d=\"M8 12.6V6.3a1.4 1.4 0 0 1 2.8 0v5\"/><path d=\"M10.8 11V4.9a1.4 1.4 0 0 1 2.8 0V11\"/><path d=\"M13.6 11.2V6.1a1.4 1.4 0 0 1 2.8 0v6\"/><path d=\"M16.4 9.5a1.4 1.4 0 0 1 2.8 0v5.2c0 3.6-2.6 6.3-6.2 6.3h-1.3c-2.3 0-3.7-1-5-2.6l-3-3.9a1.45 1.45 0 0 1 2.2-1.9L8 14.3\"/>"),
+	best: s$1("<path d=\"M12 3.2l2.2 6.6 6.6 2.2-6.6 2.2L12 20.8l-2.2-6.6L3.2 12l6.6-2.2Z\" fill=\"currentColor\"/>"),
+	ban: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M6 18 18 6\"/>"),
+	scan: s$1("<path d=\"M4 8.5v-3A1.5 1.5 0 0 1 5.5 4h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3\"/><path d=\"M7.5 12h9\"/>"),
+	scene: s$1("<path d=\"M3.5 17.5 12 21l8.5-3.5M3.5 13 12 16.5l8.5-3.5\"/><path d=\"M12 3 3.5 6.5 12 10l8.5-3.5Z\"/>"),
+	"rotation-lock": s$1("<path d=\"M20 12a8 8 0 1 1-2.34-5.66\"/><path d=\"M20 3.8v4.4h-4.4\"/><rect x=\"8.9\" y=\"11.4\" width=\"6.2\" height=\"4.9\" rx=\"1.3\"/><path d=\"M10.3 11.4V10a1.7 1.7 0 0 1 3.4 0v1.4\"/>"),
+	"rotation-free": s$1("<path d=\"M20 12a8 8 0 1 1-2.34-5.66\"/><path d=\"M20 3.8v4.4h-4.4\"/><rect x=\"8.9\" y=\"11.4\" width=\"6.2\" height=\"4.9\" rx=\"1.3\"/><path d=\"M10.3 11.4V10a1.7 1.7 0 0 1 3.3-.6\"/>"),
+	take: s$1("<path d=\"M12 3.5v7M8.8 7.3 12 10.5l3.2-3.2\"/><path d=\"M5 13.5h14l-1.4 5.3a1.6 1.6 0 0 1-1.5 1.2H7.9a1.6 1.6 0 0 1-1.5-1.2Z\"/>"),
+	turn: s$1("<path d=\"M12 3v11.5\"/><circle cx=\"12\" cy=\"14.5\" r=\"1\" fill=\"currentColor\"/><path d=\"M17.46 11.28a8.5 4.2 0 1 1-10.92 0\"/><path d=\"M4.87 14.04 6.54 11.28l-3.13-.76\"/>"),
+	lift: s$1("<circle cx=\"5.5\" cy=\"18\" r=\"2.2\"/><path d=\"M7.1 16.5 15 9.2\"/><path d=\"M21 13.9A16 16 0 0 0 15.8 5.7\"/><path d=\"M18.8 5.9 15.8 5.7l.7 2.9\"/>"),
+	bend: s$1("<path d=\"M4 20 10.6 12\"/><circle cx=\"12\" cy=\"10.5\" r=\"2\"/><path d=\"M13.9 11.2 20.5 13.6\"/><path d=\"M14.4 4.9a6 6 0 0 1 4.2 4.4\"/><path d=\"M19.9 6.8l-1.3 2.5-2.6-1\"/>"),
+	nod: s$1("<circle cx=\"7.5\" cy=\"12\" r=\"2.3\"/><path d=\"M9.8 12h5.7\"/><path d=\"M19 5.5v13M16.8 7.7 19 5.5l2.2 2.2M16.8 16.3l2.2 2.2 2.2-2.2\"/>"),
+	roll: s$1("<circle cx=\"12\" cy=\"12\" r=\"3.2\"/><path d=\"M12 8.8v3.2\"/><path d=\"M19.5 12a7.5 7.5 0 1 1-2.2-5.3\"/><path d=\"M19.5 4.5v4h-4\"/>"),
+	slide: s$1("<path d=\"M12 3v18\"/><rect x=\"8.3\" y=\"9\" width=\"7.4\" height=\"6\" rx=\"1.6\"/><path d=\"M9.2 5.8 12 3l2.8 2.8M9.2 18.2 12 21l2.8-2.8\"/>"),
+	bucket: s$1("<path d=\"M6 7h10a3 3 0 0 1 3 3v1.8a7.5 7.5 0 0 1-7.5 7.5H6Z\"/><path d=\"M6 10.6H3.6M6 14.2H3.6M6 17.8H3.6\"/><path d=\"M15.5 7l1.8-3\"/>"),
+	reach: s$1("<path d=\"M4 20.5h8\"/><path d=\"M8 20.5v-3.2\"/><path d=\"M8 17.3 11.2 10l5.3 1.5\"/><circle cx=\"11.2\" cy=\"10\" r=\"1.6\"/><path d=\"M18.3 8.8 21 11.5l-2.7 2.7\"/>"),
+	wrist: s$1("<path d=\"M12 21v-3.8M8.3 17.2h7.4M8.3 17.2V13l1.7-2.6M15.7 17.2V13l-1.7-2.6\"/><path d=\"M5 8.2a8 8 0 0 1 14 0\"/><path d=\"M19.9 5.3 19 8.2l-2.9-.6\"/>"),
+	dig: s$1("<path d=\"M9.5 11H19l-1.3 5.2a2 2 0 0 1-1.9 1.5h-3.4a2 2 0 0 1-1.9-1.4Z\"/><path d=\"M12 17.7l-.4 2M15 17.7l.4 2\"/><path d=\"M4 12.5a8.5 8.5 0 0 1 7-8\"/><path d=\"M8.6 3.3l2.4 1.2-1 2.6\"/>"),
+	depth: s$1("<rect x=\"3.5\" y=\"11.5\" width=\"9\" height=\"9\" rx=\"1.8\"/><path d=\"M11.2 12.8 19.5 4.5M14.3 4.5h5.2v5.2\"/>"),
+	"look-x": s$1("<rect x=\"6.5\" y=\"4.5\" width=\"11\" height=\"7.5\" rx=\"2\"/><circle cx=\"12\" cy=\"8.25\" r=\"2\"/><path d=\"M4 17.5h16M6.5 15 4 17.5 6.5 20M17.5 15l2.5 2.5-2.5 2.5\"/>"),
+	"look-y": s$1("<rect x=\"3.5\" y=\"8\" width=\"10.5\" height=\"8\" rx=\"2\"/><circle cx=\"8.75\" cy=\"12\" r=\"2\"/><path d=\"M19 4v16M16.5 6.5 19 4l2.5 2.5M16.5 17.5 19 20l2.5-2.5\"/>"),
+	whole: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><circle cx=\"12\" cy=\"8.3\" r=\"1.6\" fill=\"currentColor\"/><circle cx=\"8.8\" cy=\"14.1\" r=\"1.6\" fill=\"currentColor\"/><circle cx=\"15.2\" cy=\"14.1\" r=\"1.6\" fill=\"currentColor\"/>"),
+	"swipe-x": s$1("<circle cx=\"12\" cy=\"12\" r=\"2.6\"/><path d=\"M3.5 12H8M16 12h4.5M6 9.5 3.5 12 6 14.5M18 9.5l2.5 2.5-2.5 2.5\"/>"),
+	"swipe-y": s$1("<circle cx=\"12\" cy=\"12\" r=\"2.6\"/><path d=\"M12 3.5V8M12 16v4.5M9.5 6 12 3.5 14.5 6M9.5 18l2.5 2.5 2.5-2.5\"/>"),
+	"pan-y": s$1("<circle cx=\"7.5\" cy=\"12\" r=\"2.2\"/><circle cx=\"12.5\" cy=\"12\" r=\"2.2\"/><path d=\"M19 4.5v15M16.8 6.7 19 4.5l2.2 2.2M16.8 17.3l2.2 2.2 2.2-2.2\"/>"),
+	"pan-x": s$1("<circle cx=\"9.5\" cy=\"7.5\" r=\"2.2\"/><circle cx=\"14.5\" cy=\"7.5\" r=\"2.2\"/><path d=\"M4.5 16h15M6.7 13.8 4.5 16l2.2 2.2M17.3 13.8l2.2 2.2-2.2 2.2\"/>")
+};
+/** Static vector identity needs no animation clock. Retained for surfaces that previously settled an orbit. */
+function calmMarks(root, _orbits = 1) {
+	syncBrand(root);
+}
+/** Existing header slots use the shared outlined lockup; isolated mark slots use the canonical SVG. */
+function mountMarks(root = document) {
+	for (const slot of root.querySelectorAll("[data-mark]")) {
+		const owner = slot.closest(".logo");
+		if (owner) setMarkup(owner, logo(location.pathname.startsWith("/link/")));
+		else setMarkup(slot, logoMark());
+	}
+}
+function logoMark() {
+	return brandMark();
+}
+function settleMotion(root = document) {
+	syncBrand(root);
+}
+var logo = (link = false) => brandLockup(link);
+//#endregion
+//#region ../src/ui/kit/loading.ts
+/** State owners mark a reserved host; the adapter owns its loader's mount, suspension and disposal. */
+function dotLoading(host, busy, label = "Working", size = 24) {
+	if (host.dataset.dotLoading !== String(busy)) host.dataset.dotLoading = String(busy);
+	if (host.dataset.dotLabel !== label) host.dataset.dotLabel = label;
+	if (host.dataset.dotSize !== String(size)) host.dataset.dotSize = String(size);
+	if (host.getAttribute("aria-busy") !== String(busy)) host.setAttribute("aria-busy", String(busy));
+}
+/** One observer per product document, including Link's family-styled popup and options. No idle polling. */
+function mountDotLoaders() {
+	const sheet = new CSSStyleSheet();
+	sheet.replaceSync(DOT_LOADER_STYLE + `.dot-wait-label{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;overflow:hidden!important;clip-path:inset(50%);white-space:nowrap}.dot-loading-slot{display:inline-flex;align-items:center;justify-content:center}.dot-loading-slot[data-dot-scene]>.dot-loader{visibility:hidden}`);
+	document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+	const loaders = /* @__PURE__ */ new Map();
+	const thumbnails = /* @__PURE__ */ new WeakSet();
+	const visible = /* @__PURE__ */ new Map();
+	const visibility = new IntersectionObserver((entries) => {
+		for (const entry of entries) visible.set(entry.target, entry.isIntersecting);
+		sync();
+	});
+	const sync = () => {
+		for (const image of document.querySelectorAll("img[data-dot-thumbnail]")) if (!thumbnails.has(image)) {
+			thumbnails.add(image);
+			dotThumbnail(image, image.dataset.dotThumbnail || "Opening preview", () => {
+				const icon = document.createElement("span");
+				icon.setAttribute("aria-hidden", "true");
+				setMarkup(icon, ICONS.cube);
+				image.replaceWith(icon);
+			});
+		}
+		let moving = false;
+		for (const [host, loader] of loaders) if (!host.isConnected) {
+			loader.destroy();
+			loader.el.remove();
+			loaders.delete(host);
+			visibility.unobserve(host);
+			visible.delete(host);
+		}
+		for (const host of document.querySelectorAll("[data-dot-loading]")) {
+			let loader = loaders.get(host);
+			const busy = host.dataset.dotLoading === "true" && !host.hasAttribute("data-dot-scene");
+			if (!loader && !busy) continue;
+			if (!loader) {
+				loader = new DotLoader({
+					size: Number(host.dataset.dotSize) || 24,
+					label: host.dataset.dotLabel
+				});
+				loaders.set(host, loader);
+				visible.set(host, true);
+				visibility.observe(host);
+			}
+			if (!host.contains(loader.el)) host.append(loader.el);
+			const label = host.dataset.dotLabel || "Working";
+			if (loader.el.getAttribute("aria-label") !== label) loader.el.setAttribute("aria-label", label);
+			if (loader.el.hidden === busy) loader.el.hidden = !busy;
+			if (busy && !moving && visible.get(host) && !host.hasAttribute("data-dot-static")) {
+				loader.start();
+				moving = true;
+			} else loader.finish();
+		}
+	};
+	const observer = new MutationObserver((records) => {
+		if (records.some((record) => record.type === "attributes" || loaders.has(record.target) || record.removedNodes.length && [...loaders.keys()].some((host) => !host.isConnected) || [...record.addedNodes].some((node) => node instanceof Element && (node.matches("[data-dot-loading],img[data-dot-thumbnail]") || node.querySelector("[data-dot-loading],img[data-dot-thumbnail]"))))) sync();
+	});
+	observer.observe(document.documentElement, {
+		subtree: true,
+		childList: true,
+		attributes: true,
+		attributeFilter: [
+			"data-dot-loading",
+			"data-dot-label",
+			"data-dot-scene",
+			"data-dot-static"
+		]
+	});
+	sync();
+	addEventListener("pagehide", () => {
+		observer.disconnect();
+		visibility.disconnect();
+		loaders.forEach((loader) => {
+			loader.destroy();
+			loader.el.remove();
+		});
+		loaders.clear();
+		visible.clear();
+	});
+	addEventListener("pageshow", (event) => {
+		if (event.persisted) {
+			observer.observe(document.documentElement, {
+				subtree: true,
+				childList: true,
+				attributes: true,
+				attributeFilter: [
+					"data-dot-loading",
+					"data-dot-label",
+					"data-dot-scene",
+					"data-dot-static"
+				]
+			});
+			sync();
+		}
+	});
+}
+/** Lazy thumbnails keep a fixed footprint; failures hand back to the caller's family glyph. */
+function dotThumbnail(image, label, failed) {
+	const host = image.parentElement;
+	if (!host || image.complete) {
+		if (image.complete && !image.naturalWidth) failed?.();
+		return;
+	}
+	host.dataset.dotStatic = "";
+	dotLoading(host, true, label, 20);
+	const done = () => {
+		dotLoading(host, false);
+		image.removeEventListener("load", done);
+		image.removeEventListener("error", error);
+	};
+	const error = () => {
+		done();
+		failed?.();
+	};
+	image.addEventListener("load", done, { once: true });
+	image.addEventListener("error", error, { once: true });
 }
 //#endregion
 //#region ../src/family/family.js
@@ -1464,7 +1794,7 @@ var ink_default = "/* Visible glyph edges, including descenders and side bearing
 var controls = "button, [role=\"button\"], a.kit-action, a.kit-cta, a.dcard-go, a.sim-crumb, a.btn, .top-nav a, .page-top nav a, .kit-chip, .arm-badge, .sim-badge, .tag, .count, .fact";
 var skip = "svg, kbd, sup, .kit-sr, .bb-header";
 var fitted = /* @__PURE__ */ new WeakMap();
-function fitControlInk(root = document.body) {
+function fitControlInk(root = document.body, opts = {}) {
 	const existing = fitted.get(root);
 	if (existing) return existing;
 	if (root instanceof ShadowRoot) {
@@ -1478,9 +1808,11 @@ function fitControlInk(root = document.body) {
 	const pending = /* @__PURE__ */ new Set();
 	const observed = /* @__PURE__ */ new WeakSet();
 	let frame = 0, active = true;
+	const defer = opts.defer ?? requestAnimationFrame;
+	const cancel = opts.cancel ?? cancelAnimationFrame;
 	const visibility = new IntersectionObserver((entries) => {
 		for (const entry of entries) if (entry.isIntersecting) pending.add(entry.target);
-		if (pending.size && !frame) frame = requestAnimationFrame(flush);
+		if (pending.size && !frame) frame = defer(flush);
 	}, { rootMargin: "100px" });
 	const labels = (button) => {
 		for (const svg of button.querySelectorAll("svg")) {
@@ -1524,9 +1856,22 @@ function fitControlInk(root = document.body) {
 			const style = getComputedStyle(label);
 			if (style.fontSize === "0px") continue;
 			let text = node.textContent ?? "";
+			const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+			if (label.classList.contains("host-t") && style.textOverflow === "ellipsis" && label.scrollWidth > label.clientWidth) {
+				context.font = font;
+				context.letterSpacing = style.letterSpacing === "normal" ? "0px" : style.letterSpacing;
+				const limit = label.getBoundingClientRect().right - context.measureText("…").width;
+				const range = document.createRange();
+				let end = 0;
+				for (; end < node.length; end++) {
+					range.setStart(node, end);
+					range.setEnd(node, end + 1);
+					if (range.getBoundingClientRect().right > limit) break;
+				}
+				text = text.slice(0, end) + "…";
+			}
 			if (style.textTransform === "uppercase") text = text.toUpperCase();
 			if (style.textTransform === "lowercase") text = text.toLowerCase();
-			const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
 			const key = `${font}|${style.letterSpacing}|${text}`;
 			let metrics = cache.get(key);
 			if (!metrics) {
@@ -1623,7 +1968,7 @@ function fitControlInk(root = document.body) {
 			for (const node of record.addedNodes) if (node instanceof Element) scan(node instanceof HTMLElement ? node : node.parentElement);
 			else if (node.nodeType === Node.TEXT_NODE) scan(node.parentElement);
 		}
-		if (pending.size && !frame) frame = requestAnimationFrame(flush);
+		if (pending.size && !frame) frame = defer(flush);
 	});
 	const watch = () => observer.observe(root, {
 		subtree: true,
@@ -1658,11 +2003,11 @@ function fitControlInk(root = document.body) {
 		cache.clear();
 		baselines.clear();
 		scanRoot();
-		if (!frame) frame = requestAnimationFrame(flush);
+		if (!frame) frame = defer(flush);
 	};
 	const resize = new ResizeObserver(() => {
 		scanRoot();
-		if (!frame) frame = requestAnimationFrame(flush);
+		if (!frame) frame = defer(flush);
 	});
 	resize.observe(root instanceof ShadowRoot ? root.host : root);
 	document.fonts.addEventListener("loadingdone", refresh);
@@ -1673,7 +2018,7 @@ function fitControlInk(root = document.body) {
 		observer.disconnect();
 		resize.disconnect();
 		visibility.disconnect();
-		cancelAnimationFrame(frame);
+		cancel(frame);
 		document.fonts.removeEventListener("loadingdone", refresh);
 		removeEventListener("resize", refresh);
 	};
@@ -1682,6 +2027,7 @@ function fitControlInk(root = document.body) {
 }
 //#endregion
 //#region ../src/family/index.ts
+mountDotLoaders();
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => fitControlInk(), { once: true });
 else fitControlInk();
 var family = window.BlackboxesFamily;
@@ -1692,202 +2038,6 @@ family.configure({
 	},
 	reactiveRanges: true
 });
-//#endregion
-//#region ../src/ui/icons.ts
-/** Stroke icon set shared by the phone controller and the viewer. Names double as the protocol's standard tray icon vocabulary. */
-var s$1 = (d) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
-var ICONS = {
-	play: s$1("<path d=\"m8 4 12 8-12 8Z\"/>"),
-	pause: s$1("<path d=\"M8 5v14M16 5v14\"/>"),
-	record: s$1("<circle cx=\"12\" cy=\"12\" r=\"6\" fill=\"currentColor\"/>"),
-	home: s$1("<path d=\"m3 10 9-7 9 7M5.5 8.2V20h5v-6h3v6h5V8.2\"/>"),
-	position: s$1("<path d=\"M19 9c0 5-7 12-7 12S5 14 5 9a7 7 0 0 1 14 0Z\"/><circle cx=\"12\" cy=\"9\" r=\"2.5\"/>"),
-	speed: s$1("<path d=\"M4 18a9 9 0 1 1 16 0M12 13l4-5\"/><circle cx=\"12\" cy=\"13\" r=\"1.4\"/>"),
-	help: s$1("<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M9 8.5a3 3 0 0 1 6 0c0 2-3 2-3 4.5M12 16.5v.1\"/>"),
-	"grip-open": s$1("<path d=\"M12 3v5M6 8h12M6 8l-3 5v7h4v-4M18 8l3 5v7h-4v-4\"/>"),
-	"grip-close": s$1("<path d=\"M12 3v5M6 8h12M6 8v5l3 7h2v-4M18 8v5l-3 7h-2v-4\"/>"),
-	stop: s$1("<rect x=\"5\" y=\"5\" width=\"14\" height=\"14\" rx=\"3\"/>"),
-	link: s$1("<path d=\"m9 15 6-6M8 16l-1 1a3.5 3.5 0 0 1-5-5l4-4a3.5 3.5 0 0 1 5 0M16 8l1-1a3.5 3.5 0 0 1 5 5l-4 4a3.5 3.5 0 0 1-5 0\"/>"),
-	rotate: s$1("<path d=\"M19.5 12a7.5 7.5 0 1 1-2.2-5.3\"/><path d=\"M19.5 4.5v4h-4\"/>"),
-	lock: s$1("<rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2.6\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5\"/><path d=\"M12 14.4v2\" stroke-width=\"2.2\"/>"),
-	unlock: s$1("<rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2.6\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 6.6-1.6\"/><path d=\"M12 14.4v2\" stroke-width=\"2.2\"/>"),
-	point: s$1("<circle cx=\"12\" cy=\"12\" r=\"7.5\"/><circle cx=\"12\" cy=\"12\" r=\"2.4\"/><path d=\"M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3\"/>"),
-	tilt: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><circle cx=\"12\" cy=\"12\" r=\"2.2\"/><path d=\"M3.6 10.6h6.2M14.2 10.6h6.2M12 14.2v6.3\"/>"),
-	match: s$1("<path d=\"M12 3.2 19.8 7.6v8.8L12 20.8 4.2 16.4V7.6L12 3.2Z\"/><path d=\"M4.2 7.6 12 12l7.8-4.4M12 12v8.8\"/>"),
-	gyro: s$1("<circle cx=\"12\" cy=\"12\" r=\"2.6\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\"/><ellipse cx=\"12\" cy=\"12\" rx=\"3.6\" ry=\"9\"/>"),
-	center: s$1("<circle cx=\"12\" cy=\"12\" r=\"7\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/><path d=\"M12 2.5v3.2M12 18.3v3.2M2.5 12h3.2M18.3 12h3.2\"/>"),
-	settings: s$1("<path d=\"M4 7.5h9M17 7.5h3M4 16.5h3M11 16.5h9\"/><circle cx=\"15\" cy=\"7.5\" r=\"2.2\"/><circle cx=\"9\" cy=\"16.5\" r=\"2.2\"/>"),
-	models: s$1("<rect x=\"3.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"3.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/>"),
-	reset: s$1("<path d=\"M4.5 12a7.5 7.5 0 1 0 2.2-5.3\"/><path d=\"M4.5 4.5v4h4\"/>"),
-	grip: s$1("<path d=\"M12 3v5M6 8h12M6 8l-3 5v7h4v-4M18 8l3 5v7h-4v-4\"/>"),
-	frame: s$1("<path d=\"M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15\"/>"),
-	fullscreen: s$1("<path d=\"M4 9.5V4h5.5M4 4l5.5 5.5M20 9.5V4h-5.5M20 4l-5.5 5.5M4 14.5V20h5.5M4 20l5.5-5.5M20 14.5V20h-5.5M20 20l-5.5-5.5\"/>"),
-	"fullscreen-exit": s$1("<path d=\"M9.5 4v5.5H4M9.5 9.5 4 4M14.5 4v5.5H20M14.5 9.5 20 4M9.5 20v-5.5H4M9.5 14.5 4 20M14.5 20v-5.5H20M14.5 14.5 20 20\"/>"),
-	spin: s$1("<path d=\"M12 5.5c4.4 0 8 1.6 8 3.5s-3.6 3.5-8 3.5-8-1.6-8-3.5\"/><path d=\"M4 9v5c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5V9\"/><path d=\"M7.5 3.8 4 5.5l1.8 3.3\"/>"),
-	grid: s$1("<rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"3\"/><path d=\"M3.5 9.5h17M3.5 14.5h17M9.5 3.5v17M14.5 3.5v17\"/>"),
-	glow: s$1("<path d=\"M11 3.5l1.7 4.8 4.8 1.7-4.8 1.7L11 16.5l-1.7-4.8L4.5 10l4.8-1.7Z\"/><path d=\"M18 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8Z\"/>"),
-	upload: s$1("<path d=\"M12 15.5V4.5M7.5 9 12 4.5 16.5 9M5 19.5h14\"/>"),
-	close: s$1("<path d=\"M6.5 6.5l11 11M17.5 6.5l-11 11\"/>"),
-	skip: s$1("<path d=\"m6 5 9 7-9 7Z\"/><path d=\"M18 5v14\"/>"),
-	plus: s$1("<path d=\"M12 5.5v13M5.5 12h13\"/>"),
-	arrange: s$1("<rect x=\"2.8\" y=\"8\" width=\"5\" height=\"8\" rx=\"1.6\"/><rect x=\"9.5\" y=\"8\" width=\"5\" height=\"8\" rx=\"1.6\"/><rect x=\"16.2\" y=\"8\" width=\"5\" height=\"8\" rx=\"1.6\"/>"),
-	solo: s$1("<rect x=\"8\" y=\"6.5\" width=\"8\" height=\"11\" rx=\"2.2\"/><path d=\"M3.6 9v6M20.4 9v6\" stroke-dasharray=\"1.6 2.2\"/>"),
-	chevron: s$1("<path d=\"M7 10l5 5 5-5\"/>"),
-	left: s$1("<path d=\"M14.5 6.5 9 12l5.5 5.5\"/>"),
-	right: s$1("<path d=\"M9.5 6.5 15 12l-5.5 5.5\"/>"),
-	phone: s$1("<rect x=\"7\" y=\"2.8\" width=\"10\" height=\"18.4\" rx=\"2.8\"/><path d=\"M10.5 18h3\"/>"),
-	more: s$1("<circle cx=\"5.5\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/><circle cx=\"18.5\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/>"),
-	open: s$1("<path d=\"M14 4.5h5.5V10M19.5 4.5 11 13M18 14v4a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 18V8a1.5 1.5 0 0 1 1.5-1.5h4\"/>"),
-	orbit: s$1("<circle cx=\"12\" cy=\"12\" r=\"3\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9.5\" ry=\"4\" transform=\"rotate(-25 12 12)\"/>"),
-	diamond: s$1("<path d=\"M7 4h10l4 5-9 11L3 9l4-5Z\"/><path d=\"M3 9h18M9.5 4 8 9l4 11 4-11-1.5-5\"/>"),
-	matrix: s$1("<rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"3\"/><path d=\"M8 8h.01M12 8h.01M16 8h.01M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01\" stroke-width=\"2.6\"/>"),
-	cube: s$1("<path d=\"M12 3.2 19.8 7.6v8.8L12 20.8 4.2 16.4V7.6L12 3.2Z\"/><path d=\"M4.2 7.6 12 12l7.8-4.4M12 12v8.8\"/>"),
-	folder: s$1("<path d=\"M3.5 7.2a1.7 1.7 0 0 1 1.7-1.7H9l1.9 2h7.9a1.7 1.7 0 0 1 1.7 1.7v8.1a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7Z\"/><path d=\"M3.5 10.5h17\"/>"),
-	drag: s$1("<circle cx=\"9\" cy=\"12\" r=\"2.6\"/><path d=\"M13.5 12h7M18 9l3 3-3 3\"/>"),
-	pan: s$1("<circle cx=\"6.5\" cy=\"12\" r=\"2.2\"/><circle cx=\"11.5\" cy=\"12\" r=\"2.2\"/><path d=\"M15.5 12h5M18 9.5l2.5 2.5-2.5 2.5\"/>"),
-	pinch: s$1("<path d=\"M4 4l5 5M4 4v4M4 4h4M20 20l-5-5M20 20v-4M20 20h-4\"/>"),
-	twist: s$1("<path d=\"M18.5 8.5A7.5 7.5 0 1 0 19.5 13\"/><path d=\"M19.5 4.5v4h-4\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/>"),
-	sun: s$1("<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6\"/>"),
-	heart: s$1("<path d=\"M12 20.2s-7.3-4.4-8.9-9A4.9 4.9 0 0 1 12 6.4a4.9 4.9 0 0 1 8.9 4.8c-1.6 4.6-8.9 9-8.9 9Z\"/>"),
-	palette: s$1("<path d=\"M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 1.9-.8 1.9-1.7 0-1.2-1-1.6-1-2.7 0-1 .8-1.6 1.8-1.6h2.1a3.7 3.7 0 0 0 3.7-3.7C20.5 6.9 16.7 3.5 12 3.5Z\"/><circle cx=\"7.8\" cy=\"11\" r=\"1.1\" fill=\"currentColor\"/><circle cx=\"10.5\" cy=\"7.4\" r=\"1.1\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"7.6\" r=\"1.1\" fill=\"currentColor\"/>"),
-	tap: s$1("<circle cx=\"12\" cy=\"9\" r=\"3\"/><path d=\"M12 14v6M7.5 6.5a6 6 0 0 1 9 0\"/>"),
-	gamepad: s$1("<path d=\"M7.2 6.8h9.6c2 0 3.7 1.4 4.1 3.3l1 4.9c.4 1.9-1 3.6-2.9 3.6-.9 0-1.7-.4-2.3-1.1L15.3 16H8.7l-1.4 1.5c-.6.7-1.4 1.1-2.3 1.1-1.9 0-3.3-1.7-2.9-3.6l1-4.9c.4-1.9 2.1-3.3 4.1-3.3Z\"/><path d=\"M7.6 9.9v3.6M5.8 11.7h3.6\"/><circle cx=\"15.6\" cy=\"10.6\" r=\".9\" fill=\"currentColor\"/><circle cx=\"17.5\" cy=\"12.7\" r=\".9\" fill=\"currentColor\"/>"),
-	view: s$1("<rect x=\"3.5\" y=\"5.5\" width=\"11\" height=\"9\" rx=\"2\"/><path d=\"M17.5 9.5h1a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-.5\"/>"),
-	menu: s$1("<path d=\"M5 7.5h14M5 12h14M5 16.5h14\"/>"),
-	guide: s$1("<path d=\"M4.5 11.2 12 4.8l7.5 6.4\"/><path d=\"M6.8 9.6v8.2A1.2 1.2 0 0 0 8 19h8a1.2 1.2 0 0 0 1.2-1.2V9.6\"/><path d=\"M10.2 19v-4.2h3.6V19\"/>"),
-	plane: s$1("<path d=\"M3.5 12.2 20.2 4.4l-4.4 15.4-4.2-6.3-8.1-1.3Z\"/><path d=\"M11.6 13.5 20.2 4.4\"/>"),
-	wheel: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><circle cx=\"12\" cy=\"12\" r=\"2.6\"/><path d=\"M12 3.5v5.9M4.7 15.3l5-2.3M19.3 15.3l-5-2.3\"/>"),
-	cursor: s$1("<path d=\"M6 4.2 18.4 12.6l-5.3 1.1 2.7 5.4-2.5 1.2-2.7-5.4L6.6 18.6Z\"/>"),
-	sound: s$1("<path d=\"M4.5 9.6h3.1L12 6v12l-4.4-3.6H4.5Z\"/><path d=\"M15.2 9.3a3.8 3.8 0 0 1 0 5.4M17.8 6.8a7.4 7.4 0 0 1 0 10.4\"/>"),
-	mute: s$1("<path d=\"M4.5 9.6h3.1L12 6v12l-4.4-3.6H4.5Z\"/><path d=\"M15.5 9.7l4.6 4.6M20.1 9.7l-4.6 4.6\"/>"),
-	"mouse-left": s$1("<rect x=\"6\" y=\"2.8\" width=\"12\" height=\"18.4\" rx=\"6\"/><path d=\"M12 2.8v7M6 9.8h12\"/><path d=\"M12 2.8A6 6 0 0 0 6 8.8v1h6Z\" fill=\"currentColor\"/>"),
-	"mouse-right": s$1("<rect x=\"6\" y=\"2.8\" width=\"12\" height=\"18.4\" rx=\"6\"/><path d=\"M12 2.8v7M6 9.8h12\"/><path d=\"M12 2.8a6 6 0 0 1 6 6v1h-6Z\" fill=\"currentColor\"/>"),
-	autoscroll: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.6\"/><circle cx=\"12\" cy=\"12\" r=\"1.5\" fill=\"currentColor\"/><path d=\"M9.9 8.4 12 5.9l2.1 2.5ZM9.9 15.6l2.1 2.5 2.1-2.5Z\" fill=\"currentColor\"/>"),
-	"zoom-in": s$1("<circle cx=\"10.5\" cy=\"10.5\" r=\"6.3\"/><path d=\"M15.1 15.1 20 20M7.8 10.5h5.4M10.5 7.8v5.4\"/>"),
-	"zoom-out": s$1("<circle cx=\"10.5\" cy=\"10.5\" r=\"6.3\"/><path d=\"M15.1 15.1 20 20M7.8 10.5h5.4\"/>"),
-	mouse: s$1("<rect x=\"7\" y=\"3.5\" width=\"10\" height=\"17\" rx=\"5\"/><path d=\"M12 3.5v6.2M7 9.7h10\"/>"),
-	stick: s$1("<circle cx=\"12\" cy=\"7.8\" r=\"3.8\"/><path d=\"M12 11.6v4.6M5.5 19.5h13M8.2 16.2h7.6\"/>"),
-	stickL: s$1("<circle cx=\"12\" cy=\"7.8\" r=\"3.8\"/><path d=\"M12 11.6v4.6M5.5 19.5h13M8.2 16.2h7.6\"/><path d=\"M3.5 4.5v6h3.6\" stroke-width=\"2\"/>"),
-	stickR: s$1("<circle cx=\"12\" cy=\"7.8\" r=\"3.8\"/><path d=\"M12 11.6v4.6M5.5 19.5h13M8.2 16.2h7.6\"/><path d=\"M17.2 10.5v-6h2.2a1.6 1.6 0 0 1 0 3.2h-2.2l2.8 2.8\" stroke-width=\"2\"/>"),
-	fly: s$1("<path d=\"M4 15.5c2.2-1.6 5-2.5 8-2.5s5.8.9 8 2.5\"/><path d=\"M12 13V7.5M9.5 9.2 12 6.5l2.5 2.7\"/><path d=\"M4.5 19h15\"/>"),
-	keyboard: s$1("<rect x=\"2.6\" y=\"5.6\" width=\"18.8\" height=\"12.8\" rx=\"2.8\"/><path d=\"M6.2 9.4h.01M9.1 9.4h.01M12 9.4h.01M14.9 9.4h.01M17.8 9.4h.01M7.65 12.2h.01M10.55 12.2h.01M13.45 12.2h.01M16.35 12.2h.01\" stroke-width=\"2.2\"/><path d=\"M8.4 15.2h7.2\"/>"),
-	"kb-hide": s$1("<rect x=\"3\" y=\"3.2\" width=\"18\" height=\"11.4\" rx=\"2.6\"/><path d=\"M7 6.9h.01M10.3 6.9h.01M13.7 6.9h.01M17 6.9h.01\" stroke-width=\"2.2\"/><path d=\"M8.6 10.7h6.8\"/><path d=\"M8.6 17.9 12 21l3.4-3.1\"/>"),
-	backspace: s$1("<path d=\"M9.3 5.8h9.5a2 2 0 0 1 2 2v8.4a2 2 0 0 1-2 2H9.3L3.4 12Z\"/><path d=\"M11.8 9.7l4.6 4.6M16.4 9.7l-4.6 4.6\"/>"),
-	enter: s$1("<path d=\"M19.4 5.2v6a2.6 2.6 0 0 1-2.6 2.6H5.4\"/><path d=\"M9.4 9.8 5.4 13.8l4 4\"/>"),
-	"arrow-left": s$1("<path d=\"M19 12H5.4M11 6.4 5.4 12l5.6 5.6\"/>"),
-	"arrow-right": s$1("<path d=\"M5 12h13.6M13 6.4l5.6 5.6-5.6 5.6\"/>"),
-	"arrow-up": s$1("<path d=\"M12 19V5.4M6.4 11 12 5.4l5.6 5.6\"/>"),
-	"arrow-down": s$1("<path d=\"M12 5v13.6M6.4 13l5.6 5.6 5.6-5.6\"/>"),
-	search: s$1("<circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\"/><path d=\"m16 16 4 4\"/>"),
-	check: s$1("<path d=\"m5.5 12.5 4.2 4.2 8.8-9.4\"/>"),
-	sidebar: s$1("<rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"15\" rx=\"3.2\"/><path d=\"M9.5 4.5v15\"/><path class=\"ic-flip\" d=\"m15.4 9.6-2.4 2.4 2.4 2.4\"/>"),
-	star: s$1("<path d=\"m12 3.8 2.45 5 5.5.8-3.98 3.88.94 5.47L12 16.37l-4.91 2.58.94-5.47L4.05 9.6l5.5-.8Z\"/>"),
-	arm: s$1("<path d=\"M4.5 20.5h10\"/><path d=\"M6.8 20.5v-2.1a1.4 1.4 0 0 1 1.4-1.4h2.6a1.4 1.4 0 0 1 1.4 1.4v2.1\"/><path d=\"m9.6 17 3.5-8.1\"/><circle cx=\"14\" cy=\"6.9\" r=\"2.1\"/><path d=\"m16 7.8 3.4 3.3\"/><path d=\"m17.4 14.2 1.9-2.9 2.2 1.6\"/>"),
-	car: s$1("<path d=\"M3.8 16.2V13a1.8 1.8 0 0 1 1.3-1.7l2-.6 2.3-3.2a1.9 1.9 0 0 1 1.5-.8h2.7a1.9 1.9 0 0 1 1.5.7l2.7 3.3 1.3.4a1.8 1.8 0 0 1 1.3 1.7v3.4\"/><path d=\"M5.3 16.2h.5M9.6 16.2h4.8M18.2 16.2h.5\"/><circle cx=\"7.7\" cy=\"16.4\" r=\"1.9\"/><circle cx=\"16.3\" cy=\"16.4\" r=\"1.9\"/><path d=\"M7.3 10.8h10\"/>"),
-	drone: s$1("<rect x=\"9.6\" y=\"9.6\" width=\"4.8\" height=\"4.8\" rx=\"1.4\"/><path d=\"M9.7 9.7 7.6 7.6M14.3 9.7l2.1-2.1M9.7 14.3l-2.1 2.1M14.3 14.3l2.1 2.1\"/><circle cx=\"5.9\" cy=\"5.9\" r=\"2.4\"/><circle cx=\"18.1\" cy=\"5.9\" r=\"2.4\"/><circle cx=\"5.9\" cy=\"18.1\" r=\"2.4\"/><circle cx=\"18.1\" cy=\"18.1\" r=\"2.4\"/>"),
-	camera: s$1("<path d=\"M4.8 8.2h2.7l1.5-2h6l1.5 2h2.7a1.6 1.6 0 0 1 1.6 1.6v7.6a1.6 1.6 0 0 1-1.6 1.6H4.8a1.6 1.6 0 0 1-1.6-1.6V9.8a1.6 1.6 0 0 1 1.6-1.6Z\"/><circle cx=\"12\" cy=\"13.2\" r=\"3.3\"/>"),
-	factory: s$1("<path d=\"M3.5 20.5h17\"/><path d=\"M4.6 20.5V11.2l4.8 3.1v-3.1l4.8 3.1V5.8h4v14.7\"/><path d=\"M7.6 17.4h1.8M11.9 17.4h1.8\"/>"),
-	note: s$1("<path d=\"M9 17.4V6l10-2.2v11.6\"/><path d=\"M9 9.3l10-2.2\"/><circle cx=\"6.8\" cy=\"17.4\" r=\"2.3\"/><circle cx=\"16.8\" cy=\"15.4\" r=\"2.3\"/>"),
-	piano: s$1("<rect x=\"3.5\" y=\"5\" width=\"17\" height=\"14\" rx=\"2.4\"/><path d=\"M12 5v14M8.1 12.6V19M15.9 12.6V19\"/><path d=\"M7 5h2.2v7.6H7ZM14.8 5H17v7.6h-2.2Z\" fill=\"currentColor\"/>"),
-	drum: s$1("<ellipse cx=\"12\" cy=\"10.2\" rx=\"7.6\" ry=\"2.9\"/><path d=\"M4.4 10.2v5.6c0 1.6 3.4 2.9 7.6 2.9s7.6-1.3 7.6-2.9v-5.6\"/><path d=\"M7.6 12.7v5.1M12 13.1v5.6M16.4 12.7v5.1\"/><path d=\"m9.2 3.6 3.2 4.9M18.4 4.2l-4.9 4.4\"/>"),
-	trackpad: s$1("<rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"15\" rx=\"3\"/><path d=\"M3.5 15.3h17M12 15.3v4.2\"/><circle cx=\"11.4\" cy=\"9.7\" r=\"1.7\" fill=\"currentColor\"/>"),
-	remote: s$1("<rect x=\"8.4\" y=\"5.2\" width=\"7.2\" height=\"16.3\" rx=\"2.6\"/><path d=\"M12 8.2v3.2M10.4 9.8h3.2\"/><circle cx=\"12\" cy=\"15.4\" r=\"1.4\"/><path d=\"M12 1.6v1.5M8.5 2.6l.9 1M15.5 2.6l-.9 1\"/>"),
-	hand: s$1("<path d=\"M8 12.6V6.3a1.4 1.4 0 0 1 2.8 0v5\"/><path d=\"M10.8 11V4.9a1.4 1.4 0 0 1 2.8 0V11\"/><path d=\"M13.6 11.2V6.1a1.4 1.4 0 0 1 2.8 0v6\"/><path d=\"M16.4 9.5a1.4 1.4 0 0 1 2.8 0v5.2c0 3.6-2.6 6.3-6.2 6.3h-1.3c-2.3 0-3.7-1-5-2.6l-3-3.9a1.45 1.45 0 0 1 2.2-1.9L8 14.3\"/>"),
-	best: s$1("<path d=\"M12 3.2l2.2 6.6 6.6 2.2-6.6 2.2L12 20.8l-2.2-6.6L3.2 12l6.6-2.2Z\" fill=\"currentColor\"/>"),
-	ban: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M6 18 18 6\"/>"),
-	scan: s$1("<path d=\"M4 8.5v-3A1.5 1.5 0 0 1 5.5 4h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3\"/><path d=\"M7.5 12h9\"/>"),
-	scene: s$1("<path d=\"M3.5 17.5 12 21l8.5-3.5M3.5 13 12 16.5l8.5-3.5\"/><path d=\"M12 3 3.5 6.5 12 10l8.5-3.5Z\"/>"),
-	"rotation-lock": s$1("<path d=\"M20 12a8 8 0 1 1-2.34-5.66\"/><path d=\"M20 3.8v4.4h-4.4\"/><rect x=\"8.9\" y=\"11.4\" width=\"6.2\" height=\"4.9\" rx=\"1.3\"/><path d=\"M10.3 11.4V10a1.7 1.7 0 0 1 3.4 0v1.4\"/>"),
-	"rotation-free": s$1("<path d=\"M20 12a8 8 0 1 1-2.34-5.66\"/><path d=\"M20 3.8v4.4h-4.4\"/><rect x=\"8.9\" y=\"11.4\" width=\"6.2\" height=\"4.9\" rx=\"1.3\"/><path d=\"M10.3 11.4V10a1.7 1.7 0 0 1 3.3-.6\"/>"),
-	take: s$1("<path d=\"M12 3.5v7M8.8 7.3 12 10.5l3.2-3.2\"/><path d=\"M5 13.5h14l-1.4 5.3a1.6 1.6 0 0 1-1.5 1.2H7.9a1.6 1.6 0 0 1-1.5-1.2Z\"/>"),
-	turn: s$1("<path d=\"M12 3v11.5\"/><circle cx=\"12\" cy=\"14.5\" r=\"1\" fill=\"currentColor\"/><path d=\"M17.46 11.28a8.5 4.2 0 1 1-10.92 0\"/><path d=\"M4.87 14.04 6.54 11.28l-3.13-.76\"/>"),
-	lift: s$1("<circle cx=\"5.5\" cy=\"18\" r=\"2.2\"/><path d=\"M7.1 16.5 15 9.2\"/><path d=\"M21 13.9A16 16 0 0 0 15.8 5.7\"/><path d=\"M18.8 5.9 15.8 5.7l.7 2.9\"/>"),
-	bend: s$1("<path d=\"M4 20 10.6 12\"/><circle cx=\"12\" cy=\"10.5\" r=\"2\"/><path d=\"M13.9 11.2 20.5 13.6\"/><path d=\"M14.4 4.9a6 6 0 0 1 4.2 4.4\"/><path d=\"M19.9 6.8l-1.3 2.5-2.6-1\"/>"),
-	nod: s$1("<circle cx=\"7.5\" cy=\"12\" r=\"2.3\"/><path d=\"M9.8 12h5.7\"/><path d=\"M19 5.5v13M16.8 7.7 19 5.5l2.2 2.2M16.8 16.3l2.2 2.2 2.2-2.2\"/>"),
-	roll: s$1("<circle cx=\"12\" cy=\"12\" r=\"3.2\"/><path d=\"M12 8.8v3.2\"/><path d=\"M19.5 12a7.5 7.5 0 1 1-2.2-5.3\"/><path d=\"M19.5 4.5v4h-4\"/>"),
-	slide: s$1("<path d=\"M12 3v18\"/><rect x=\"8.3\" y=\"9\" width=\"7.4\" height=\"6\" rx=\"1.6\"/><path d=\"M9.2 5.8 12 3l2.8 2.8M9.2 18.2 12 21l2.8-2.8\"/>"),
-	bucket: s$1("<path d=\"M6 7h10a3 3 0 0 1 3 3v1.8a7.5 7.5 0 0 1-7.5 7.5H6Z\"/><path d=\"M6 10.6H3.6M6 14.2H3.6M6 17.8H3.6\"/><path d=\"M15.5 7l1.8-3\"/>"),
-	reach: s$1("<path d=\"M4 20.5h8\"/><path d=\"M8 20.5v-3.2\"/><path d=\"M8 17.3 11.2 10l5.3 1.5\"/><circle cx=\"11.2\" cy=\"10\" r=\"1.6\"/><path d=\"M18.3 8.8 21 11.5l-2.7 2.7\"/>"),
-	wrist: s$1("<path d=\"M12 21v-3.8M8.3 17.2h7.4M8.3 17.2V13l1.7-2.6M15.7 17.2V13l-1.7-2.6\"/><path d=\"M5 8.2a8 8 0 0 1 14 0\"/><path d=\"M19.9 5.3 19 8.2l-2.9-.6\"/>"),
-	dig: s$1("<path d=\"M9.5 11H19l-1.3 5.2a2 2 0 0 1-1.9 1.5h-3.4a2 2 0 0 1-1.9-1.4Z\"/><path d=\"M12 17.7l-.4 2M15 17.7l.4 2\"/><path d=\"M4 12.5a8.5 8.5 0 0 1 7-8\"/><path d=\"M8.6 3.3l2.4 1.2-1 2.6\"/>"),
-	depth: s$1("<rect x=\"3.5\" y=\"11.5\" width=\"9\" height=\"9\" rx=\"1.8\"/><path d=\"M11.2 12.8 19.5 4.5M14.3 4.5h5.2v5.2\"/>"),
-	"look-x": s$1("<rect x=\"6.5\" y=\"4.5\" width=\"11\" height=\"7.5\" rx=\"2\"/><circle cx=\"12\" cy=\"8.25\" r=\"2\"/><path d=\"M4 17.5h16M6.5 15 4 17.5 6.5 20M17.5 15l2.5 2.5-2.5 2.5\"/>"),
-	"look-y": s$1("<rect x=\"3.5\" y=\"8\" width=\"10.5\" height=\"8\" rx=\"2\"/><circle cx=\"8.75\" cy=\"12\" r=\"2\"/><path d=\"M19 4v16M16.5 6.5 19 4l2.5 2.5M16.5 17.5 19 20l2.5-2.5\"/>"),
-	whole: s$1("<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><circle cx=\"12\" cy=\"8.3\" r=\"1.6\" fill=\"currentColor\"/><circle cx=\"8.8\" cy=\"14.1\" r=\"1.6\" fill=\"currentColor\"/><circle cx=\"15.2\" cy=\"14.1\" r=\"1.6\" fill=\"currentColor\"/>"),
-	"swipe-x": s$1("<circle cx=\"12\" cy=\"12\" r=\"2.6\"/><path d=\"M3.5 12H8M16 12h4.5M6 9.5 3.5 12 6 14.5M18 9.5l2.5 2.5-2.5 2.5\"/>"),
-	"swipe-y": s$1("<circle cx=\"12\" cy=\"12\" r=\"2.6\"/><path d=\"M12 3.5V8M12 16v4.5M9.5 6 12 3.5 14.5 6M9.5 18l2.5 2.5 2.5-2.5\"/>"),
-	"pan-y": s$1("<circle cx=\"7.5\" cy=\"12\" r=\"2.2\"/><circle cx=\"12.5\" cy=\"12\" r=\"2.2\"/><path d=\"M19 4.5v15M16.8 6.7 19 4.5l2.2 2.2M16.8 17.3l2.2 2.2 2.2-2.2\"/>"),
-	"pan-x": s$1("<circle cx=\"9.5\" cy=\"7.5\" r=\"2.2\"/><circle cx=\"14.5\" cy=\"7.5\" r=\"2.2\"/><path d=\"M4.5 16h15M6.7 13.8 4.5 16l2.2 2.2M17.3 13.8l2.2 2.2-2.2 2.2\"/>")
-};
-var markSeq = 0;
-/**
-* The ob.Pal mark: the Blackboxes family cube (obsidian facets, hairline seams) whose lower faces and front
-* edges catch the accent light, wrapped in ob.Pal's orbit with a satellite, the "." of ob.Pal. Everything lit
-* takes the theme accent; a scan line sweeps the box on hover. Static twin: public/favicon.svg (scripts/brand-icons.mjs).
-*/
-/**
-* Let the logo's satellite finish `orbits` orbits (7.5 s each), then hold still. Its motion redraws the mark (and its
-* blurred glow) every frame, which a page that stays open for long, like the phone controller, shouldn't pay for.
-*/
-function calmMarks(root, orbits = 1) {
-	const marks = [...root.querySelectorAll("svg.mark")];
-	const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-	setTimeout(() => {
-		for (const m of marks) m.pauseAnimations?.();
-	}, still ? 0 : orbits * 7500);
-}
-/** Fill each `[data-mark]` slot with the inline logo mark (crisp at any size); a phone lets it settle after two orbits. */
-function mountMarks(root = document) {
-	for (const slot of root.querySelectorAll("[data-mark]")) setMarkup(slot, logoMark());
-	if (matchMedia("(pointer: coarse)").matches) calmMarks(root, 2);
-}
-function logoMark() {
-	const id = `obm${++markSeq}`;
-	const A = "var(--accent, #C6FF34)";
-	const ring = "M95.6 45.63 A47 15 -14 0 1 4.4 68.37";
-	const orbit = "M95.6 45.63 A47 15 -14 0 1 4.4 68.37 A47 15 -14 0 1 95.6 45.63";
-	const sat = (glow) => html`<g><animateMotion dur="7.5s" repeatCount="indefinite" calcMode="linear"><mpath href="#${id}-orbit"/></animateMotion>${glow ? html`<circle r="6.5" style="fill:${A}" opacity=".45" filter="url(#${id}-soft)"/>` : ""}<circle r="3.7" style="fill:${A}"/><circle r="1.4" fill="#fff"/></g>`;
-	return html`<svg class="mark" viewBox="0 0 100 100" aria-hidden="true" focusable="false" shape-rendering="geometricPrecision">
-  <defs>
-    <linearGradient id="${id}-top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4b4b4b"/><stop offset=".35" stop-color="#262626"/><stop offset=".75" stop-color="#131313"/><stop offset="1" stop-color="#050505"/></linearGradient>
-    <linearGradient id="${id}-left" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b1b1b"/><stop offset=".45" stop-color="#0a0a0a"/><stop offset="1" stop-color="#000"/></linearGradient>
-    <linearGradient id="${id}-right" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c2c2c"/><stop offset=".5" stop-color="#121212"/><stop offset="1" stop-color="#040404"/></linearGradient>
-    <linearGradient id="${id}-ring" x1="0" y1="0" x2="1" y2="0"><stop offset="0" style="stop-color:${A};stop-opacity:.6"/><stop offset=".55" style="stop-color:${A}"/><stop offset="1" style="stop-color:var(--accent-soft, #E6FFA3)"/></linearGradient>
-    <linearGradient id="${id}-spill" x1="0" y1="0" x2="0" y2="1"><stop offset=".42" style="stop-color:${A};stop-opacity:0"/><stop offset="1" style="stop-color:${A};stop-opacity:.5"/></linearGradient>
-    <clipPath id="${id}-box"><polygon points="50,19 78,34.4 78,65.2 50,80.6 22,65.2 22,34.4"/></clipPath>
-    <clipPath id="${id}-front"><polygon points="0,69.47 100,44.53 100,100 0,100"/></clipPath>
-    <path id="${id}-orbit" d="${orbit}"/>
-    <filter id="${id}-soft" filterUnits="userSpaceOnUse" x="-20" y="-20" width="140" height="140"><feGaussianBlur stdDeviation="2.4"/></filter>
-  </defs>
-  <ellipse cx="50" cy="57" rx="47" ry="15" transform="rotate(-14 50 57)" fill="none" style="stroke:${A}" stroke-width="1.8" opacity=".3"/>
-  <g opacity=".8">${sat(false)}</g>
-  <polygon points="50,19 78,34.4 78,65.2 50,80.6 22,65.2 22,34.4" fill="#000"/>
-  <polygon points="50,19 78,34.4 50,49.8 22,34.4" fill="url(#${id}-top)"/>
-  <polygon points="22,34.4 50,49.8 50,80.6 22,65.2" fill="url(#${id}-left)"/>
-  <polygon points="50,49.8 78,34.4 78,65.2 50,80.6" fill="url(#${id}-right)"/>
-  <polygon points="22,34.4 50,49.8 50,80.6 22,65.2" fill="url(#${id}-spill)" opacity=".7"/>
-  <polygon points="50,49.8 78,34.4 78,65.2 50,80.6" fill="url(#${id}-spill)"/>
-  <g clip-path="url(#${id}-box)"><g class="mark-scan"><line x1="0" y1="24" x2="100" y2="24" style="stroke:${A}" stroke-width="6" filter="url(#${id}-soft)" opacity=".8"/><line x1="0" y1="24" x2="100" y2="24" stroke="#fff" stroke-width="1.4"/></g></g>
-  <polygon points="50,19 78,34.4 78,65.2 50,80.6 22,65.2 22,34.4" fill="none" stroke="rgba(255,255,255,.38)" stroke-width="1.2" stroke-linejoin="round"/>
-  <path d="M50,49.8 L50,80.6" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.2"/>
-  <path d="M22,34.4 L50,49.8 L78,34.4" fill="none" style="stroke:${A}" stroke-width="2.4" stroke-linejoin="round"/>
-  <line x1="50" y1="19" x2="78" y2="34.4" stroke="rgba(255,255,255,.66)" stroke-width="1.1" stroke-linecap="round"/>
-  <line x1="50" y1="19" x2="78" y2="34.4" style="stroke:${A}" stroke-width="1.3" opacity=".55" stroke-linecap="round"/>
-  <path d="${ring}" fill="none" style="stroke:${A}" stroke-width="6" stroke-linecap="round" opacity=".35" filter="url(#${id}-soft)"/>
-  <path d="${ring}" fill="none" stroke="url(#${id}-ring)" stroke-width="2.8" stroke-linecap="round"/>
-  <g clip-path="url(#${id}-front)">${sat(true)}</g>
-</svg>`;
-}
-/** Pause the logo's SVG animations for people who prefer reduced motion (satellite rests in front). */
-function settleMotion(root = document) {
-	if (!matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-	root.querySelectorAll("svg.mark").forEach((svg) => {
-		svg.pauseAnimations();
-		svg.setCurrentTime(1.4);
-	});
-}
-/** Lockup: the mark with the ob.Pal wordmark (quiet "ob", accent full stop, bold "Pal"). */
-var LOGO_WORD = `<span class="word"><span class="ob">ob</span><span class="pt">.</span><b>Pal</b></span>`;
 //#endregion
 //#region src/ui/ask.ts
 /**
@@ -1920,6 +2070,8 @@ function askCard(answer) {
 		const key = el.dataset.key;
 		if (!b || !key || el.getAttribute("aria-busy") === "true") return;
 		el.setAttribute("aria-busy", "true");
+		el.querySelector(".ask-ic").removeAttribute("aria-hidden");
+		dotLoading(el.querySelector(".ask-ic"), true, "Saving your answer");
 		answer(key, b.dataset.allow === "true");
 	});
 	return el;
@@ -1935,12 +2087,16 @@ function showAsk(el, ask, away) {
 	el.hidden = !ask;
 	if (!ask) {
 		el.removeAttribute("aria-busy");
+		el.querySelector(".ask-ic").setAttribute("aria-hidden", "true");
+		dotLoading(el.querySelector(".ask-ic"), false);
 		if (was && had) away?.();
 		return;
 	}
 	el.querySelector("#ask-t b").textContent = ask.name;
 	if (ask.key === was) return;
 	el.removeAttribute("aria-busy");
+	el.querySelector(".ask-ic").setAttribute("aria-hidden", "true");
+	dotLoading(el.querySelector(".ask-ic"), false);
 	requestAnimationFrame(() => {
 		if (!el.hidden) el.focus();
 	});
@@ -2147,7 +2303,7 @@ function radioGroup(group) {
 * The surface and the accent are the Blackboxes family's (src/family), offered as the phone's settings sheet offers
 * them. A pick applies at once and is kept in chrome.storage (the Link's choice, apart from the websites'), with the
 * family's own keys as its cache for the first paint (./lookcache.ts); the other Link page, if it is open, follows it
-* through that cache. Also here: the animated logo, the light that follows the mouse across the cards, the radio
+* through that cache. Also here: the shared vector logo, the light that follows the mouse across the cards, the radio
 * groups' keys (./radios.ts), and the switch that lets state changes animate only once a page has shown its first
 * real state.
 */
@@ -2247,8 +2403,7 @@ function syncLook(root) {
 	for (const b of root.querySelectorAll(".accents [data-accent]")) b.setAttribute("aria-checked", String(b.dataset.accent === accent));
 }
 /**
-* The logo mark in each `[data-mark]` slot, its satellite orbiting (still for people who prefer less motion).
-* `orbits`: let it settle after that many, for a page that may stay open for long.
+* Mount the shared vector identity. `orbits` remains compatible with surfaces that previously settled the logo.
 */
 function mountLogo(root = document, orbits) {
 	mountMarks(root);
@@ -2281,6 +2436,9 @@ var s = (d) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg
 /** A fingertip on the trackpad: the gesture pictograms draw it as a filled dot. */
 var tip = (x, y, r = 3.1) => `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor" stroke="none"/>`;
 var LINK_ICONS = {
+	scan: s("<rect x=\"4\" y=\"6\" width=\"16\" height=\"13\" rx=\"3\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"m8 6 1-2h6l1 2\"/>"),
+	noApp: s("<rect x=\"7\" y=\"3\" width=\"10\" height=\"18\" rx=\"2\"/><path d=\"m4 4 16 16\"/>"),
+	noAccount: s("<circle cx=\"12\" cy=\"8\" r=\"3\"/><path d=\"M5 20v-2a7 7 0 0 1 14 0M4 4l16 16\"/>"),
 	gamepad: s("<path d=\"M7.2 7.2h9.6a4.2 4.2 0 0 1 4.1 3.4l.9 4.6a2.5 2.5 0 0 1-4.3 2.2l-2.1-2.3H8.6l-2.1 2.3a2.5 2.5 0 0 1-4.3-2.2l.9-4.6a4.2 4.2 0 0 1 4.1-3.4Z\"/><path d=\"M7.8 9.9v3.2M6.2 11.5h3.2\"/><path d=\"M15.4 10.4h.01M17.4 12.4h.01\" stroke-width=\"2.6\"/>"),
 	keys: s("<rect x=\"2.8\" y=\"6\" width=\"18.4\" height=\"12\" rx=\"2.6\"/><path d=\"M6.6 9.6h.01M9.8 9.6h.01M13 9.6h.01M16.2 9.6h.01M6.6 12.4h.01M17.4 12.4h.01\" stroke-width=\"2.4\"/><path d=\"M9 14.9h6\"/>"),
 	globe: s("<circle cx=\"12\" cy=\"12\" r=\"8.6\"/><path d=\"M3.4 12h17.2\"/><path d=\"M12 3.4c2.3 2.3 3.4 5.2 3.4 8.6s-1.1 6.3-3.4 8.6c-2.3-2.3-3.4-5.2-3.4-8.6s1.1-6.3 3.4-8.6Z\"/>"),
@@ -2310,4 +2468,4 @@ var LINK_ICONS = {
 	type: s(`<rect x="2.6" y="5.6" width="18.8" height="12.8" rx="2.8"/><path d="M6.2 9.4h.01M9.1 9.4h.01M12 9.4h.01M7.65 12.2h.01M10.55 12.2h.01" stroke-width="2.2"/><path d="M8.4 15.2h4.4"/>${tip(16.3, 11.3, 2.6)}`)
 };
 //#endregion
-export { mountLook as a, syncLook as c, showAsk as d, ICONS as f, mountLogo as i, radioGroup as l, family as m, lightCards as n, settle as o, LOGO_WORD as p, markContext as r, startLook as s, LINK_ICONS as t, askCard as u };
+export { mountLook as a, syncLook as c, showAsk as d, family as f, LINK_LOGO as h, mountLogo as i, radioGroup as l, ICONS as m, lightCards as n, settle as o, dotLoading as p, markContext as r, startLook as s, LINK_ICONS as t, askCard as u };
