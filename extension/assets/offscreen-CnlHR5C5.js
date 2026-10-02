@@ -1,5 +1,5 @@
 import { $ as APP_NAME, A as typingToast, F as stickCurve, G as PadButton, H as phoneKeyOf, J as emptyPad, K as PadFlag, M as buttonValue, N as clamp$1, P as hysteresis, R as isPcAccess, Y as packetType, b as isIdleFrame, c as parseOffscreenRequest, et as DEFAULT_MODE, g as NATIVE_PORT_NAME, i as parseConfig, it as SERVICE, j as Accum, nt as PAGE_MODES, o as parseFromPage, ot as isTargetMode, p as HeldState, q as decodePad, v as buildNativeFrame, w as parseNativeText, y as heldSignature, z as noticeFor } from "./messages-CWZnFxhW.js";
-import { i as DotLoader, n as DOT_LOADER_STYLE, t as communityMarker } from "./origin-BKT9Ocdt.js";
+import { i as DotLoader, n as DOT_LOADER_STYLE, t as communityMarker } from "./origin-Bxajh2ze.js";
 import { C as sdpFingerprint, S as roomIdFor, T as sealShareTarget, _ as lanContext, b as randomBytes, c as bindMac, d as encodeLanPairing, f as encodePairing, g as lanAnswerSdp, h as importPairKey, l as candidatesOf, m as fromB64url, o as admissionFor, p as equalBytes, r as sealSessionContext, s as b64url, t as connectionSeal, u as certFingerprint, v as lanIceCredentials, w as sdpSession, x as readLocalIce, y as newSecret } from "./seal-BlqsjHPq.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
@@ -2065,11 +2065,24 @@ var Remote = class Remote {
 	}
 	/**
 	* A new invite: the old code and link stop working, and everyone connected stays. Devices that joined but haven't
-	* finished connecting have to scan again.
+	* finished connecting have to scan again. A sharing session keeps its persistent Play link and replaces only
+	* the one-use code; stopping or rotating that link is an explicit sharing action.
 	*/
 	async resetInvite() {
 		if (this.sharing) {
-			await this.newShareLink("play");
+			if (!this.sharing.playOpen) {
+				await this.newShareLink("play");
+				return;
+			}
+			this.sig?.send({
+				t: "code",
+				op: "drop"
+			});
+			this.setCode(null);
+			this.spentCodes.clear();
+			this.recentCodes.clear();
+			this.codeBinds.clear();
+			this.askCode();
 			return;
 		}
 		const connected = this.bound().find((peer) => !peer.room && !peer.lan);
@@ -3583,7 +3596,7 @@ var Remote = class Remote {
 		c.qrLoader.start();
 		c.qr.replaceChildren(c.qrLoader.el);
 		__vitePreload(async () => {
-			const { plainQrElement } = await import("./qr-BJ9kwVUy.js").then((n) => n.r);
+			const { plainQrElement } = await import("./qr-Cr_x9lg4.js").then((n) => n.r);
 			return { plainQrElement };
 		}, []).then(({ plainQrElement }) => {
 			if (url === this.pairingUrl) {

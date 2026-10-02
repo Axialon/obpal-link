@@ -1,4 +1,4 @@
-import { i as DotLoader, n as DOT_LOADER_STYLE, t as communityMarker } from "./origin-BKT9Ocdt.js";
+import { i as DotLoader, n as DOT_LOADER_STYLE, t as communityMarker } from "./origin-Bxajh2ze.js";
 //#endregion
 //#region ../src/ui/markup.ts
 /** Code-owned templates. Values become text, attributes or nested DOM, never input to the HTML policy. */
@@ -325,6 +325,8 @@ var allowed = /* @__PURE__ */ new Set([
 	"<svg><span></span><button type=\"button\" aria-label=\"Dismiss\">&times;</button></svg>",
 	"<span></span><button type=\"button\" aria-label=\"Dismiss hint\" data-tip=\"Dismiss hint\"><span class=\"material-symbols-outlined\" aria-hidden=\"true\">close</span></button>",
 	"<svg><span></span><button type=\"button\" aria-label=\"Dismiss hint\" data-tip=\"Dismiss hint\"><span class=\"material-symbols-outlined\" aria-hidden=\"true\">close</span></button></svg>",
+	"<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M7.5 9a5 5 0 0 1 7-2M6.5 14c3.5-3 6 4 11-1\"/><path class=\"when-off\" d=\"m4 4 16 16\"/></svg>",
+	"<svg><svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M7.5 9a5 5 0 0 1 7-2M6.5 14c3.5-3 6 4 11-1\"/><path class=\"when-off\" d=\"m4 4 16 16\"/></svg></svg>",
 	"<p class=\"pair-wait\">No code right now. <a href=\"/view/\">Open the viewer</a> to try it.</p>",
 	"<svg><p class=\"pair-wait\">No code right now. <a href=\"/view/\">Open the viewer</a> to try it.</p></svg>",
 	"<span class=\"play-cue\" aria-hidden=\"true\"><svg class=\"ic\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"2.6\" /><circle cx=\"12\" cy=\"12\" r=\"7\" opacity=\".45\" /></svg><span class=\"play-cue-t\"><span>Hold to play</span><span>Tilt or hold to play</span></span></span>",

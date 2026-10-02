@@ -1,7 +1,7 @@
-import { n as qrDotPoints, t as brandedQrElement } from "./qr-BJ9kwVUy.js";
+import { n as qrDotPoints, t as brandedQrElement } from "./qr-Cr_x9lg4.js";
 import { B as parseAnswers, D as scopeLabel, E as pcView, I as accessOf, L as askFor, T as parsePcState, V as parsePhone, X as LINK_TRY_URL, a as parseFacts, at as TARGET_MODES, d as DESKTOP_URL, et as DEFAULT_MODE, f as EMPTY_PC, m as MAC_ACCESSIBILITY, ot as isTargetMode, s as parseLink, u as workerStale } from "./messages-CWZnFxhW.js";
-import { a as dotClock, i as DotLoader, n as DOT_LOADER_STYLE, r as DotField, u as dotTimeline } from "./origin-BKT9Ocdt.js";
-import { a as mountLook, c as syncLook, d as showAsk, f as family, h as LINK_LOGO, i as mountLogo, l as radioGroup, m as ICONS, n as lightCards, o as settle, p as dotLoading, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-CtH5l-hq.js";
+import { a as dotClock, i as DotLoader, n as DOT_LOADER_STYLE, r as DotField, u as dotTimeline } from "./origin-Bxajh2ze.js";
+import { a as mountLook, c as syncLook, d as showAsk, f as family, h as LINK_LOGO, i as mountLogo, l as radioGroup, m as ICONS, n as lightCards, o as settle, p as dotLoading, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Ce9msWxr.js";
 import { a as glyphDots, i as SEAL_GLYPHS, n as sealNames } from "./seal-BlqsjHPq.js";
 //#region ../packages/host/src/seal.ts
 var fields = /* @__PURE__ */ new WeakMap();
@@ -78,7 +78,8 @@ var SEAL_SURFACE_STYLE = `
 .seal-stage .seal-plane{position:absolute;inset:0;transform-origin:50% 50%;will-change:transform}
 .seal-stage .seal-qr{position:absolute;inset:0;display:grid;place-items:center;background:#fff;border-radius:inherit}
 .seal-stage .seal-qr>svg{display:block;width:100%;height:100%}
-.seal-stage .seal-qr .dot-loader{color:#0b0d10}
+.seal-stage .seal-qr:not([data-code]){background:var(--seal-plate,var(--bb-sheet,var(--sheet,#141415)))}
+.seal-stage .seal-qr .dot-loader{color:var(--seal-ink,var(--bb-ink,var(--ink,#fff)))}
 .seal-stage .dot-loader{position:absolute;left:50%;top:50%;translate:-50% -50%}
 .seal-stage .seal-peers{position:absolute;inset:12px;display:grid;align-content:center;gap:8px;grid-template-columns:1fr}
 .seal-stage[data-many] .seal-peers{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 6px;inset:8px}
@@ -88,6 +89,8 @@ var SEAL_SURFACE_STYLE = `
 .seal-stage .connection-seal canvas{width:100%;height:auto;aspect-ratio:35/11}
 .seal-stage .seal-names{display:none}.seal-stage .seal-peer>small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}
 .seal-stage .seal-flight{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.seal-stage[data-qr]{background:#fff}
+.seal-stage[data-qr] .seal-flight{--seal-plate:#fff;--ob-dot-active:#14171c;--ob-dot-light:#14171c;--ob-dot-ink:#14171c;--ob-dot-muted:#14171c;--ob-dot-depth:#14171c}
 .seal-action{display:grid;place-items:center;flex:none;width:44px;height:44px;border:0;background:transparent;color:var(--seal-ink,var(--bb-ink,var(--ink,#fff)));border-radius:50%;font:300 24px/1 system-ui;cursor:pointer}
 .seal-stage>.seal-action{position:absolute;right:2px;bottom:2px;z-index:2;background:var(--seal-plate,var(--bb-sheet,var(--sheet,#141415)))}
 .seal-action:focus-visible,.seal-stage .seal-peer:focus-visible{outline:2px solid currentColor;outline-offset:-3px}
@@ -160,38 +163,24 @@ var SealSurface = class {
 	setPlaceholder(symbol) {
 		this.loader.finish();
 		this.source = [];
+		this.qr.removeAttribute("data-code");
 		this.qr.replaceChildren(symbol);
 	}
 	/** Reuse the same loader when the service starts making a code again. */
 	loading() {
 		this.source = [];
+		this.qr.removeAttribute("data-code");
 		this.qr.replaceChildren(this.loader.el);
 		this.loader.start();
 	}
 	/** A scannable SVG stays still at rest; its own module centres become the moving source. */
 	setQr(svg, modules) {
 		this.source = modules;
+		this.qr.setAttribute("data-code", "");
 		this.loader.finish();
 		this.qr.replaceChildren(svg);
+		this.field.refresh();
 		if (this.busy && this.showingQr) this.field.setSource(modules);
-		if (this.showingQr && !this.busy) {
-			this.field.setPoints(modules);
-			this.field.setSource([
-				{
-					x: .4,
-					y: .5
-				},
-				{
-					x: .5,
-					y: .5
-				},
-				{
-					x: .6,
-					y: .5
-				}
-			]);
-			this.animate(performance.now(), false, () => this.rest(), 240);
-		}
 	}
 	sync(list) {
 		if (this.dead) return;
@@ -341,6 +330,7 @@ var SealSurface = class {
 		this.plane.style.removeProperty("filter");
 		this.plane.style.removeProperty("transform");
 		this.flight.hidden = false;
+		this.field.handshake(reverse ? 1 : 0, true);
 		this.qr.hidden = true;
 		this.peers.hidden = hidePeers;
 		this.action.hidden = true;
@@ -374,6 +364,7 @@ var SealSurface = class {
 	rest() {
 		this.rows.forEach((row) => row.button.style.removeProperty("visibility"));
 		this.el.toggleAttribute("data-qr", this.showingQr);
+		this.field.refresh();
 		this.qr.hidden = !this.showingQr;
 		this.peers.hidden = this.showingQr;
 		this.flight.hidden = true;

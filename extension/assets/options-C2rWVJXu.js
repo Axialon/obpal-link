@@ -1,5 +1,5 @@
 import { B as parseAnswers, L as askFor, T as parsePcState, V as parsePhone, _ as PC_PAGE_PORT_NAME, d as DESKTOP_URL, et as DEFAULT_MODE, f as EMPTY_PC, m as MAC_ACCESSIBILITY, ot as isTargetMode, s as parseLink } from "./messages-CWZnFxhW.js";
-import { a as mountLook, d as showAsk, h as LINK_LOGO, i as mountLogo, m as ICONS, n as lightCards, o as settle, p as dotLoading, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-CtH5l-hq.js";
+import { a as mountLook, d as showAsk, h as LINK_LOGO, i as mountLogo, m as ICONS, n as lightCards, o as settle, p as dotLoading, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Ce9msWxr.js";
 //#region src/options/options.ts
 startLook();
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };

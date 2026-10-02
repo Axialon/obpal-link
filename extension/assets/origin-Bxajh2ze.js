@@ -593,13 +593,14 @@ var DotField = class {
 		this.draw(performance.now());
 	}
 	/** Draw a deterministic QR lift, ribbon, glyph and ripple frame; it never starts its own RAF loop. */
-	handshake(progress) {
+	handshake(progress, measure = false) {
 		if (this.dead || !Number.isFinite(progress)) return;
 		this.stopFrame();
 		this.playing = null;
 		this.opacity?.cancel();
 		this.opacity = null;
 		this.progress = this.reduced ? 1 : clamp(progress);
+		if (measure) this.resize();
 		this.draw(performance.now());
 	}
 	stopFrame() {
