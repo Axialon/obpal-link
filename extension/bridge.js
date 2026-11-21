@@ -66,7 +66,7 @@
 		return f;
 	}
 	function parseToPage(x) {
-		if (isObj(x) && (x.t === "rel" || x.t === "off")) return { t: x.t };
+		if (isObj(x) && (x.t === "rel" || x.t === "off" || x.t === "probe")) return { t: x.t };
 		return parseInputFrame(x);
 	}
 	/** Clamp a rumble request to sane ranges: magnitudes 0..1, at most RUMBLE_MAX_MS. Non-numbers are rejected. */
@@ -78,6 +78,36 @@
 			w: clamp(w, 0, 1),
 			ms: Math.round(clamp(ms, 0, RUMBLE_MAX_MS))
 		};
+	}
+	function parseFromPage(x) {
+		if (!isObj(x)) return null;
+		if (x.t === "signals") {
+			const s = x.signals;
+			if (!isObj(s) || ![
+				"pads",
+				"padListeners",
+				"keyListeners",
+				"pointerListeners"
+			].every((k) => Number.isInteger(s[k]) && within(s[k], 0, 1e6)) || !within(s.padAt, 0, 0x5af3107a4000)) return null;
+			return {
+				t: "signals",
+				signals: {
+					pads: s.pads,
+					padAt: s.padAt,
+					padListeners: s.padListeners,
+					keyListeners: s.keyListeners,
+					pointerListeners: s.pointerListeners
+				}
+			};
+		}
+		if (x.t === "rep" && typeof x.focus === "boolean" && within(x.area, 0, 1e9)) return {
+			t: "rep",
+			focus: x.focus,
+			area: Math.round(x.area),
+			lock: x.lock === true
+		};
+		if (x.t === "rumble") return sanitizeRumble(x.s, x.w, x.ms);
+		return null;
 	}
 	var envelope = (sid, dir, m) => ({
 		ch: CHANNEL,
@@ -102,6 +132,13 @@
 				sid: data.sid,
 				m: r
 			} : null;
+		}
+		if (m.t === "signals") {
+			const s = parseFromPage(m);
+			if (s?.t === "signals") return {
+				sid: data.sid,
+				m: s
+			};
 		}
 		return null;
 	}
@@ -232,7 +269,7 @@
 			if (!alive()) return teardown();
 			if (!active) return;
 			if (msg.m.t === "loaded") toMain({ t: "hello" });
-			else if (msg.m.t === "rumble" && msg.sid === sid) send(msg.m);
+			else if ((msg.m.t === "rumble" || msg.m.t === "signals") && msg.sid === sid) send(msg.m);
 		}
 		function onRuntimeMessage(raw, sender) {
 			if (sender.id !== chrome.runtime.id) return;
@@ -241,7 +278,9 @@
 			if (req.type === "deactivate") deactivate();
 			else hello();
 		}
+		let helloGeneration = 0;
 		async function hello() {
+			const generation = ++helloGeneration;
 			if (!alive()) return teardown();
 			let res;
 			try {
@@ -252,6 +291,7 @@
 			} catch {
 				return;
 			}
+			if (generation !== helloGeneration) return;
 			if (typeof res === "object" && res !== null && res.active === true) activate();
 			else deactivate();
 		}
@@ -297,6 +337,7 @@
 				retry();
 			});
 			report();
+			toMain({ t: "probe" });
 		}
 		function retry() {
 			clearTimeout(retryTimer);
@@ -305,6 +346,7 @@
 			retryMs = Math.min(retryMs * 2, 5e3);
 		}
 		function deactivate() {
+			helloGeneration++;
 			if (!active) return;
 			active = false;
 			lastFrames = "";
@@ -338,6 +380,7 @@
 		function report() {
 			reportFrames();
 			if (!port) return;
+			toMain({ t: "probe" });
 			const view = largestView();
 			const rep = {
 				t: "rep",

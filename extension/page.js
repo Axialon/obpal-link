@@ -214,7 +214,7 @@
 		location
 	});
 	/** Every key a binding can name, keyed by KeyboardEvent.code. Add a row here to make another key bindable. */
-	var KEYS = {
+	var KEYS$1 = {
 		KeyW: k("w", "KeyW", 87),
 		KeyA: k("a", "KeyA", 65),
 		KeyS: k("s", "KeyS", 83),
@@ -428,7 +428,7 @@
 	};
 	/** KeyboardEvent init for a key edge. Letters are upper-cased while Shift is held, as a real keyboard reports them. */
 	function keyInit(name, mods) {
-		const d = KEYS[name];
+		const d = KEYS$1[name];
 		return {
 			key: mods.shift && /^[a-z]$/.test(d.key) ? d.key.toUpperCase() : d.key,
 			code: d.code,
@@ -500,7 +500,7 @@
 		return f;
 	}
 	function parseToPage(x) {
-		if (isObj(x) && (x.t === "rel" || x.t === "off")) return { t: x.t };
+		if (isObj(x) && (x.t === "rel" || x.t === "off" || x.t === "probe")) return { t: x.t };
 		return parseInputFrame(x);
 	}
 	/** Session ids are 128-bit random hex, minted per bridge instance. */
@@ -1029,6 +1029,162 @@
 		return el;
 	}
 	//#endregion
+	//#region src/content/signals.ts
+	var KEYS = /* @__PURE__ */ new Set(["keydown", "keyup"]);
+	var PADS = /* @__PURE__ */ new Set(["gamepadconnected", "gamepaddisconnected"]);
+	var POINTERS = /* @__PURE__ */ new Set([
+		"pointerdown",
+		"pointerup",
+		"pointermove",
+		"mousedown",
+		"mouseup",
+		"mousemove",
+		"click",
+		"wheel"
+	]);
+	function observeInput(changed) {
+		let pads = 0;
+		let padAt = 0;
+		const registrations = [];
+		const proto = EventTarget.prototype;
+		const addDescriptor = Object.getOwnPropertyDescriptor(proto, "addEventListener");
+		const removeDescriptor = Object.getOwnPropertyDescriptor(proto, "removeEventListener");
+		let padDescriptor;
+		let wrappedPad;
+		/** Observe the values WebIDL already reads, with the original getter receiver and no extra option reads. */
+		function options(args) {
+			let capture = args[2] === true;
+			let signal;
+			const value = args[2];
+			if (value !== null && (typeof value === "object" || typeof value === "function")) args[2] = new Proxy(value, { get(target, key) {
+				const v = Reflect.get(target, key, target);
+				if (key === "capture") capture = !!v;
+				if (key === "signal" && v instanceof AbortSignal) signal = v;
+				return v;
+			} });
+			return () => ({
+				capture,
+				signal
+			});
+		}
+		const add = new Proxy(proto.addEventListener, { apply(original, target, args) {
+			const type = args[0];
+			if (typeof type !== "string" || !(KEYS.has(type) || PADS.has(type) || POINTERS.has(type))) return Reflect.apply(original, target, args);
+			const values = options(args);
+			const result = Reflect.apply(original, target, args);
+			const actualTarget = target ?? window;
+			const listener = args[1];
+			const { capture, signal } = values();
+			if (listener && (typeof listener === "function" || typeof listener === "object") && !signal?.aborted) {
+				if (!registrations.some((r) => r.target.deref() === actualTarget && r.listener.deref() === listener && r.type === type && r.capture === capture)) {
+					if (registrations.length >= 512) registrations.shift();
+					registrations.push({
+						target: new WeakRef(actualTarget),
+						listener: new WeakRef(listener),
+						type,
+						capture,
+						...signal ? { signal: new WeakRef(signal) } : {}
+					});
+					changed();
+				}
+			}
+			return result;
+		} });
+		const remove = new Proxy(proto.removeEventListener, { apply(original, target, args) {
+			const type = args[0];
+			if (typeof type !== "string" || !(KEYS.has(type) || PADS.has(type) || POINTERS.has(type))) return Reflect.apply(original, target, args);
+			const values = options(args);
+			const result = Reflect.apply(original, target, args);
+			const actualTarget = target ?? window;
+			const { capture } = values();
+			for (let i = registrations.length - 1; i >= 0; i--) {
+				const r = registrations[i];
+				if (r.target.deref() === actualTarget && r.listener.deref() === args[1] && r.type === type && r.capture === capture) registrations.splice(i, 1);
+			}
+			changed();
+			return result;
+		} });
+		Object.defineProperty(proto, "addEventListener", {
+			...addDescriptor,
+			value: add
+		});
+		Object.defineProperty(proto, "removeEventListener", {
+			...removeDescriptor,
+			value: remove
+		});
+		function trackGamepads() {
+			padDescriptor = Object.getOwnPropertyDescriptor(navigator, "getGamepads");
+			const original = navigator.getGamepads;
+			if (typeof original !== "function") return;
+			wrappedPad = new Proxy(original, { apply(fn, target, args) {
+				const result = Reflect.apply(fn, target, args);
+				pads = Math.min(1e6, pads + 1);
+				padAt = Date.now();
+				if (pads === 1) changed();
+				return result;
+			} });
+			Object.defineProperty(navigator, "getGamepads", {
+				configurable: true,
+				writable: true,
+				...padDescriptor,
+				value: wrappedPad
+			});
+		}
+		function untrackGamepads() {
+			if (navigator.getGamepads !== wrappedPad) return;
+			if (padDescriptor) Object.defineProperty(navigator, "getGamepads", padDescriptor);
+			else delete navigator.getGamepads;
+		}
+		trackGamepads();
+		return {
+			trackGamepads,
+			untrackGamepads,
+			snapshot() {
+				const active = deepActiveElement();
+				const eligible = (target) => !!target && (target === window || target === document || target === document.body || target === active || target instanceof HTMLCanvasElement);
+				let padListeners = 0, keyListeners = 0, pointerListeners = 0;
+				for (let i = registrations.length - 1; i >= 0; i--) {
+					const r = registrations[i], target = r.target.deref();
+					if (!target || !r.listener.deref() || r.signal?.deref()?.aborted) {
+						registrations.splice(i, 1);
+						continue;
+					}
+					if (PADS.has(r.type) && target === window) padListeners++;
+					else if (eligible(target)) {
+						if (KEYS.has(r.type)) keyListeners++;
+						else if (POINTERS.has(r.type)) pointerListeners++;
+					}
+				}
+				for (const target of /* @__PURE__ */ new Set([
+					window,
+					document,
+					document.body,
+					active,
+					...[...document.querySelectorAll("canvas")].slice(0, 64)
+				])) {
+					if (!target) continue;
+					const handlers = target;
+					for (const type of KEYS) if (typeof handlers[`on${type}`] === "function") keyListeners++;
+					for (const type of POINTERS) if (typeof handlers[`on${type}`] === "function") pointerListeners++;
+				}
+				for (const type of PADS) if (typeof window[`on${type}`] === "function") padListeners++;
+				return {
+					pads,
+					padAt,
+					padListeners,
+					keyListeners,
+					pointerListeners
+				};
+			},
+			destroy() {
+				untrackGamepads();
+				if (proto.addEventListener === add) Object.defineProperty(proto, "addEventListener", addDescriptor);
+				if (proto.removeEventListener === remove) Object.defineProperty(proto, "removeEventListener", removeDescriptor);
+				registrations.length = 0;
+			}
+		};
+	}
+	//#endregion
 	//#region src/content/page.ts
 	/**
 	* MAIN-world page script, injected by the service worker into each bridged frame of the controlled tab.
@@ -1074,6 +1230,27 @@
 		let watchdog;
 		let mods = NO_MODS;
 		const post = (m, s = sid ?? "") => window.postMessage(envelope(s, "up", m), targetOrigin);
+		let signalTimer;
+		let signals;
+		function scheduleSignals() {
+			if (signalTimer !== void 0 || !sid) return;
+			signalTimer = setTimeout(() => {
+				signalTimer = void 0;
+				reportSignals();
+			}, 40);
+		}
+		function reportSignals() {
+			if (sid && signals) post({
+				t: "signals",
+				signals: signals.snapshot()
+			});
+		}
+		function stopObserving() {
+			clearTimeout(signalTimer);
+			signalTimer = void 0;
+			signals?.destroy();
+			signals = void 0;
+		}
 		let pad = null;
 		let exposed = false;
 		let seq = 0;
@@ -1091,10 +1268,23 @@
 		};
 		/** The pad as the page sees it; `extra` is the pointer's edge turn, added to the right stick. */
 		function setPad(p, extra = ZERO) {
-			if (!shim) shim = {
-				uninstall: installGamepadShim(source),
-				timer: void 0
-			};
+			if (!shim) {
+				signals?.untrackGamepads();
+				const before = Object.getOwnPropertyDescriptor(navigator, "getGamepads");
+				const uninstall = installGamepadShim(source);
+				const patched = navigator.getGamepads;
+				shim = {
+					uninstall: () => {
+						const current = Object.getOwnPropertyDescriptor(navigator, "getGamepads");
+						uninstall();
+						const restore = current?.value === patched ? before : current;
+						if (restore) Object.defineProperty(navigator, "getGamepads", restore);
+						else delete navigator.getGamepads;
+					},
+					timer: void 0
+				};
+				signals?.trackGamepads();
+			}
 			clearTimeout(shim.timer);
 			shim.timer = void 0;
 			if (!p) {
@@ -1126,8 +1316,10 @@
 			const s = shim;
 			if (!s || s.timer !== void 0) return;
 			s.timer = setTimeout(() => {
+				signals?.untrackGamepads();
 				s.uninstall();
 				if (shim === s) shim = null;
+				signals?.trackGamepads();
 			}, 250);
 		}
 		let compatBlocked = false;
@@ -1484,17 +1676,24 @@
 					release();
 					sid = msg.sid;
 				}
+				signals ??= observeInput(scheduleSignals);
 				post({
 					t: "ready",
-					v: 2
+					v: 4
 				});
+				reportSignals();
 				return;
 			}
 			if (msg.sid !== sid) return;
+			if (m.t === "probe") {
+				reportSignals();
+				return;
+			}
 			if (m.t === "in") onFrame(m);
 			else if (m.t === "rel") release();
 			else {
 				release();
+				stopObserving();
 				mode = null;
 				sid = null;
 			}
@@ -1502,19 +1701,25 @@
 		addEventListener("message", onMessage, true);
 		post({
 			t: "loaded",
-			v: 2
+			v: 4
 		}, "");
 		return {
-			version: 2,
+			version: 4,
 			announce: () => post({
 				t: "loaded",
-				v: 2
+				v: 4
 			}, ""),
 			destroy: () => {
 				release();
 				removeEventListener("message", onMessage, true);
 				clearInterval(watchdog);
 				clearInterval(synthTimer);
+				stopObserving();
+				if (shim) {
+					clearTimeout(shim.timer);
+					shim.uninstall();
+					shim = null;
+				}
 				sid = null;
 			}
 		};
@@ -1522,7 +1727,7 @@
 	var HANDLE = Symbol.for("obpal-link.page");
 	var slot = window;
 	var existing = slot[HANDLE];
-	if (existing?.version === 2) existing.announce();
+	if (existing?.version === 4) existing.announce();
 	else {
 		existing?.destroy?.();
 		slot[HANDLE] = createPage();

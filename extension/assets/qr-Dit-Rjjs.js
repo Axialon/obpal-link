@@ -11,7 +11,7 @@ var __exportAll = (all, no_symbols) => {
 	return target;
 };
 //#endregion
-//#region ../node_modules/.pnpm/uqr@0.1.3/node_modules/uqr/dist/index.mjs
+//#region ../../../../../ob-pal/node_modules/.pnpm/uqr@0.1.3/node_modules/uqr/dist/index.mjs
 var QrCodeDataType = /* @__PURE__ */ ((QrCodeDataType2) => {
 	QrCodeDataType2[QrCodeDataType2["Border"] = -1] = "Border";
 	QrCodeDataType2[QrCodeDataType2["Data"] = 0] = "Data";

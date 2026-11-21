@@ -13,6 +13,10 @@ It works in Chrome, Edge, Brave and Vivaldi (Chromium 120 or later). Other Chrom
 
 Website: [obpal.blackboxes.net/link](https://obpal.blackboxes.net/link/) · Source: [github.com/Axialon/obpal](https://github.com/Axialon/obpal) (this repository carries the releases)
 
+## What's new in 1.9.0
+
+Auto chooses Controller or Keys from the enabled tab’s input hints. You can override the choice for a site. The input clock stops when the last phone disconnects.
+
 ## What's new in 1.8.0
 
 - **The QR becomes the seal.** When your phone connects, the QR code gathers into the connection seal in the same spot and stays there while you're connected, so you can check the symbols match at any time. It stays legible and keeps clear of the page's own controls.

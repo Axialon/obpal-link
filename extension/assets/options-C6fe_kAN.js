@@ -1,5 +1,5 @@
-import { B as parseAnswers, L as askFor, T as parsePcState, V as parsePhone, _ as PC_PAGE_PORT_NAME, d as DESKTOP_URL, et as DEFAULT_MODE, f as EMPTY_PC, m as MAC_ACCESSIBILITY, ot as isTargetMode, s as parseLink } from "./messages-CWZnFxhW.js";
-import { a as mountLook, d as showAsk, h as LINK_LOGO, i as mountLogo, m as ICONS, n as lightCards, o as settle, p as dotLoading, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Ce9msWxr.js";
+import { G as parseAnswers, H as askFor, K as parsePhone, T as parsePcState, _ as PC_PAGE_PORT_NAME, d as DESKTOP_URL, f as EMPTY_PC, m as MAC_ACCESSIBILITY, ot as DEFAULT_MODE, pt as isTargetMode, s as parseLink } from "./messages-CnGyVAm-.js";
+import { a as mountLook, d as showAsk, h as LINK_LOGO, i as mountLogo, m as ICONS, n as lightCards, o as settle, p as dotLoading, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Nd8Fvivp.js";
 //#region src/options/options.ts
 startLook();
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
@@ -71,6 +71,13 @@ app.innerHTML = `
       </section>
     </div>
     <aside class="col side">
+      <section class="card page-modes rise" style="--i:3" aria-labelledby="page-modes-h">
+        <header class="card-h"><h2 id="page-modes-h">Page controls</h2>${LINK_ICONS.gamepad}</header>
+        <p class="card-say"><b>Auto</b> picks Controller or Keys for the game.</p>
+        <p class="card-say"><b>Controller</b> exposes a standard Gamepad API pad.</p>
+        <p class="card-say"><b>Keys</b> sends WASD, arrows, action keys and mouse input.</p>
+        <p class="card-say">Pick in the popup; manual choices stay with the site. Choose Auto to let Link decide again.</p>
+      </section>
       <section class="card look-card rise" style="--i:3" aria-labelledby="look-h">
         <header class="card-h"><h2 id="look-h">Look</h2>${ICONS.palette}</header>
         <div id="look"></div>

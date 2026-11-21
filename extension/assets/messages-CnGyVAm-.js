@@ -19,6 +19,16 @@ var TARGET_MODES = [
 	"pc"
 ];
 var DEFAULT_MODE = "gamepad";
+/** Auto is a choice in the UI; only its resolved mode goes on the input wire. */
+var MODE_CHOICES = [
+	"auto",
+	"gamepad",
+	"viewer",
+	"keys",
+	"pc"
+];
+var DEFAULT_CHOICE = "auto";
+var isModeChoice = (v) => typeof v === "string" && MODE_CHOICES.includes(v);
 /** The modes that send input frames to page scripts. */
 var PAGE_MODES = [
 	"gamepad",
@@ -184,6 +194,92 @@ function withoutAnswer(answers, key) {
 function noticeFor(mode, access) {
 	if (mode !== "pc" || !access || access === "allow") return false;
 	return access === "ask" ? WAITING : REFUSED;
+}
+//#endregion
+//#region src/shared/sites.ts
+/** Only the site's origin and mode choice are retained, never paths, signals or page content. */
+function siteOf(url) {
+	try {
+		const u = new URL(url ?? "");
+		return /^https?:$/.test(u.protocol) ? u.origin : "";
+	} catch {
+		return "";
+	}
+}
+function parseSiteModes(raw) {
+	const result = {};
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return result;
+	for (const [site, value] of Object.entries(raw).slice(-500)) {
+		if (siteOf(site) !== site || !value || typeof value !== "object") continue;
+		const v = value;
+		if ([
+			"auto",
+			"gamepad",
+			"keys"
+		].includes(v.choice) && ["gamepad", "keys"].includes(v.resolved)) result[site] = {
+			choice: v.choice,
+			resolved: v.resolved
+		};
+	}
+	return result;
+}
+/** Older builds wrote mode only on a manual pick. Absence therefore migrates to Auto. */
+var storedChoice = (choice, mode) => isModeChoice(choice) ? choice : isTargetMode(mode) ? mode : DEFAULT_CHOICE;
+function siteSelection(site, modes, choice) {
+	if (choice === "pc" || choice === "viewer") return {
+		choice,
+		mode: choice
+	};
+	const saved = modes[site];
+	return saved ? {
+		choice: saved.choice,
+		mode: saved.choice === "auto" ? saved.resolved : saved.choice
+	} : {
+		choice: "auto",
+		mode: "gamepad"
+	};
+}
+var SITE_PROFILES = [
+	{
+		host: "tesana.com",
+		profile: "flight"
+	},
+	{
+		host: "play.tesana.ai",
+		profile: "flight"
+	},
+	{
+		host: "krunker.io",
+		profile: "shooter"
+	},
+	{
+		host: "venge.io",
+		profile: "shooter"
+	},
+	{
+		host: "shellshock.io",
+		profile: "shooter"
+	},
+	{
+		host: "voxiom.io",
+		profile: "shooter"
+	}
+];
+/** The profile suggested for a host name, or null when the table has nothing for it. */
+function suggestProfile(hostname, table = SITE_PROFILES) {
+	const h = hostname.toLowerCase().replace(/\.$/, "");
+	if (!h) return null;
+	for (const s of table) if (h === s.host || h.endsWith(`.${s.host}`)) return s.profile;
+	return null;
+}
+/** One suggestion for a tab from the hosts of its frames: the top frame first, then any frame that matches. */
+function suggestForFrames(hosts, table = SITE_PROFILES) {
+	const sorted = [...hosts].sort((a, b) => a.frameId - b.frameId);
+	for (const f of sorted) {
+		const p = suggestProfile(f.host, table);
+		if (p) return p;
+	}
+	return null;
 }
 //#endregion
 //#region src/shared/math.ts
@@ -703,6 +799,25 @@ function sanitizeRumble(s, w, ms) {
 }
 function parseFromPage(x) {
 	if (!isObj(x)) return null;
+	if (x.t === "signals") {
+		const s = x.signals;
+		if (!isObj(s) || ![
+			"pads",
+			"padListeners",
+			"keyListeners",
+			"pointerListeners"
+		].every((k) => Number.isInteger(s[k]) && within(s[k], 0, 1e6)) || !within(s.padAt, 0, 0x5af3107a4000)) return null;
+		return {
+			t: "signals",
+			signals: {
+				pads: s.pads,
+				padAt: s.padAt,
+				padListeners: s.padListeners,
+				keyListeners: s.keyListeners,
+				pointerListeners: s.pointerListeners
+			}
+		};
+	}
 	if (x.t === "rep" && typeof x.focus === "boolean" && within(x.area, 0, 1e9)) return {
 		t: "rep",
 		focus: x.focus,
@@ -806,9 +921,19 @@ function parseBgRequest(x) {
 			tabId: x.tabId,
 			on: x.on
 		} : null;
-		case "mode": return isTargetMode(x.mode) ? {
+		case "mode":
+			if (x.tabId !== void 0 && !(Number.isInteger(x.tabId) && within(x.tabId, 0, 2 ** 31))) return null;
+			return isModeChoice(x.mode) ? {
+				to: "bg",
+				type: "mode",
+				mode: x.mode,
+				...x.tabId !== void 0 ? { tabId: x.tabId } : {}
+			} : null;
+		case "auto-mode": return Number.isInteger(x.tabId) && within(x.tabId, 0, 2 ** 31) && typeof x.site === "string" && siteOf(x.site) === x.site && (x.mode === "gamepad" || x.mode === "keys") ? {
 			to: "bg",
-			type: "mode",
+			type: "auto-mode",
+			tabId: x.tabId,
+			site: x.site,
 			mode: x.mode
 		} : null;
 		case "frames": return Number.isInteger(x.count) && within(x.count, 0, 1e3) && typeof x.host === "string" && x.host.length <= 253 && /^[A-Za-z0-9.:[\]-]*$/.test(x.host) && typeof x.big === "boolean" ? {
@@ -887,10 +1012,14 @@ var linkConfig = (tabId, mode, wholePc) => ({
 function parseConfig(x) {
 	if (!isObj(x) || !isTargetMode(x.mode)) return null;
 	if (x.tabId !== null && !(Number.isInteger(x.tabId) && within(x.tabId, 0, 2 ** 31))) return null;
+	if (x.choice !== void 0 && !isModeChoice(x.choice)) return null;
+	if (x.site !== void 0 && (typeof x.site !== "string" || x.site !== "" && siteOf(x.site) !== x.site)) return null;
 	return {
 		tabId: x.tabId,
 		mode: x.mode,
-		desktop: x.desktop === true
+		desktop: x.desktop === true,
+		...x.choice !== void 0 ? { choice: x.choice } : {},
+		...x.site !== void 0 ? { site: x.site } : {}
 	};
 }
 function senderKind(s, self) {
@@ -904,6 +1033,7 @@ var ALLOWED_SENDERS = {
 	version: ["extension"],
 	enable: ["extension"],
 	mode: ["extension", "offscreen"],
+	"auto-mode": ["offscreen"],
 	unpair: ["extension"],
 	forget: ["extension"],
 	lan: ["extension"],
@@ -936,4 +1066,4 @@ function workerStale(reply, mine) {
 	return (isObj(reply) && typeof reply.version === "string" ? reply.version : null) !== mine;
 }
 //#endregion
-export { APP_NAME as $, typingToast as A, parseAnswers as B, parseNativeFrame as C, scopeLabel as D, pcView as E, stickCurve as F, PadButton as G, phoneKeyOf as H, accessOf as I, emptyPad as J, PadFlag as K, askFor as L, buttonValue as M, clamp as N, toHelperRequest as O, hysteresis as P, guideStatus as Q, isPcAccess as R, parseHelperMessage as S, parsePcState as T, withAnswer as U, parsePhone as V, withoutAnswer as W, LINK_TRY_URL as X, packetType as Y, guideRequest as Z, PC_PAGE_PORT_NAME as _, parseFacts as a, TARGET_MODES as at, isIdleFrame as b, parseOffscreenRequest as c, DESKTOP_URL as d, DEFAULT_MODE as et, EMPTY_PC as f, NATIVE_PORT_NAME as g, NATIVE_HOST as h, parseConfig as i, SERVICE as it, Accum as j, typingField as k, senderKind as l, MAC_ACCESSIBILITY as m, linkConfig as n, PAGE_MODES as nt, parseFromPage as o, isTargetMode as ot, HeldState as p, decodePad as q, parseBgRequest as r, PORT_NAME as rt, parseLink as s, allowedFrom as t, MIN_VIEW_AREA as tt, workerStale as u, buildNativeFrame as v, parseNativeText as w, isTypingRefusal as x, heldSignature as y, noticeFor as z };
+export { emptyPad as $, typingToast as A, suggestForFrames as B, parseNativeFrame as C, scopeLabel as D, pcView as E, stickCurve as F, parseAnswers as G, askFor as H, parseSiteModes as I, withAnswer as J, parsePhone as K, siteOf as L, buttonValue as M, clamp as N, toHelperRequest as O, hysteresis as P, decodePad as Q, siteSelection as R, parseHelperMessage as S, parsePcState as T, isPcAccess as U, accessOf as V, noticeFor as W, PadButton as X, withoutAnswer as Y, PadFlag as Z, PC_PAGE_PORT_NAME as _, parseFacts as a, DEFAULT_CHOICE as at, isIdleFrame as b, parseOffscreenRequest as c, MODE_CHOICES as ct, DESKTOP_URL as d, SERVICE as dt, packetType as et, EMPTY_PC as f, isModeChoice as ft, NATIVE_PORT_NAME as g, NATIVE_HOST as h, parseConfig as i, APP_NAME as it, Accum as j, typingField as k, senderKind as l, PAGE_MODES as lt, MAC_ACCESSIBILITY as m, linkConfig as n, guideRequest as nt, parseFromPage as o, DEFAULT_MODE as ot, HeldState as p, isTargetMode as pt, phoneKeyOf as q, parseBgRequest as r, guideStatus as rt, parseLink as s, MIN_VIEW_AREA as st, allowedFrom as t, LINK_TRY_URL as tt, workerStale as u, PORT_NAME as ut, buildNativeFrame as v, parseNativeText as w, isTypingRefusal as x, heldSignature as y, storedChoice as z };

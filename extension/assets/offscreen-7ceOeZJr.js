@@ -1,6 +1,7 @@
-import { $ as APP_NAME, A as typingToast, F as stickCurve, G as PadButton, H as phoneKeyOf, J as emptyPad, K as PadFlag, M as buttonValue, N as clamp$1, P as hysteresis, R as isPcAccess, Y as packetType, b as isIdleFrame, c as parseOffscreenRequest, et as DEFAULT_MODE, g as NATIVE_PORT_NAME, i as parseConfig, it as SERVICE, j as Accum, nt as PAGE_MODES, o as parseFromPage, ot as isTargetMode, p as HeldState, q as decodePad, v as buildNativeFrame, w as parseNativeText, y as heldSignature, z as noticeFor } from "./messages-CWZnFxhW.js";
+import { $ as emptyPad, A as typingToast, B as suggestForFrames, F as stickCurve, M as buttonValue, N as clamp, P as hysteresis, Q as decodePad, U as isPcAccess, W as noticeFor, X as PadButton, Z as PadFlag, b as isIdleFrame, c as parseOffscreenRequest, dt as SERVICE, et as packetType, ft as isModeChoice, g as NATIVE_PORT_NAME, i as parseConfig, it as APP_NAME, j as Accum, o as parseFromPage, ot as DEFAULT_MODE, p as HeldState, q as phoneKeyOf, v as buildNativeFrame, w as parseNativeText, y as heldSignature } from "./messages-CnGyVAm-.js";
 import { i as DotLoader, n as DOT_LOADER_STYLE, t as communityMarker } from "./origin-Bxajh2ze.js";
 import { C as sdpFingerprint, S as roomIdFor, T as sealShareTarget, _ as lanContext, b as randomBytes, c as bindMac, d as encodeLanPairing, f as encodePairing, g as lanAnswerSdp, h as importPairKey, l as candidatesOf, m as fromB64url, o as admissionFor, p as equalBytes, r as sealSessionContext, s as b64url, t as connectionSeal, u as certFingerprint, v as lanIceCredentials, w as sdpSession, x as readLocalIce, y as newSecret } from "./seal-BlqsjHPq.js";
+import { a as electFrame, c as padTuple, d as tiltTuple, f as withRelativeAim, i as deltaTuple, l as pointerTuple, n as autoNotice, o as frameSignature, p as withoutClickButtons, r as buildFrame, s as isActive, t as AutoMode, u as recipients } from "./route-CdO6dCFo.js";
 //#region ../packages/core/src/quat.ts
 var qIdentity = () => [
 	0,
@@ -899,50 +900,6 @@ function decodePose(buf) {
 		gen: dv.getUint8(28),
 		source: source === 1 ? "camera" : source === 2 ? "model" : "unknown"
 	};
-}
-/**
-* Motion below this (as a fraction of full travel, 0.01 = 1.8°/s) counts as a still phone, so sensor noise
-* never rides the deadzone jump into the game.
-*/
-var REST = .01;
-var clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
-/** Player-space turn rates (yaw + = left, pitch + = up, °/s) as a raw stick vector (+x right, +y down). */
-function rateToUnit(yawDps, pitchDps, full = 180) {
-	return [clamp(-yawDps / full, -1, 1), clamp(-pitchDps / full, -1, 1)];
-}
-/**
-* The deadzone jump: `sign(v) · (d + (1 − d) · |v|)` applied to the vector's magnitude, so any deliberate motion
-* lands past the game's deadzone `d` while the direction stays exact. Below `rest` the phone counts as still.
-*/
-function jumpDeadzone(v, d, rest = REST) {
-	const m = Math.hypot(v[0], v[1]);
-	if (m <= rest) return [0, 0];
-	const out = d + (1 - d) * Math.min(1, m);
-	return [v[0] / m * out, v[1] / m * out];
-}
-/** Sum of stick vectors, clamped to the unit circle (a thumb plus motion can't exceed a full deflection). */
-function addStick(a, b) {
-	const x = a[0] + b[0];
-	const y = a[1] + b[1];
-	const m = Math.hypot(x, y);
-	return m > 1 ? [x / m, y / m] : [x, y];
-}
-/**
-* What a stick finally carries: the thumb alone when no motion contributes, otherwise the thumb plus every
-* contribution, clamped, then one deadzone jump (the largest requested), so two small inputs never jump twice.
-*/
-function mixStick(thumb, motions) {
-	let sum = [0, 0];
-	let d = 0;
-	let live = false;
-	for (const m of motions) {
-		if (m.v[0] === 0 && m.v[1] === 0) continue;
-		live = true;
-		sum = addStick(sum, m.v);
-		d = Math.max(d, m.deadzone);
-	}
-	if (!live) return [thumb[0], thumb[1]];
-	return jumpDeadzone(addStick(thumb, sum), d);
 }
 //#endregion
 //#region ../packages/core/src/buttons.ts
@@ -3596,7 +3553,7 @@ var Remote = class Remote {
 		c.qrLoader.start();
 		c.qr.replaceChildren(c.qrLoader.el);
 		__vitePreload(async () => {
-			const { plainQrElement } = await import("./qr-Cr_x9lg4.js").then((n) => n.r);
+			const { plainQrElement } = await import("./qr-Dit-Rjjs.js").then((n) => n.r);
 			return { plainQrElement };
 		}, []).then(({ plainQrElement }) => {
 			if (url === this.pairingUrl) {
@@ -3841,7 +3798,7 @@ var KeyMapper = class {
 				down: true
 			});
 		}
-		const dt = clamp$1(input.dtMs, 0, 100) / 1e3;
+		const dt = clamp(input.dtMs, 0, 100) / 1e3;
 		let dx = -input.aim[0] * mouse.aimGain + input.pad1[0] * mouse.padGain;
 		let dy = -input.aim[1] * mouse.aimGain + input.pad1[1] * mouse.padGain;
 		const axes = (s) => pad ? s === "left" ? [pad.axes[0], pad.axes[1]] : [pad.axes[2], pad.axes[3]] : [0, 0];
@@ -4312,170 +4269,6 @@ var PcGestures = class {
 	}
 };
 //#endregion
-//#region src/shared/route.ts
-/**
-* Frame routing and wire encoding for the offscreen link. Pure.
-*
-* A tab can hold many frames (a game in an iframe, ads, widgets). Like real hardware:
-*  - the virtual controller is visible to every frame (the Gamepad API is per frame),
-*  - keys go to the one focused frame,
-*  - 3D drags go to the frame with the largest visible canvas / <model-viewer>.
-*/
-function electFrame(frames, role) {
-	if (!frames.length) return null;
-	const top = frames.find((f) => f.frameId === 0) ?? frames[0];
-	if (role === "pointer") {
-		const locked = frames.find((f) => f.lock);
-		if (locked) return locked;
-	}
-	let best = null;
-	for (const f of frames) if (role === "keys" ? f.focus && (!best || f.focusAt > best.focusAt) : f.area >= 19200 && (!best || f.area > best.area)) best = f;
-	return best ?? top;
-}
-/** Which frames get input frames in a mode: every frame for the controller, one elected frame otherwise, none for the PC. */
-function recipients(frames, mode) {
-	if (mode === "pc") return [];
-	if (mode === "gamepad") return [...frames];
-	const f = electFrame(frames, mode === "keys" ? "keys" : "viewer");
-	return f ? [f] : [];
-}
-var round = (v, k) => Math.round(v * k) / k || 0;
-function padTuple(pad) {
-	if (!pad) return null;
-	const ax = (i) => round(Math.max(-1, Math.min(1, pad.axes[i] ?? 0)), 1e4);
-	const tr = (i) => round(Math.max(0, Math.min(1, pad.triggers[i] ?? 0)), 1e3);
-	return [
-		pad.buttons >>> 0,
-		ax(0),
-		ax(1),
-		ax(2),
-		ax(3),
-		tr(0),
-		tr(1)
-	];
-}
-/** Per-frame deltas, or null when there is no motion at all (keeps idle frames tiny). */
-function deltaTuple(f) {
-	const d = [
-		round(f.aim[0], 1e3),
-		round(f.aim[1], 1e3),
-		round(f.pad1[0], 1e3),
-		round(f.pad1[1], 1e3),
-		round(f.pad2[0], 1e3),
-		round(f.pad2[1], 1e3),
-		round(f.zoom, 1e4)
-	];
-	return d.some((v) => v !== 0) ? d : null;
-}
-/** The pointer for a page, with the A / B bits of the pad that click at it. */
-function pointerTuple(p, buttons) {
-	if (!p) return null;
-	return [
-		round(p.yaw, 100),
-		round(p.pitch, 100),
-		p.gen & 255,
-		p.flags & 255,
-		buttons & 3
-	];
-}
-/** The A and B bits removed: while they click at the cursor they are not also gamepad buttons (CATALOGUE §4). */
-function withoutClickButtons(p) {
-	if (!p) return null;
-	const out = [...p];
-	out[0] = (p[0] & ~(1 << PadButton.A | 1 << PadButton.B)) >>> 0;
-	return out;
-}
-/**
-* Aim on the mouse route without pointer lock: the host finishes the route on the right stick (CATALOGUE §3, shooter),
-* turning the change of aim per second into a deflection with the default deadzone jump. Signs: yaw + = right, pitch + = up.
-*/
-function withRelativeAim(p, rateDps, deadzone = .2) {
-	if (!p) return null;
-	const v = rateToUnit(-rateDps[0], rateDps[1]);
-	const [rx, ry] = mixStick([p[3], p[4]], [{
-		v,
-		deadzone
-	}]);
-	const out = [...p];
-	out[3] = round(rx, 1e4);
-	out[4] = round(ry, 1e4);
-	return out;
-}
-function tiltTuple(t) {
-	if (!t) return null;
-	const v = [round(Math.max(-1, Math.min(1, t[0])), 1e3), round(Math.max(-1, Math.min(1, t[1])), 1e3)];
-	return v[0] || v[1] ? v : null;
-}
-/** Is anything being pressed or moved? Active input streams at the full rate; idle input only heartbeats. */
-function isActive(p, d, tl, pt = null) {
-	if (d || tl || pt) return true;
-	if (!p) return false;
-	return p[0] !== 0 || p.slice(1).some((v) => Math.abs(v) > .02);
-}
-var modeIndex = (mode) => PAGE_MODES.indexOf(mode);
-function buildFrame(mode, dt, p, d, tl, pt = null) {
-	const f = {
-		t: "in",
-		m: modeIndex(mode),
-		dt: round(Math.max(0, Math.min(1e3, dt)), 10),
-		p,
-		d,
-		tl
-	};
-	if (pt) f.pt = pt;
-	return f;
-}
-/** Identity of the held (non-delta) state; a change is sent at once even when idle. */
-var frameSignature = (mode, p, tl) => JSON.stringify([
-	mode,
-	p,
-	tl
-]);
-//#endregion
-//#region src/shared/sites.ts
-var SITE_PROFILES = [
-	{
-		host: "tesana.com",
-		profile: "flight"
-	},
-	{
-		host: "play.tesana.ai",
-		profile: "flight"
-	},
-	{
-		host: "krunker.io",
-		profile: "shooter"
-	},
-	{
-		host: "venge.io",
-		profile: "shooter"
-	},
-	{
-		host: "shellshock.io",
-		profile: "shooter"
-	},
-	{
-		host: "voxiom.io",
-		profile: "shooter"
-	}
-];
-/** The profile suggested for a host name, or null when the table has nothing for it. */
-function suggestProfile(hostname, table = SITE_PROFILES) {
-	const h = hostname.toLowerCase().replace(/\.$/, "");
-	if (!h) return null;
-	for (const s of table) if (h === s.host || h.endsWith(`.${s.host}`)) return s.profile;
-	return null;
-}
-/** One suggestion for a tab from the hosts of its frames: the top frame first, then any frame that matches. */
-function suggestForFrames(hosts, table = SITE_PROFILES) {
-	const sorted = [...hosts].sort((a, b) => a.frameId - b.frameId);
-	for (const f of sorted) {
-		const p = suggestProfile(f.host, table);
-		if (p) return p;
-	}
-	return null;
-}
-//#endregion
 //#region src/offscreen.ts
 /**
 * Offscreen document (reason WEB_RTC). An MV3 service worker cannot hold an RTCPeerConnection, so the ob.Pal
@@ -4510,6 +4303,12 @@ var targetPicker = (wholePc) => ({
 	type: "select",
 	icon: "settings",
 	options: [
+		{
+			value: "auto",
+			label: `Auto · ${config.mode === "keys" ? "Keys" : "Controller"}`,
+			glyph: "✦",
+			detail: "Pick the input this page uses"
+		},
 		{
 			value: "gamepad",
 			label: "Controller",
@@ -4570,8 +4369,12 @@ var remote = null;
 var config = {
 	tabId: null,
 	mode: DEFAULT_MODE,
+	choice: "auto",
+	site: "",
 	desktop: false
 };
+var auto = new AutoMode();
+var autoPressed = false;
 var configured = false;
 var links = /* @__PURE__ */ new Set();
 var lastTargets = /* @__PURE__ */ new Set();
@@ -4755,14 +4558,21 @@ chrome.runtime.onConnect.addListener((port) => {
 	port.onDisconnect.addListener(() => forget(link));
 	syncSuggestion();
 });
-function applyConfig({ tabId, mode, desktop }) {
+function applyConfig({ tabId, mode, desktop, choice = mode, site = "" }) {
 	const modeChanged = mode !== config.mode;
+	const resetAuto = choice !== config.choice || tabId !== config.tabId || site !== config.site;
 	const wholeChanged = desktop !== config.desktop;
 	config = {
 		tabId,
 		mode,
-		desktop
+		desktop,
+		choice,
+		site
 	};
+	if (resetAuto) {
+		auto = new AutoMode(mode === "keys" ? "keys" : "gamepad");
+		autoPressed = false;
+	}
 	configured = true;
 	const keys = pcKeys(desktop);
 	if (pc.mapper.cfg !== keys) {
@@ -4777,13 +4587,18 @@ function applyConfig({ tabId, mode, desktop }) {
 		} catch {}
 	}
 	if (modeChanged) {
-		for (const l of links) l.sig = "";
+		for (const l of links) {
+			post(l, { t: "rel" });
+			l.sig = "";
+			l.wasActive = false;
+		}
 		if (mode !== "pc") pcLetGo();
-		remote?.setValues({ target: mode });
+		remote?.setValues({ target: choice });
 		remote?.setLayout(layoutFor(suggested));
 		publishField();
 		publishNotice();
 	} else if (wholeChanged) remote?.setLayout(layoutFor(suggested));
+	if (resetAuto && !modeChanged) remote?.setValues({ target: choice });
 	syncSuggestion();
 }
 var pc = {
@@ -4907,6 +4722,10 @@ function pcLetGo() {
 function forget(l) {
 	links.delete(l);
 	lastTargets.delete(l);
+	if (l.frameId === 0 && config.choice === "auto") {
+		auto = new AutoMode(config.mode === "keys" ? "keys" : "gamepad");
+		autoPressed = false;
+	}
 	syncSuggestion();
 }
 function onPageMessage(link, raw) {
@@ -4917,7 +4736,8 @@ function onPageMessage(link, raw) {
 		link.focus = m.focus;
 		link.area = m.area;
 		link.lock = m.lock === true;
-	} else rumble(m.s, m.w, m.ms);
+	} else if (m.t === "signals") link.signals = m.signals;
+	else rumble(m.s, m.w, m.ms);
 }
 var rumbleAt = 0;
 var rumbleNext = null;
@@ -4950,6 +4770,35 @@ function post(l, m) {
 		forget(l);
 	}
 }
+function resolveAuto(pressed) {
+	if (config.choice !== "auto") return;
+	const frames = [...links].filter((l) => l.tabId === config.tabId);
+	if (pressed && !autoPressed) {
+		autoPressed = true;
+		for (const l of frames) post(l, { t: "probe" });
+	}
+	const mode = auto.update(frames, Date.now(), pressed);
+	if (mode === config.mode) return;
+	for (const l of frames) {
+		post(l, { t: "rel" });
+		l.sig = "";
+		l.wasActive = false;
+	}
+	lastTargets.clear();
+	config = {
+		...config,
+		mode
+	};
+	remote?.setLayout(layoutFor(suggested));
+	remote?.feedback({ toast: autoNotice(mode) });
+	if (config.tabId !== null && config.site) toBg({
+		to: "bg",
+		type: "auto-mode",
+		tabId: config.tabId,
+		site: config.site,
+		mode
+	});
+}
 var lastTick = 0;
 var sealActivityAt = -Infinity;
 var lastPtr = null;
@@ -4980,6 +4829,7 @@ function tick() {
 	const f = r.consume(now);
 	const pad = r.pad;
 	const ptr = r.pointer;
+	if (config.choice === "auto") resolveAuto(f.connected && (f.touching || isActive(padTuple(pad), deltaTuple(f), tiltTuple(!pad && f.mode === Mode.tilt ? f.tilt : null))));
 	if (f.connected && (f.touching || !!pad?.buttons || f.aim.some(Boolean) || f.pad1.some(Boolean) || f.pad2.some(Boolean) || !!f.zoom || !!f.twist) && now - sealActivityAt > 700) {
 		sealActivityAt = now;
 		chrome.runtime.sendMessage({
@@ -5016,7 +4866,8 @@ function tick() {
 	const sig = frameSignature(mode, p, tl);
 	for (const l of targets) {
 		if (!active && l.sig === sig && now - l.lastSent < HEARTBEAT_MS) continue;
-		post(l, buildFrame(mode, l.wasActive ? Math.min(50, now - l.lastSent) : TICK_MS, p, d, tl, gamepad && l !== ptFrame ? null : pt));
+		const dt = l.wasActive ? Math.min(50, now - l.lastSent) : TICK_MS;
+		post(l, buildFrame(mode, dt, p, d, tl, gamepad && l !== ptFrame ? null : pt));
 		l.lastSent = now;
 		l.wasActive = active;
 		l.sig = sig;
@@ -5027,21 +4878,37 @@ function clockTick() {
 	if (performance.now() - lastTick < TICK_MIN_GAP_MS) return;
 	tick();
 }
+var clockWorker;
+var clockInterval;
+function stopClock() {
+	if (clockWorker) {
+		clockWorker.onmessage = null;
+		clockWorker.onerror = null;
+		clockWorker.terminate();
+		clockWorker = void 0;
+	}
+	clearInterval(clockInterval);
+	clockInterval = void 0;
+}
 function startClock() {
-	const fallback = () => setInterval(clockTick, TICK_MS);
+	if (clockWorker || clockInterval !== void 0) return;
 	try {
 		const worker = new Worker(new URL(
 			/* @vite-ignore */
 			"/assets/ticker-BhYtNb2H.js",
 			"" + import.meta.url
 		), { type: "module" });
-		worker.onmessage = clockTick;
+		clockWorker = worker;
+		worker.onmessage = () => {
+			if (clockWorker === worker) clockTick();
+		};
 		worker.onerror = () => {
-			worker.terminate();
-			fallback();
+			if (clockWorker !== worker) return;
+			stopClock();
+			clockInterval = setInterval(clockTick, TICK_MS);
 		};
 	} catch {
-		fallback();
+		clockInterval = setInterval(clockTick, TICK_MS);
 	}
 }
 async function boot() {
@@ -5089,15 +4956,28 @@ async function boot() {
 	r.on("lan", report);
 	r.on("invite", report);
 	r.on("connect", () => {
+		startClock();
 		reportPhone();
 		report();
-		r.setValues({ target: config.mode });
+		r.setValues({ target: config.choice ?? config.mode });
 		publishField(true);
 		publishNotice(true);
 	});
 	r.on("disconnect", () => {
+		stopClock();
+		for (const link of lastTargets) {
+			post(link, { t: "rel" });
+			link.sig = "";
+			link.wasActive = false;
+		}
+		lastTargets.clear();
+		lastPtr = null;
+		relRate = [0, 0];
+		relAt = 0;
 		moment = null;
 		pcLetGo();
+		auto = new AutoMode(config.mode === "keys" ? "keys" : "gamepad");
+		autoPressed = false;
 		report();
 	});
 	r.on("join", () => void reportPhone());
@@ -5125,13 +5005,13 @@ async function boot() {
 		tick();
 	});
 	r.on("value", ({ id, v }) => {
-		if (id === "target" && isTargetMode(v)) toBg({
+		if (id === "target" && isModeChoice(v)) toBg({
 			to: "bg",
 			type: "mode",
 			mode: v
 		}).then((res) => {
 			if (res?.refused !== "deny") return;
-			r.setValues({ target: config.mode });
+			r.setValues({ target: config.choice ?? config.mode });
 			r.feedback({ toast: "Not allowed on this PC" });
 		});
 		else if (id === "mouse-wheel" && typeof v === "number" && config.mode === "pc") {
@@ -5147,7 +5027,7 @@ async function boot() {
 	}));
 	if (cfg && !configured) applyConfig(cfg);
 	reportPhone(true);
-	startClock();
+	if (r.status === "connected") startClock();
 }
 boot().catch((e) => {
 	console.error("[ob.Pal Link] could not start the phone link", e);

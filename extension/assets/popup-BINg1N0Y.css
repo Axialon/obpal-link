@@ -8,6 +8,8 @@ html { overflow-x: hidden; }
 .pop { container: pop / inline-size; display: grid; gap: 12px; width: 640px; padding: 12px 14px 14px; }
 html.in-tab body { min-height: 100vh; }
 html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px; }
+/* The guarded copy and community builds keep their disclosure after the controls, clear of short-window actions. */
+body > .community-build { position: static; display: block; width: fit-content; margin: 0 auto 12px; transform: none; }
 
 /* ---- the bar: lockup, the link (or the phone on it), the look ---------------------------------------------- */
 
@@ -99,6 +101,10 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
   transition: transform 0.4s var(--spring), background 0.3s var(--ease), box-shadow 0.3s var(--ease);
 }
 .codes:has(.code[data-code='lan'][aria-checked='true'])::before { transform: translate3d(100%, 0, 0); background: linear-gradient(150deg, rgb(var(--haze-rgb) / 0.98), rgb(var(--haze-rgb) / 0.8)); box-shadow: 0 8px 18px -10px rgb(var(--haze-rgb) / 0.9), inset 0 1px 0 rgb(255 255 255 / 0.45); }
+@media (hover: hover) {
+  .codes:hover::before { box-shadow: 0 8px 18px -10px rgb(var(--accent-rgb) / 0.9), var(--interaction-hover-rim); }
+  .codes:has(.code[data-code='lan'][aria-checked='true']):hover::before { box-shadow: 0 8px 18px -10px rgb(var(--haze-rgb) / 0.9), var(--interaction-hover-rim); }
+}
 .code {
   position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; padding: 0 11px;
   border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: 700 12px/1 var(--font); transition: color 0.25s var(--ease);
@@ -114,7 +120,7 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
   display: inline-flex; align-items: center; min-width: 0; max-width: 100%; height: 28px; padding-left: 2px; border-radius: 999px; border: 1px solid var(--line);
   background: var(--fill); color: var(--secondary); font: 650 11px/1 var(--font); transition: border-color 0.25s, background 0.25s, color 0.25s;
 }
-.phone:hover { border-color: var(--line-strong); color: var(--ink); }
+@media (hover: hover) { .phone:hover { border-color: var(--interaction-hover-edge); color: var(--ink); } }
 .phone[aria-current='true'] { border-color: rgb(var(--haze-rgb) / 0.6); background: rgb(var(--haze-rgb) / 0.1); color: var(--ink); }
 .phone-pick { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 150px; height: 100%; padding: 0 1px 0 6px; border: 0; background: none; color: inherit; font: inherit; }
 .phone-pick .ic { width: 12px; height: 12px; }
@@ -136,17 +142,19 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
 @keyframes says-in { from { opacity: 0; transform: translate3d(0, 4px, 0); } }
 .pop.linked .says { margin: 0; }
 
-/* What the phone drives: four tiles, the lit one sliding to the choice. */
-.chips { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 4px; padding: 4px; border-radius: 19px; border: 1px solid var(--line); background: rgb(var(--base-rgb) / 0.4); }
+/* What the phone drives: five tiles, the lit one sliding to the choice. */
+.chips { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 4px; padding: 4px; border-radius: 19px; border: 1px solid var(--line); background: rgb(var(--base-rgb) / 0.4); }
 [data-bb-theme='light'] .chips { background: rgb(15 23 42 / 0.035); }
 .chips::before {
-  content: ''; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 20px) / 4); border-radius: 15px;
+  content: ''; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 24px) / 5); border-radius: 15px;
   background: var(--glass-light); box-shadow: 0 12px 26px -12px rgb(var(--accent-rgb) / 0.85), inset 0 1px 0 rgb(255 255 255 / 0.5);
   transform: translate3d(calc(var(--at, 0) * (100% + 4px)), 0, 0); transition: transform 0.45s var(--spring);
 }
-.chips:has(.chip[data-mode='viewer'][aria-checked='true']) { --at: 1; }
-.chips:has(.chip[data-mode='keys'][aria-checked='true']) { --at: 2; }
-.chips:has(.chip[data-mode='pc'][aria-checked='true']) { --at: 3; }
+.chips:has(.chip[data-mode='gamepad'][aria-checked='true']) { --at: 1; }
+.chips:has(.chip[data-mode='viewer'][aria-checked='true']) { --at: 2; }
+.chips:has(.chip[data-mode='keys'][aria-checked='true']) { --at: 3; }
+.chips:has(.chip[data-mode='pc'][aria-checked='true']) { --at: 4; }
+@media (hover: hover) { .chips:hover::before { box-shadow: 0 12px 26px -12px rgb(var(--accent-rgb) / 0.85), var(--interaction-hover-rim); } }
 .chip {
   position: relative; z-index: 1; display: grid; justify-items: center; gap: 7px; min-width: 0; padding: 11px 2px; border: 0; border-radius: 15px;
   background: transparent; color: var(--secondary); text-align: center; transition: color 0.3s var(--ease), background 0.2s, transform 0.12s var(--ease);
@@ -154,6 +162,7 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
 .chip .ic { width: 22px; height: 22px; transition: transform 0.35s var(--spring); }
 .chip-t { display: grid; gap: 3px; min-width: 0; }
 .chip-t b { font: 650 12.5px/1.1 var(--font); letter-spacing: -0.01em; }
+.chip[data-mode='auto'] .chip-t b { font-size: 11px; line-height: 1.25; text-wrap: balance; }
 .chip-t small { display: none; overflow: hidden; color: var(--muted); font: 550 11px/1.2 var(--font); text-overflow: ellipsis; white-space: nowrap; transition: color 0.3s var(--ease); }
 .chip:hover { background: var(--fill); color: var(--ink); }
 .chip:hover .ic { transform: translate3d(0, -2px, 0); }
@@ -162,7 +171,7 @@ html.in-tab .pop { width: auto; max-width: 720px; margin: 0 auto; padding: 16px;
 .chip[aria-checked='true'] small { color: rgb(0 0 0 / 0.55); }
 /* With room (the popup to themselves): the glyph beside the name, and a few words under it. */
 @container controls (width >= 480px) {
-  .chip { grid-auto-flow: column; justify-content: start; align-items: center; gap: 11px; padding: 12px; text-align: left; }
+  .chip { grid-auto-flow: column; justify-content: center; align-items: center; gap: 6px; padding: 12px 4px; text-align: left; }
   .chip:hover .ic { transform: scale(1.08); }
   .chip-t small { display: block; }
   .says { display: none; }

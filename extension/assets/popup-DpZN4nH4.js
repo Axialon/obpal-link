@@ -1,7 +1,7 @@
-import { n as qrDotPoints, t as brandedQrElement } from "./qr-Cr_x9lg4.js";
-import { B as parseAnswers, D as scopeLabel, E as pcView, I as accessOf, L as askFor, T as parsePcState, V as parsePhone, X as LINK_TRY_URL, a as parseFacts, at as TARGET_MODES, d as DESKTOP_URL, et as DEFAULT_MODE, f as EMPTY_PC, m as MAC_ACCESSIBILITY, ot as isTargetMode, s as parseLink, u as workerStale } from "./messages-CWZnFxhW.js";
+import { n as qrDotPoints, t as brandedQrElement } from "./qr-Dit-Rjjs.js";
+import { D as scopeLabel, E as pcView, G as parseAnswers, H as askFor, K as parsePhone, T as parsePcState, V as accessOf, a as parseFacts, at as DEFAULT_CHOICE, ct as MODE_CHOICES, d as DESKTOP_URL, f as EMPTY_PC, ft as isModeChoice, m as MAC_ACCESSIBILITY, ot as DEFAULT_MODE, pt as isTargetMode, s as parseLink, tt as LINK_TRY_URL, u as workerStale, z as storedChoice } from "./messages-CnGyVAm-.js";
 import { a as dotClock, i as DotLoader, n as DOT_LOADER_STYLE, r as DotField, u as dotTimeline } from "./origin-Bxajh2ze.js";
-import { a as mountLook, c as syncLook, d as showAsk, f as family, h as LINK_LOGO, i as mountLogo, l as radioGroup, m as ICONS, n as lightCards, o as settle, p as dotLoading, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Ce9msWxr.js";
+import { a as mountLook, c as syncLook, d as showAsk, f as family, h as LINK_LOGO, i as mountLogo, l as radioGroup, m as ICONS, n as lightCards, o as settle, p as dotLoading, r as markContext, s as startLook, t as LINK_ICONS, u as askCard } from "./icons-Nd8Fvivp.js";
 import { a as glyphDots, i as SEAL_GLYPHS, n as sealNames } from "./seal-BlqsjHPq.js";
 //#region ../packages/host/src/seal.ts
 var fields = /* @__PURE__ */ new WeakMap();
@@ -92,8 +92,11 @@ var SEAL_SURFACE_STYLE = `
 .seal-stage[data-qr]{background:#fff}
 .seal-stage[data-qr] .seal-flight{--seal-plate:#fff;--ob-dot-active:#14171c;--ob-dot-light:#14171c;--ob-dot-ink:#14171c;--ob-dot-muted:#14171c;--ob-dot-depth:#14171c}
 .seal-action{display:grid;place-items:center;flex:none;width:44px;height:44px;border:0;background:transparent;color:var(--seal-ink,var(--bb-ink,var(--ink,#fff)));border-radius:50%;font:300 24px/1 system-ui;cursor:pointer}
-.seal-stage>.seal-action{position:absolute;right:2px;bottom:2px;z-index:2;background:var(--seal-plate,var(--bb-sheet,var(--sheet,#141415)))}
-.seal-action:focus-visible,.seal-stage .seal-peer:focus-visible{outline:2px solid currentColor;outline-offset:-3px}
+.seal-stage>.seal-action{--interaction-ring-offset:-3px;position:absolute;right:2px;bottom:2px;z-index:2;background:var(--seal-plate,var(--bb-sheet,var(--sheet,#141415)))}
+.seal-action:focus:not(:focus-visible),.seal-stage .seal-peer:focus:not(:focus-visible){outline:none}
+.seal-action:focus-visible,.seal-stage .seal-peer:focus-visible{outline:var(--interaction-ring-width,2px) solid var(--interaction-ring,var(--bb-accent-text,#c6ff34));outline-offset:var(--interaction-ring-offset,3px);filter:drop-shadow(0 0 5px var(--interaction-glow,#c6ff3452))}
+.seal-stage[data-qr] .seal-action{--interaction-ring:#4d7c0f;--interaction-ring-offset:-3px}
+@media(forced-colors:active){.seal-action:focus-visible,.seal-stage .seal-peer:focus-visible{outline-color:Highlight;filter:none}}
 .seal-stage[data-qr] .seal-action{background:#fff;color:#14171c}
 .seal-action[hidden],.seal-stage [hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){.seal-stage .seal-plane{transform:none!important;filter:none!important}}
@@ -268,6 +271,14 @@ var SealSurface = class {
 		this.field.setSource(this.source);
 		this.animate(performance.now(), true, () => this.rest());
 	}
+	/** A fresh code is showing to add a phone (the + has become its cancel). */
+	get isAdding() {
+		return this.adding;
+	}
+	/** Put the seal back if a fresh code is showing; nothing otherwise. */
+	cancelAdding() {
+		if (this.adding) this.cancel();
+	}
 	cancel() {
 		this.adding = false;
 		this.showingQr = false;
@@ -407,6 +418,12 @@ var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
 * have no room for those words), and the glyph.
 */
 var MODES = {
+	auto: {
+		label: "Auto",
+		sub: "Page input",
+		says: "Pick Controller or Keys for this game; manual picks are remembered for this site",
+		icon: LINK_ICONS.gamepad
+	},
 	gamepad: {
 		label: "Controller",
 		sub: "Gamepad API",
@@ -523,6 +540,8 @@ var state = {
 	link: null,
 	tab: null,
 	mode: DEFAULT_MODE,
+	choice: DEFAULT_CHOICE,
+	autoNotice: null,
 	allSites: false,
 	current: null,
 	busy: false,
@@ -573,7 +592,7 @@ app.innerHTML = `
     <section class="card controls rise" style="--i:2" aria-label="Controls">
       <p class="controls-label">Choose the input route</p>
       <div class="chips" role="radiogroup" aria-label="What the phone controls">
-        ${TARGET_MODES.map((m) => `<button class="chip" type="button" role="radio" aria-checked="false" data-mode="${m}" title="${MODES[m].label}: ${MODES[m].says}">${MODES[m].icon}<span class="chip-t"><b>${MODES[m].label}</b><small>${MODES[m].sub}</small></span></button>`).join("")}
+        ${MODE_CHOICES.map((m) => `<button class="chip" type="button" role="radio" aria-checked="false" data-mode="${m}" title="${MODES[m].label}: ${MODES[m].says}">${MODES[m].icon}<span class="chip-t"><b>${MODES[m].label}</b><small>${MODES[m].sub}</small></span></button>`).join("")}
       </div>
       <p class="says" id="says"></p>
       <button class="row swap" id="tab" type="button" role="switch" aria-checked="false" title="Let the phone control this tab">
@@ -610,7 +629,7 @@ app.innerHTML = `
       </button>
       </details>
       <div class="try-route" id="try-route"><span><b>Try the dot demo</b><small>Open it, then choose Controller and enable This tab in Link.</small></span><button class="btn" type="button" id="try-demo">Try</button></div>
-      <p class="note swap" id="note" role="alert" hidden></p>
+      <p class="note swap" id="note" role="status" aria-live="polite" hidden></p>
     </section>
   </div>`;
 mountLogo(app);
@@ -632,7 +651,6 @@ sealStyle.textContent = SEAL_STYLE + SEAL_SURFACE_STYLE + DOT_LOADER_STYLE + `
 .seal-popup:not([data-expanded]){padding:6px 12px}
 .seal-popup:not([data-expanded])>b,.seal-popup:not([data-expanded])>p{display:none}
 #seal-glyphs{display:grid;place-items:center;min-height:44px;cursor:pointer;border-radius:12px}
-#seal-glyphs:focus-visible{outline:2px solid var(--bb-accent-text);outline-offset:2px}
 `;
 document.head.append(sealStyle);
 var surface = new SealSurface({
@@ -797,11 +815,15 @@ function render() {
 	dotLoading(tabBtn, state.busy, "Applying tab permission");
 	tabBtn.disabled = state.busy || !can;
 	$("tab-host").textContent = can ? hostOf(cur?.url) : "Not available on this page";
-	for (const c of chips) c.setAttribute("aria-checked", String(c.dataset.mode === state.mode));
+	for (const c of chips) c.setAttribute("aria-checked", String(c.dataset.mode === state.choice));
+	const resolvedLabel = `Auto · ${state.mode === "keys" ? "Keys" : "Controller"}`;
+	const autoChip = chips.find((c) => c.dataset.mode === "auto");
+	autoChip.querySelector("b").textContent = resolvedLabel;
+	autoChip.setAttribute("aria-label", resolvedLabel);
 	const says = $("says");
 	says.hidden = state.mode === "pc";
-	if (says.textContent !== MODES[state.mode].says) {
-		says.textContent = MODES[state.mode].says;
+	if (says.textContent !== MODES[state.choice].says) {
+		says.textContent = MODES[state.choice].says;
 		says.classList.remove("new");
 		says.offsetWidth;
 		says.classList.add("new");
@@ -811,7 +833,8 @@ function render() {
 	if (state.allSites) $("advanced").open = true;
 	renderPc();
 	const note = $("note");
-	const notice = staleHint() ?? state.notice ?? offlineHint() ?? (state.mode === "pc" ? null : framesHint());
+	const autoHint = state.choice === "auto" && state.autoNotice && Date.now() - state.autoNotice.at < 4e3 ? { text: state.autoNotice.text } : null;
+	const notice = staleHint() ?? state.notice ?? autoHint ?? offlineHint() ?? (state.mode === "pc" ? null : framesHint());
 	note.hidden = !notice;
 	note.replaceChildren();
 	if (notice) {
@@ -1268,12 +1291,14 @@ function requestNative(then) {
 	}, () => render());
 }
 function setMode(mode) {
-	state.mode = mode;
+	state.choice = mode;
+	if (mode !== "auto") state.mode = mode;
 	render();
 	send({
 		to: "bg",
 		type: "mode",
-		mode
+		mode,
+		...state.current?.id !== void 0 ? { tabId: state.current.id } : {}
 	});
 }
 tabBtn.addEventListener("click", async () => {
@@ -1296,7 +1321,7 @@ tabBtn.addEventListener("click", async () => {
 });
 for (const chip of chips) chip.addEventListener("click", () => {
 	const mode = chip.dataset.mode;
-	if (!isTargetMode(mode) || mode === state.mode) return;
+	if (!isModeChoice(mode) || mode === state.choice) return;
 	if (mode === "pc" && !state.pcPermission) return requestNative(() => setMode("pc"));
 	setMode(mode);
 });
@@ -1346,8 +1371,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
 		if (changes.frames) state.frames = parseFrames(changes.frames.newValue);
 		if (changes.pc) state.pc = parsePcState(changes.pc.newValue) ?? { ...EMPTY_PC };
 		if (changes.phone) state.phone = parsePhone(changes.phone.newValue);
+		if (changes.autoNotice) {
+			const n = changes.autoNotice.newValue;
+			state.autoNotice = n && typeof n.text === "string" && typeof n.at === "number" ? n : null;
+			if (state.autoNotice) setTimeout(render, Math.max(0, state.autoNotice.at + 4e3 - Date.now()));
+		}
 	} else if (area === "local") {
 		if (changes.mode && isTargetMode(changes.mode.newValue)) state.mode = changes.mode.newValue;
+		if (changes.choice && isModeChoice(changes.choice.newValue)) state.choice = changes.choice.newValue;
 		if (changes.answers) state.answers = parseAnswers(changes.answers.newValue);
 	}
 	render();
@@ -1374,9 +1405,14 @@ async function init() {
 			"link",
 			"frames",
 			"pc",
-			"phone"
+			"phone",
+			"autoNotice"
 		]),
-		chrome.storage.local.get(["mode", "answers"]),
+		chrome.storage.local.get([
+			"mode",
+			"choice",
+			"answers"
+		]),
 		chrome.permissions.contains(ALL_SITES),
 		chrome.permissions.contains(NATIVE_PERMISSION)
 	]);
@@ -1388,6 +1424,10 @@ async function init() {
 	state.phone = parsePhone(session.phone);
 	state.answers = parseAnswers(local.answers);
 	state.mode = isTargetMode(local.mode) ? local.mode : DEFAULT_MODE;
+	state.choice = storedChoice(local.choice, local.mode);
+	const n = session.autoNotice;
+	state.autoNotice = n && typeof n.text === "string" && typeof n.at === "number" ? n : null;
+	if (state.autoNotice) setTimeout(render, Math.max(0, state.autoNotice.at + 4e3 - Date.now()));
 	state.allSites = allSites;
 	state.pcPermission = pcPermission;
 	render();

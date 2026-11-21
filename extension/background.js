@@ -1,4 +1,5 @@
-import { B as parseAnswers, C as parseNativeFrame, I as accessOf, L as askFor, O as toHelperRequest, Q as guideStatus, S as parseHelperMessage, T as parsePcState, U as withAnswer, V as parsePhone, W as withoutAnswer, Z as guideRequest, et as DEFAULT_MODE, f as EMPTY_PC, h as NATIVE_HOST, k as typingField, l as senderKind, n as linkConfig, ot as isTargetMode, r as parseBgRequest, s as parseLink, t as allowedFrom, w as parseNativeText, x as isTypingRefusal } from "./assets/messages-CWZnFxhW.js";
+import { C as parseNativeFrame, G as parseAnswers, H as askFor, I as parseSiteModes, J as withAnswer, K as parsePhone, L as siteOf, O as toHelperRequest, R as siteSelection, S as parseHelperMessage, T as parsePcState, V as accessOf, Y as withoutAnswer, f as EMPTY_PC, ft as isModeChoice, h as NATIVE_HOST, k as typingField, l as senderKind, n as linkConfig, nt as guideRequest, ot as DEFAULT_MODE, pt as isTargetMode, r as parseBgRequest, rt as guideStatus, s as parseLink, t as allowedFrom, w as parseNativeText, x as isTypingRefusal, z as storedChoice } from "./assets/messages-CnGyVAm-.js";
+import { n as autoNotice } from "./assets/route-CdO6dCFo.js";
 //#region src/native.ts
 var NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
 var RETRY_MS = [
@@ -404,7 +405,7 @@ async function answerFor(key, allow) {
 		key,
 		name
 	}, allow, Date.now()) });
-	if (!allow && phone?.key === key && mode === "pc" && isTargetMode(phoneSwitch) && phoneSwitch !== "pc") await setMode(phoneSwitch, false);
+	if (!allow && phone?.key === key && mode === "pc" && isModeChoice(phoneSwitch) && phoneSwitch !== "pc") await setMode(phoneSwitch, false);
 	await reviewAccess();
 	if (phone?.key === key) toOffscreen({
 		to: "offscreen",
@@ -435,19 +436,94 @@ function listenToNotes() {
 * A new target. From the phone's tray, the PC is refused for a phone this PC said no to (the target stays), and a
 * switch to it is remembered as the phone's own: if the person at the PC says no, the phone goes back to what it had.
 */
-async function setMode(mode, fromPhone) {
+async function setMode(choice, fromPhone, tabId) {
 	const prev = await targetMode();
+	const [{ site: controlledSite }, local] = await Promise.all([chrome.storage.session.get("site"), chrome.storage.local.get(["siteModes", "choice"])]);
+	const site = tabId !== void 0 ? siteOf((await chrome.tabs.get(tabId)).url) : typeof controlledSite === "string" && controlledSite ? controlledSite : siteOf((await chrome.tabs.query({
+		active: true,
+		currentWindow: true
+	}))[0]?.url);
+	const siteModes = parseSiteModes(local.siteModes);
+	const mode = choice === "auto" ? siteModes[site]?.resolved ?? "gamepad" : choice;
 	if (fromPhone && mode === "pc") {
 		const [phone, list] = await Promise.all([currentPhone(), answers()]);
 		if (phone && accessOf(list, phone.key) === "deny") return {
 			ok: false,
 			refused: "deny"
 		};
-		if (prev !== "pc") await chrome.storage.session.set({ phoneSwitch: prev });
+		if (prev !== "pc") await chrome.storage.session.set({ phoneSwitch: storedChoice(local.choice, prev) });
 	} else if (mode !== prev) await chrome.storage.session.remove("phoneSwitch");
-	await chrome.storage.local.set({ mode });
+	if (site && (choice === "auto" || choice === "gamepad" || choice === "keys")) siteModes[site] = {
+		choice,
+		resolved: mode === "keys" ? "keys" : "gamepad"
+	};
+	await chrome.storage.local.set({
+		mode,
+		choice,
+		siteModes: parseSiteModes(siteModes)
+	});
+	await chrome.storage.session.set({ autoNotice: null });
 	await pushConfig();
 	await reviewAccess();
+	return { ok: true };
+}
+/** Serialize choices, tab changes and Auto reports so an old detection cannot replace a manual pick. */
+var changing = Promise.resolve();
+function change(run) {
+	const result = changing.then(run);
+	changing = result.catch(() => void 0);
+	return result;
+}
+async function selectSite(tabId) {
+	const [tab, local] = await Promise.all([chrome.tabs.get(tabId), chrome.storage.local.get([
+		"mode",
+		"choice",
+		"siteModes"
+	])]);
+	const site = siteOf(tab.url);
+	const choice = storedChoice(local.choice, local.mode);
+	const siteModes = parseSiteModes(local.siteModes);
+	const selected = local.choice === void 0 && isTargetMode(local.mode) ? {
+		choice,
+		mode: local.mode
+	} : siteSelection(site, siteModes, choice);
+	if (site && (selected.choice === "gamepad" || selected.choice === "keys")) siteModes[site] = {
+		choice: selected.choice,
+		resolved: selected.choice
+	};
+	await chrome.storage.local.set({
+		...selected,
+		siteModes: parseSiteModes(siteModes)
+	});
+	await chrome.storage.session.set({
+		site,
+		autoNotice: null
+	});
+}
+async function resolvedAuto(msg) {
+	const [tab, session, local] = await Promise.all([
+		controlledTab(),
+		chrome.storage.session.get("site"),
+		chrome.storage.local.get([
+			"choice",
+			"mode",
+			"siteModes"
+		])
+	]);
+	if (tab !== msg.tabId || session.site !== msg.site || local.choice !== "auto") return { ok: false };
+	const siteModes = parseSiteModes(local.siteModes);
+	siteModes[msg.site] = {
+		choice: "auto",
+		resolved: msg.mode
+	};
+	await chrome.storage.local.set({
+		mode: msg.mode,
+		siteModes: parseSiteModes(siteModes)
+	});
+	if (local.mode !== msg.mode) await chrome.storage.session.set({ autoNotice: {
+		text: autoNotice(msg.mode),
+		at: Date.now()
+	} });
 	return { ok: true };
 }
 var creating = null;
@@ -487,12 +563,18 @@ var toOffscreen = (m) => chrome.runtime.sendMessage(m).catch(() => void 0);
 * answer to a link document that has just started, so a new one never falls back to the game keys on a whole PC.
 */
 async function currentConfig() {
-	const [tabId, mode, wholePc] = await Promise.all([
+	const [tabId, mode, wholePc, local, session] = await Promise.all([
 		controlledTab(),
 		targetMode(),
-		native.wholePc()
+		native.wholePc(),
+		chrome.storage.local.get(["choice", "mode"]),
+		chrome.storage.session.get("site")
 	]);
-	return linkConfig(tabId, mode, wholePc);
+	return {
+		...linkConfig(tabId, mode, wholePc),
+		choice: storedChoice(local.choice, local.mode),
+		site: typeof session.site === "string" ? session.site : ""
+	};
 }
 async function pushConfig() {
 	await toOffscreen({
@@ -525,20 +607,19 @@ async function bridgeHello(sender) {
 		tabId,
 		frameIds: [sender.frameId ?? 0]
 	};
-	await chrome.scripting.executeScript({
+	return { active: (await chrome.scripting.executeScript({
 		target,
 		world: "MAIN",
 		files: [PAGE_JS],
 		injectImmediately: true
-	}).catch(() => {});
-	return { active: true };
+	}).catch(() => [])).length > 0 && tabId === await controlledTab() };
 }
 /** With "All sites", new frames and navigations in the controlled tab get a bridge at document_start. */
 async function syncRegistration() {
 	const [tabId, all] = await Promise.all([controlledTab(), chrome.permissions.contains(ALL_SITES)]);
 	const want = tabId !== null && all;
-	const have = (await chrome.scripting.getRegisteredContentScripts({ ids: [REGISTERED_ID] })).length > 0;
-	if (want && !have) await chrome.scripting.registerContentScripts([{
+	const have = await chrome.scripting.getRegisteredContentScripts({ ids: [REGISTERED_ID] });
+	if (want && !have.some((s) => s.id === REGISTERED_ID)) await chrome.scripting.registerContentScripts([{
 		id: REGISTERED_ID,
 		js: [BRIDGE_JS],
 		matches: ["<all_urls>"],
@@ -547,7 +628,7 @@ async function syncRegistration() {
 		runAt: "document_start",
 		persistAcrossSessions: false
 	}]).catch(() => {});
-	else if (!want && have) await chrome.scripting.unregisterContentScripts({ ids: [REGISTERED_ID] }).catch(() => {});
+	else if (!want && have.some((s) => s.id === REGISTERED_ID)) await chrome.scripting.unregisterContentScripts({ ids: [REGISTERED_ID] }).catch(() => {});
 }
 async function enableTab(tabId) {
 	const prev = await controlledTab();
@@ -556,6 +637,7 @@ async function enableTab(tabId) {
 		tab: tabId,
 		frames: null
 	});
+	await selectSite(tabId);
 	try {
 		await injectBridge(tabId);
 	} catch (e) {
@@ -642,12 +724,13 @@ async function handle(msg, sender) {
 			await ensureOffscreen();
 			return { ok: true };
 		case "version": return { version: chrome.runtime.getManifest().version };
-		case "enable": return msg.on ? enableTab(msg.tabId) : disableTab(msg.tabId);
-		case "mode": return setMode(msg.mode, senderKind({
+		case "enable": return change(() => msg.on ? enableTab(msg.tabId) : disableTab(msg.tabId));
+		case "mode": return change(() => setMode(msg.mode, senderKind({
 			id: sender.id,
 			url: sender.url,
 			tabId: sender.tab?.id
-		}, SELF) === "offscreen");
+		}, SELF) === "offscreen", msg.tabId));
+		case "auto-mode": return change(() => resolvedAuto(msg));
 		case "pc-connect":
 		case "pc-allow":
 		case "pc-scope":
@@ -798,6 +881,10 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 	(async () => {
 		if (tabId !== await controlledTab()) return;
 		try {
+			await change(async () => {
+				await selectSite(tabId);
+				await pushConfig();
+			});
 			await injectBridge(tabId);
 			await refreshBadge();
 		} catch {
@@ -814,7 +901,19 @@ chrome.permissions.onAdded.addListener(() => {
 		await reviewAccess();
 	})();
 });
-chrome.permissions.onRemoved.addListener(() => void Promise.all([syncRegistration(), reviewAccess()]));
+chrome.permissions.onRemoved.addListener((removed) => {
+	Promise.all([syncRegistration(), reviewAccess()]);
+	if (!removed.origins?.length) return;
+	change(async () => {
+		const tab = await controlledTab();
+		if (tab === null) return;
+		await tellTab(tab, {
+			to: "bridge",
+			type: "deactivate"
+		});
+		await injectBridge(tab).catch(() => disableTab(tab));
+	});
+});
 var warm = () => void Promise.all([syncRegistration(), ensureOffscreen().catch(() => {})]);
 chrome.runtime.onStartup.addListener(warm);
 chrome.runtime.onInstalled.addListener(warm);
